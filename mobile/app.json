@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Commove",
+    "slug": "commove",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#111827"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.manila404.commove",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Commove needs access to your camera to scan event QR codes.",
+        "NSLocationWhenInUseUsageDescription": "Commove needs your location to show nearby events.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Commove needs your location to show nearby events."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#111827"
+      },
+      "package": "com.manila404.commove",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3ddceecc-1a1d-4740-b525-472c320fa468"
+      }
+    },
+    "owner": "404mans"
+  }
+}
