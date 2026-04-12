@@ -47,7 +47,15 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     // Check Notifications
-    if ('Notification' in window) {
+    const isMobileApp = typeof window !== 'undefined' && (
+      (window as any).ReactNativeWebView || 
+      /Android|iPhone|iPad|iPod|Expo/i.test(navigator.userAgent) ||
+      (window as any).standalone === true
+    );
+
+    if (isMobileApp) {
+      newStatus.notifications = 'granted';
+    } else if ('Notification' in window) {
       const status = Notification.permission;
       newStatus.notifications = (status === 'default' ? 'prompt' : status) as PermissionStatus;
     } else {
@@ -111,6 +119,19 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const requestNotifications = async () => {
+    // Detect if we are in the Mobile App wrapper
+    const isMobileApp = typeof window !== 'undefined' && (
+      (window as any).ReactNativeWebView || 
+      /Android|iPhone|iPad|iPod|Expo/i.test(navigator.userAgent) ||
+      (window as any).standalone === true
+    );
+
+    if (isMobileApp) {
+        // Mobile always uses internal Firestore notifications, so we treat as granted immediately
+        setPermissions(prev => ({ ...prev, notifications: 'granted' }));
+        return true;
+    }
+
     if (!('Notification' in window)) {
       toast.error('Notifications are not supported by your browser');
       return false;
