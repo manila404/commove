@@ -178,11 +178,11 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             </div>
 
             {step === 1 && (
-                <div className="flex-1 pr-2 pb-6 -mr-2 overflow-y-visible">
-                    <form onSubmit={handleNextStep} className="space-y-3 md:space-y-4">
-                    <div className="mb-2">
-                        <label className="block text-[10px] font-bold text-gray-500 mb-1 px-2 uppercase tracking-wider">Choose your avatar</label>
-                        <div className="flex gap-2 overflow-x-auto py-2 px-2 scrollbar-hide -mx-2">
+                <div className="flex-1 pr-2 pb-6 -mr-2 overflow-y-auto scrollbar-hide max-h-[60vh] md:max-h-none">
+                    <form onSubmit={handleNextStep} className="space-y-2 md:space-y-4">
+                    <div className="mb-1">
+                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5 px-2 uppercase tracking-wider">Choose your avatar</label>
+                        <div className="flex gap-2 overflow-x-auto py-1.5 px-2 scrollbar-hide -mx-2">
                             {PREDEFINED_AVATARS.map((avatar, idx) => (
                                 <button
                                     key={idx}
@@ -224,7 +224,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                         />
                     </div>
-                     <div>
+                     <div className="mt-1">
                         <input
                             type="email"
                             placeholder="Email"

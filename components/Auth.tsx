@@ -40,7 +40,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
             </button>
 
             {/* Left Side (Desktop) / Top Side (Mobile): Branding with Primary Purple on Mobile */}
-            <div className="flex md:w-[55%] bg-primary-600 md:bg-white md:dark:bg-[#111827] p-6 md:p-12 flex-col justify-start md:justify-between border-b md:border-b-0 md:border-r border-primary-500 md:border-gray-100 dark:md:border-gray-800 relative z-0 min-h-[30vh] md:min-h-0">
+            <div className="flex md:w-[55%] bg-primary-600 md:bg-white md:dark:bg-[#111827] p-4 md:p-12 flex-col justify-start md:justify-between border-b md:border-b-0 md:border-r border-primary-500 md:border-gray-100 dark:md:border-gray-800 relative z-0 min-h-[15vh] max-h-[22vh] md:max-h-none md:min-h-0">
                 <div className="flex flex-col items-center md:items-start text-center md:text-left mt-2 md:mt-0">
                     <div className="flex items-center select-none text-3xl tracking-tighter" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
                         <div className="relative inline-flex items-center justify-center text-white md:text-gray-900 dark:md:text-white mr-[-0.08em]">
@@ -57,12 +57,12 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
                         Discover events and connect with your community.
                     </p>
                 </div>
-                <div className="flex items-center justify-center pt-2 md:flex-1 md:pt-10 md:pb-0 z-0 overflow-visible">
+                <div className="flex items-center justify-center pt-1 md:flex-1 md:pt-10 md:pb-0 z-0 overflow-visible h-12 md:h-auto">
                     {/* Use the specific purple background version on mobile */}
                     <img 
                         src="/event_illustration_purple.png" 
                         alt="Event Illustration Mobile" 
-                        className="md:hidden w-full max-w-[280px] md:max-w-none object-contain transform translate-y-12 md:translate-y-24 scale-110 md:scale-110" 
+                        className="md:hidden w-full max-w-[200px] md:max-w-none object-contain transform translate-y-6 md:translate-y-24 scale-125 md:scale-110" 
                     />
                     <img 
                         src="/event_illustration.jpg" 
@@ -90,7 +90,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
                 }}
                 animate={{ y: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="w-full md:w-[45%] p-6 pt-10 md:p-8 bg-white dark:bg-[#111827] flex flex-col flex-1 pb-10 md:pb-8 max-h-[70vh] md:max-h-none overflow-y-auto rounded-t-[32px] md:rounded-none -mt-8 md:mt-0 relative z-10 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] md:shadow-none"
+                className="w-full md:w-[45%] p-6 pt-10 md:p-8 bg-white dark:bg-[#111827] flex flex-col flex-1 pb-10 md:pb-8 max-h-[75vh] md:max-h-none overflow-y-auto rounded-t-[32px] md:rounded-none -mt-8 md:mt-0 relative z-10 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] md:shadow-none"
             >
                 {/* Drag Handle (Mobile only - only shown for draggable Sign Up) */}
                 {isSigningUp && (
