@@ -8,7 +8,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="auto" />
+      <StatusBar style="light" translucent={true} backgroundColor="transparent" />
       <WebView 
         source={{ uri: WEB_URL }} 
         style={styles.webview}
@@ -19,6 +19,9 @@ export default function App() {
         geolocationEnabled={true}
         allowFileAccess={true}
         mediaPlaybackRequiresUserAction={false}
+        // Important for safe area insets to be injected into the webview
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
         renderLoading={() => (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#8b5cf6" />

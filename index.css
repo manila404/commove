@@ -39,9 +39,12 @@ body {
   scrollbar-width: none;  /* Firefox */
 }
 
-/* Safe area padding for bottom nav on mobile */
+/* Safe area padding for mobile gadgets */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 @keyframes float {
@@ -91,4 +94,11 @@ body {
 
 .animate-slide-up {
   animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Reposition reCAPTCHA on mobile to avoid overlap */
+@media (max-width: 768px) {
+  .grecaptcha-badge {
+    bottom: 80px !important;
+  }
 }

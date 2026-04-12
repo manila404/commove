@@ -69,12 +69,12 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
         }
 
         if (!sex) {
-            setError("Please select your sex.");
+            setError("Please select your gender.");
             return;
         }
 
         if (sex === 'Others' && !customSex.trim()) {
-            setError("Please specify your sex.");
+            setError("Please specify your gender.");
             return;
         }
 
@@ -178,11 +178,11 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             </div>
 
             {step === 1 && (
-                <div className="flex-1 pr-2 pb-6 -mr-2">
-                    <form onSubmit={handleNextStep} className="space-y-5 md:space-y-4">
-                    <div className="mb-4">
-                        <label className="block text-sm font-bold text-gray-500 mb-2 px-2">Choose your avatar</label>
-                        <div className="flex gap-3 overflow-x-auto py-3 px-2 scrollbar-hide -mx-2">
+                <div className="flex-1 pr-2 pb-6 -mr-2 overflow-y-visible">
+                    <form onSubmit={handleNextStep} className="space-y-3 md:space-y-4">
+                    <div className="mb-2">
+                        <label className="block text-[10px] font-bold text-gray-500 mb-1 px-2 uppercase tracking-wider">Choose your avatar</label>
+                        <div className="flex gap-2 overflow-x-auto py-2 px-2 scrollbar-hide -mx-2">
                             {PREDEFINED_AVATARS.map((avatar, idx) => (
                                 <button
                                     key={idx}
@@ -249,7 +249,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             />
                         </div>
                         <div className="w-full relative">
-                            <label className="absolute -top-2 left-4 bg-white dark:bg-[#111827] px-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Sex</label>
+                            <label className="absolute -top-2 left-4 bg-white dark:bg-[#111827] px-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Gender</label>
                             <select
                                 value={sex}
                                 onChange={(e) => {
@@ -259,7 +259,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                                 required
                                 className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm appearance-none"
                             >
-                                <option value="" disabled>Select Sex</option>
+                                <option value="" disabled>Select Gender</option>
                                 <option value="Male">Male</option>
                                 <option value="Female">Female</option>
                                 <option value="Others">Others</option>
@@ -274,7 +274,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                         <div>
                             <input
                                 type="text"
-                                placeholder="Please specify your sex"
+                                placeholder="Please specify your gender"
                                 value={customSex}
                                 onChange={(e) => setCustomSex(e.target.value)}
                                 required
