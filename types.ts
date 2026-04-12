@@ -32,6 +32,17 @@ export interface EventType {
   priority?: 'urgent' | 'average' | 'less_prio'; // Admin urgency indicator
   requestedPublishDate?: string | null; // Facilitator's requested specific timeframe form string
   instructions?: string | null; // Optional attendee guidance/instructions shown in event detail
+  timezone?: string; // New field for regional time tracking
+  
+  // Recurrence Fields
+  isRecurrent?: boolean;
+  recurrenceGroupId?: string;
+  recurrenceRule?: {
+    frequency: 'weekly' | 'monthly_date' | 'monthly_day';
+    interval: number;
+    count: number;
+    originalDate: string;
+  };
 
   // Permit Request Specifics
   department?: string;

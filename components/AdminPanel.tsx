@@ -690,7 +690,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
 
         <div className={`transition-all duration-300 h-full ${activeTab === 'dashboard' ? 'hidden' : 'block'}`}>
             {activeTab === 'create' && (
-                <div className="max-w-2xl mx-auto p-4 md:p-6 animate-fade-in-up pb-24">
+                <div className="w-full h-full animate-fade-in-up">
                     <div ref={formTopRef} />
                      <CreateEventForm 
                         onSuccess={handleSuccess} 

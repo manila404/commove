@@ -1,5 +1,5 @@
 
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where, getDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import type { EventType, EventStatus, Registration, RegistrationStatus } from '../types';
 
@@ -46,7 +46,7 @@ export const fetchUserRequests = async (userId: string): Promise<EventType[]> =>
     }
 }
 
-export const addEvent = async (eventData: Omit<EventType, 'id'>): Promise<EventType> => {
+export const addEvent = async (eventData: Omit<EventType, 'id'>, recurrenceDates?: string[]): Promise<EventType> => {
     try {
         const cleanedData = sanitizeData(eventData);
         // Default status is 'published' only if createdByAdmin is true AND no status is provided.
@@ -57,6 +57,33 @@ export const addEvent = async (eventData: Omit<EventType, 'id'>): Promise<EventT
             submittedAt: Date.now() // Add creation timestamp
         };
         
+        // Handle recurrence
+        if (recurrenceDates && recurrenceDates.length > 1) {
+            const batch = writeBatch(db);
+            const groupId = crypto.randomUUID();
+            
+            // Create first event
+            const mainDocRef = doc(collection(db, 'events'));
+            const mainEvent = { ...finalData, id: mainDocRef.id, recurrenceGroupId: groupId, isRecurrent: true };
+            batch.set(mainDocRef, sanitizeData(mainEvent));
+
+            // Create future instances
+            recurrenceDates.slice(1).forEach(dateStr => {
+                const instanceRef = doc(collection(db, 'events'));
+                const instanceData = { 
+                  ...finalData, 
+                  id: instanceRef.id, 
+                  date: dateStr, 
+                  recurrenceGroupId: groupId,
+                  isRecurrent: true 
+                };
+                batch.set(instanceRef, sanitizeData(instanceData));
+            });
+
+            await batch.commit();
+            return mainEvent as EventType;
+        }
+
         const docRef = await addDoc(eventsCollectionRef, finalData);
         const newEvent: EventType = {
             id: docRef.id,
@@ -106,6 +133,52 @@ export const deleteEvent = async (eventId: string): Promise<void> => {
     await deleteDoc(eventDocRef);
   } catch (error) {
     console.error("Error deleting event from Firestore:", error);
+    throw error;
+  }
+};
+
+export const deleteEventSeries = async (groupId: string, afterDate: string): Promise<void> => {
+  try {
+    const q = query(
+      eventsCollectionRef, 
+      where("recurrenceGroupId", "==", groupId),
+      where("date", ">=", afterDate)
+    );
+    const snap = await getDocs(q);
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => {
+      batch.delete(d.ref);
+    });
+    await batch.commit();
+  } catch (error) {
+    console.error("Error deleting event series:", error);
+    throw error;
+  }
+};
+
+/**
+ * Updates all future events in a series
+ */
+export const updateEventSeries = async (groupId: string, fromDate: string, updatedData: Partial<EventType>): Promise<void> => {
+  try {
+    const q = query(
+      eventsCollectionRef, 
+      where("recurrenceGroupId", "==", groupId),
+      where("date", ">=", fromDate)
+    );
+    const snap = await getDocs(q);
+    const batch = writeBatch(db);
+    
+    // We omit ID and date from the batch update as they must remain unique/correct per doc
+    const { id, date, ...pureUpdate } = updatedData as any;
+    const sanitizedUpdate = sanitizeData(pureUpdate);
+
+    snap.docs.forEach(d => {
+      batch.update(d.ref, sanitizedUpdate);
+    });
+    await batch.commit();
+  } catch (error) {
+    console.error("Error updating event series:", error);
     throw error;
   }
 };

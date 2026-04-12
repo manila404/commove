@@ -525,7 +525,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
                     <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Monthly Trends</h3>
-                    <div className="h-64">
+                    <div className="h-64 min-h-[256px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={realMonthlyTrends} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
                                 <defs>
@@ -550,7 +550,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
                     <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Events by Category</h3>
-                    <div className="h-64 flex items-center justify-center">
+                    <div className="h-64 min-h-[256px] w-full flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie 
@@ -575,7 +575,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             
             <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
                 <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">New Users per Month</h3>
-                <div className="h-64">
+                <div className="h-64 min-h-[256px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={newUsersData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
