@@ -1,0 +1,221 @@
+
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where, getDoc, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
+import type { EventType, EventStatus, Registration, RegistrationStatus } from '../types';
+
+const eventsCollectionRef = collection(db, 'events');
+const registrationsCollectionRef = collection(db, 'registrations');
+
+// Helper to remove undefined values because Firestore does not support them
+const sanitizeData = (data: any) => {
+    const cleaned: any = {};
+    Object.keys(data).forEach(key => {
+        if (data[key] !== undefined) {
+            cleaned[key] = data[key];
+        } else {
+            cleaned[key] = null; // Convert undefined to null
+        }
+    });
+    return cleaned;
+};
+
+export const fetchEvents = async (): Promise<EventType[]> => {
+  try {
+    const data = await getDocs(eventsCollectionRef);
+    const events = data.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id,
+    })) as EventType[];
+    return events;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const fetchUserRequests = async (userId: string): Promise<EventType[]> => {
+    try {
+        const q = query(eventsCollectionRef, where("createdBy", "==", userId));
+        const data = await getDocs(q);
+        return data.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id
+        })) as EventType[];
+    } catch (error) {
+        console.error("Error fetching user requests:", error);
+        return [];
+    }
+}
+
+export const addEvent = async (eventData: Omit<EventType, 'id'>): Promise<EventType> => {
+    try {
+        const cleanedData = sanitizeData(eventData);
+        // Default status is 'published' only if createdByAdmin is true AND no status is provided.
+        // If it's a user request, status will be 'pending' as passed from component.
+        const finalData = {
+            ...cleanedData,
+            status: cleanedData.status || (cleanedData.createdByAdmin ? 'published' : 'pending'),
+            submittedAt: Date.now() // Add creation timestamp
+        };
+        
+        const docRef = await addDoc(eventsCollectionRef, finalData);
+        const newEvent: EventType = {
+            id: docRef.id,
+            ...finalData
+        };
+        return newEvent;
+    } catch (error) {
+        console.error("Error adding event to Firestore:", error);
+        throw new Error("Could not create event.");
+    }
+};
+
+export const updateEvent = async (eventId: string, eventData: Partial<EventType>): Promise<void> => {
+    try {
+        const cleanedData = sanitizeData(eventData);
+        const eventDocRef = doc(db, 'events', eventId);
+        await updateDoc(eventDocRef, cleanedData);
+    } catch (error) {
+        console.error("Error updating event in Firestore:", error);
+        throw new Error("Could not update event.");
+    }
+};
+
+export const updateEventStatus = async (eventId: string, status: EventStatus, rejectionReason?: string, publishAt?: number | null): Promise<void> => {
+    try {
+        const eventDocRef = doc(db, 'events', eventId);
+        const updateData: any = { status };
+        if (status === 'rejected') {
+            updateData.rejectionReason = rejectionReason || 'No reason provided';
+        }
+        if (status === 'published' || status === 'pending' || status === 'scheduled') {
+            updateData.rejectionReason = null; // Clear reason
+        }
+        if (publishAt !== undefined) {
+            updateData.publishAt = publishAt;
+        }
+        await updateDoc(eventDocRef, updateData);
+    } catch (error) {
+        console.error("Error updating event status:", error);
+        throw error;
+    }
+};
+
+export const deleteEvent = async (eventId: string): Promise<void> => {
+  try {
+    const eventDocRef = doc(db, 'events', eventId);
+    await deleteDoc(eventDocRef);
+  } catch (error) {
+    console.error("Error deleting event from Firestore:", error);
+    throw error;
+  }
+};
+
+export const submitRegistration = async (registrationData: Omit<Registration, 'id' | 'submittedAt'>): Promise<Registration> => {
+    try {
+        const sanitizedData = sanitizeData(registrationData);
+        const submittedAt = Date.now();
+        const docRef = await addDoc(registrationsCollectionRef, {
+            ...sanitizedData,
+            submittedAt
+        });
+        return {
+            id: docRef.id,
+            ...sanitizedData,
+            submittedAt
+        } as Registration;
+    } catch (error) {
+        console.error("Error submitting registration:", error);
+        throw error;
+    }
+};
+
+export const fetchRegistrationsForEvent = async (eventId: string): Promise<Registration[]> => {
+    try {
+        const q = query(registrationsCollectionRef, where("eventId", "==", eventId));
+        const data = await getDocs(q);
+        return data.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id
+        })) as Registration[];
+    } catch (error: any) {
+        console.error("Error fetching registrations for event:", eventId, error);
+        return [];
+    }
+};
+
+export const updateRegistrationStatus = async (registrationId: string, status: RegistrationStatus): Promise<void> => {
+    try {
+        const regDocRef = doc(db, 'registrations', registrationId);
+        await updateDoc(regDocRef, { status });
+    } catch (error) {
+        console.error("Error updating registration status:", error);
+        throw error;
+    }
+};
+
+
+export const fetchUserRegistrations = async (userId: string): Promise<Registration[]> => {
+    try {
+        const q = query(registrationsCollectionRef, where("userId", "==", userId));
+        const data = await getDocs(q);
+        return data.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id
+        })) as Registration[];
+    } catch (error: any) {
+        console.error("Error fetching user registrations for user:", userId, error);
+        return [];
+    }
+};
+
+// ── Highlights (admin curated events shown at top of feed) ────────────────────
+
+const HIGHLIGHTS_KEY = 'admin_highlights';
+const highlightsDocRef = () => doc(db, 'config', 'highlights');
+
+export const getHighlights = async (): Promise<string[]> => {
+    // 1. Always check localStorage first (instant, always available)
+    try {
+        const local = localStorage.getItem(HIGHLIGHTS_KEY);
+        if (local) {
+            const parsed = JSON.parse(local) as string[];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed;
+            }
+        }
+    } catch (e) { /* ignore */ }
+
+    // 2. Fallback: try Firestore (may be blocked by security rules)
+    try {
+        const snap = await getDoc(highlightsDocRef());
+        if (snap.exists()) {
+            const ids = (snap.data().eventIds as string[]) || [];
+            // Sync back to localStorage for future fast reads
+            if (ids.length > 0) {
+                try { localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(ids)); } catch (e) { /* ignore */ }
+            }
+            return ids;
+        }
+    } catch (e) {
+        console.warn('Firestore highlights read failed (may be rules-blocked), using localStorage only:', e);
+    }
+
+    return [];
+};
+
+export const setHighlights = async (eventIds: string[]): Promise<void> => {
+    const ids = eventIds.slice(0, 5);
+
+    // 1. Save to localStorage immediately — always succeeds
+    try {
+        localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(ids));
+    } catch (e) {
+        console.error('Failed to save highlights to localStorage:', e);
+        throw new Error('Could not save highlights locally.');
+    }
+
+    // 2. Attempt Firestore sync in background (don't block or throw)
+    setDoc(highlightsDocRef(), { eventIds: ids }, { merge: true })
+        .catch(e => console.warn('Firestore highlights sync failed (non-critical):', e));
+};
+

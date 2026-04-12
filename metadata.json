@@ -1,0 +1,9 @@
+{
+  "name": "Remix: Commove",
+  "description": "Discover local events in Bacoor City. Features include AI-powered recommendations, interactive maps, and a dedicated LGU facilitator portal for event management.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera",
+    "notifications"
+  ]
+}

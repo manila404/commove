@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────
+    // Helper Functions
+    // ─────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isStaff() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'facilitator'] ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+        );
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ─────────────────────────────────────────
+    // Users Collection
+    // ─────────────────────────────────────────
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isStaff();
+      allow list: if isStaff();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isStaff();
+      allow delete: if isAdmin();
+    }
+
+    // ─────────────────────────────────────────
+    // Events Collection
+    // ─────────────────────────────────────────
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+
+      allow update: if isStaff() ||
+        (
+          isAuthenticated() &&
+          resource.data.createdBy == request.auth.uid &&
+          resource.data.status == 'pending' &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['status', 'isAdmin', 'role', 'createdBy'])
+        );
+
+      allow delete: if isStaff();
+    }
+
+    // ─────────────────────────────────────────
+    // Registrations Collection
+    // ─────────────────────────────────────────
+    match /registrations/{registrationId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isStaff());
+
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+
+      allow update: if isStaff();
+      allow delete: if isStaff();
+    }
+
+    // ─────────────────────────────────────────
+    // Notifications Collection
+    // ─────────────────────────────────────────
+    match /notifications/{notificationId} {
+      // Users can only read, update (mark as read), and delete their OWN notifications.
+      allow read, update, delete: if isOwner(resource.data.userId);
+
+      // Staff (admin/facilitator) can create notifications for ANY user (to send approve/reject alerts).
+      // Regular users can only create notifications for THEMSELVES (self-reminders).
+      allow create: if isAuthenticated() && (
+        isStaff() || request.resource.data.userId == request.auth.uid
+      );
+    }
+  }
+}
