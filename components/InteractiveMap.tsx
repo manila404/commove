@@ -100,8 +100,9 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
       const GEOAPIFY_API_KEY = '96056c5a5f684989a8c9bf0eb2b76518';
       L.tileLayer(`https://maps.geoapify.com/v1/tile/osm-carto/{z}/{x}/{y}.png?apiKey=${GEOAPIFY_API_KEY}`, {
-        attribution: 'Map &copy; <a href="https://www.geoapify.com/" target="_blank">Geoapify</a> | <a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap</a> contributors',
-        maxZoom: 20
+        attribution: '© <a href="https://www.geoapify.com/" target="_blank">Geoapify</a> | © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+        maxZoom: 20,
+        minZoom: 3,
       }).addTo(map);
 
       // Initialize layer group for event markers
@@ -268,20 +269,35 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
         const isSpecial = isUpcoming || isNew || isDraft;
 
         const eventIcon = L.divIcon({
-            className: 'custom-div-icon',
+            className: 'leaflet-venue-icon',
             html: `
-                <div class="relative w-10 h-10 drop-shadow-md hover:scale-110 transition-transform duration-200">
-                     <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M16 0 C10.48 0 6 4.48 6 10 C6 16.8 16 32 16 32 S26 16.8 26 10 C26 4.48 21.52 0 16 0 Z" fill="${isSpecial ? '#EF4444' : '#6D28D9'}"></path>
-                        <circle cx="16" cy="10" r="4" fill="white"></circle>
-                        ${isDraft ? '<circle cx="16" cy="10" r="2.5" fill="#EF4444" class="animate-pulse"></circle>' : ''}
-                        ${!isDraft && isSpecial ? '<circle cx="24" cy="8" r="4" fill="#FBBF24" class="animate-pulse"></circle>' : ''}
-                     </svg>
+                <div style="
+                    position:relative;
+                    width:40px;
+                    height:48px;
+                    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.28));
+                    transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+                    cursor: ${isDraft ? 'grab' : 'pointer'};
+                "
+                    ${isDraft ? 'title="Drag to adjust location"' : ''}
+                >
+                    <svg viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:40px;height:48px">
+                        <path d="M16 0 C7.163 0 0 7.163 0 16 C0 25.6 16 40 16 40 S32 25.6 32 16 C32 7.163 24.837 0 16 0 Z"
+                              fill="${isDraft ? '#7c3aed' : isSpecial ? '#EF4444' : '#6D28D9'}">
+                        </path>
+                        <circle cx="16" cy="15" r="6" fill="white" opacity="0.97"/>
+                        ${isDraft ? `
+                          <circle cx="16" cy="15" r="3.5" fill="#7c3aed"/>
+                          <circle cx="24" cy="7" r="4.5" fill="#10b981"/>
+                          <path d="M22 7 L24 9 L27 5.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        ` : isSpecial ? '<circle cx="24" cy="8" r="4" fill="#FBBF24"/>' : ''}
+                    </svg>
+                    ${isDraft ? '<div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#7c3aed;white-space:nowrap;background:white;padding:1px 5px;border-radius:100px;border:1px solid #ddd6fe;box-shadow:0 1px 4px rgba(0,0,0,0.12)">drag me</div>' : ''}
                 </div>
             `,
-            iconSize: [40, 40],
-            iconAnchor: [20, 40],
-            popupAnchor: [0, -45]
+            iconSize: [40, 56],
+            iconAnchor: [20, 48],
+            popupAnchor: [0, -52]
         });
 
         const categories = Array.isArray(event.category) ? event.category : [event.category];
@@ -366,24 +382,30 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
     }
   };
 
-  // Check if className already contains 'relative', if not add it. 
-  // This ensures absolute children are positioned correctly relative to this container.
-  const containerClass = className?.includes('relative') ? className : `relative ${className}`;
+  // Hoisted outside JSX so the CSS child combinator '>' doesn't confuse the Babel JSX parser
+  const venueIconCss = [
+    '.leaflet-venue-icon { background: transparent !important; border: none !important; box-shadow: none !important; }',
+    '.leaflet-venue-icon div { background: transparent !important; border: none !important; box-shadow: none !important; }',
+    '.leaflet-marker-icon.leaflet-venue-icon { background: transparent !important; border: none !important; }',
+    '.leaflet-drag-target .leaflet-venue-icon div { cursor: grabbing !important; }',
+  ].join(' ');
+
+  // ── isolation class ensures Leaflet z-indices don't escape the map and overlap
+  // ── other UI layers (modals, popovers, etc.) in the parent app
+  const containerClass = `${className?.includes('relative') ? className : `relative ${className}`} [isolation:isolate]`;
 
   return (
+    <>
     <div className={containerClass}>
       <div ref={mapContainerRef} className="w-full h-full z-0" />
       
-      {/* Status Overlay - Top Center */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 dark:bg-gray-800/90 backdrop-blur-md px-6 py-2.5 rounded-full shadow-2xl flex flex-col items-center border border-white/20 dark:border-gray-700 pointer-events-none scale-90 md:scale-100 origin-center">
-          <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-[0.2em] mb-0.5">Live Connection</span>
-          <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${isLocationLive ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`}></span>
-              <span className="font-black text-[12px] text-gray-900 dark:text-white leading-none">
-                  {isLocationLive ? 'STABLE' : 'SEARCHING...'}
-              </span>
-          </div>
-      </div>
+      {/* Status Overlay — only shown when GPS tracking is active (dashboard map) */}
+      {isLocationLive && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[400] bg-white/90 dark:bg-gray-800/90 backdrop-blur-md px-5 py-2 rounded-full shadow-xl flex items-center gap-2 border border-white/20 dark:border-gray-700 pointer-events-none">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+          <span className="text-[11px] font-black text-gray-800 dark:text-white uppercase tracking-widest">Live GPS</span>
+        </div>
+      )}
 
       {/* Zoom Controls - Top Left */}
       <div className="absolute top-6 left-6 z-[1000] flex flex-col rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md shadow-2xl border border-white/20 dark:border-gray-700 overflow-hidden">
@@ -403,15 +425,21 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
              </button>
       </div>
 
-      {/* Recenter Button - Bottom Right */}
-      <button 
-        onClick={handleRecenter}
-        className="absolute bottom-24 right-6 z-[1000] bg-white/95 dark:bg-gray-800/95 backdrop-blur-md text-primary-600 rounded-full shadow-2xl w-16 h-16 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-all border border-white/20 dark:border-gray-700 hover:scale-110 active:scale-90"
-        title="Centrer on Me"
-      >
-        <LocateIcon className="w-9 h-9 pointer-events-none" />
-      </button>
+      {/* Recenter Button — only relevant on dashboard GPS map */}
+      {isLocationLive && (
+        <button
+          onClick={handleRecenter}
+          className="absolute bottom-6 right-4 z-[400] bg-white/95 dark:bg-gray-800/95 backdrop-blur-md text-primary-600 rounded-full shadow-xl w-12 h-12 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-all border border-white/20 dark:border-gray-700 hover:scale-110 active:scale-90"
+          title="Center on Me"
+        >
+          <LocateIcon className="w-6 h-6 pointer-events-none" />
+        </button>
+      )}
     </div>
+
+    {/* Leaflet custom icon CSS — hoisted to avoid JSX parser issues with '>' combinator */}
+    <style>{venueIconCss}</style>
+    </>
   );
 };
 

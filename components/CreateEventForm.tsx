@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Image as ImageIcon, MapPin, X, Plus,
-  Globe, Lock, ChevronDown,
+  Globe, Lock, ChevronDown, Clock,
   CheckCircle2, AlertCircle, Eye, Save, Share2, Link as LinkIcon, ExternalLink
 } from 'lucide-react';
-import type { EventType, User } from '../types';
+import type { EventType, User, EventStatus } from '../types';
 import InteractiveMap from './InteractiveMap';
 import { addEvent, updateEvent } from '../services/eventService';
 import { getAdmins } from '../services/userService';
@@ -128,6 +128,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
   const [locationOpen, setLocationOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>(SAMPLE_LOCATIONS);
   const [isSearchingLoc, setIsSearchingLoc] = useState(false);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
 
   // Categories
   const [customCats, setCustomCats] = useState<string[]>([]);
@@ -136,6 +137,11 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
   // Recurrence
   const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule | null>(null);
+
+  // Scheduling
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
 
   const isAdmin = currentUser.role === 'admin';
 
@@ -155,7 +161,23 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         street: eventToEdit.street || '',
         instructions: eventToEdit.instructions || '',
       });
+      if (eventToEdit.street) {
+        setLocationQuery(eventToEdit.street);
+      }
       setIsPublic(!eventToEdit.maxParticipants);
+      if (eventToEdit.status === 'scheduled' && eventToEdit.publishAt) {
+          setIsScheduled(true);
+          const d = new Date(eventToEdit.publishAt);
+          setScheduleDate(d.toISOString().split('T')[0]);
+          setScheduleTime(d.toTimeString().substring(0, 5));
+      } else if (eventToEdit.requestedPublishDate) {
+          setIsScheduled(true);
+          const d = new Date(eventToEdit.requestedPublishDate);
+          if (!isNaN(d.getTime())) {
+              setScheduleDate(d.toISOString().split('T')[0]);
+              setScheduleTime(d.toTimeString().substring(0, 5));
+          }
+      }
     }
   }, [eventToEdit]);
 
@@ -171,8 +193,10 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         const remote = await searchAddressGeoapify(locationQuery);
         setSearchResults([...local, ...remote]);
         setIsSearchingLoc(false);
-      } else {
+      } else if (locationQuery.length === 0) {
         setSearchResults(SAMPLE_LOCATIONS);
+      } else {
+        setSearchResults([]);
       }
     }, 400);
     return () => clearTimeout(timer);
@@ -247,12 +271,18 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
     setIsLoading(true);
     try {
+      const publishTimestamp = isScheduled && scheduleDate && scheduleTime 
+         ? new Date(`${scheduleDate}T${scheduleTime}:00`).getTime() 
+         : null;
+
       const payload = {
         ...formData,
         lat: Number(formData.lat),
         lng: Number(formData.lng),
         maxParticipants: isPublic ? null : Number(formData.maxParticipants),
-        status: mode === 'draft' ? 'pending' : (eventToEdit?.status || 'published'),
+        publishAt: publishTimestamp,
+        requestedPublishDate: publishTimestamp ? new Date(publishTimestamp).toISOString() : null,
+        status: (mode === 'draft' ? 'draft' : (isScheduled ? (isAdmin ? 'scheduled' : 'pending') : (eventToEdit?.status === 'scheduled' ? 'published' : eventToEdit?.status || 'published'))) as EventStatus,
       };
 
       if (eventToEdit) {
@@ -280,10 +310,45 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
   const hasErrors = Object.keys(formErrors).length > 0;
 
-  const previewEvent: any = {
-    ...formData, id: 'preview', isLive: false, organizer: currentUser.name,
+  const venueMapEvent: any = {
+    ...formData,
+    id: 'draft',            // 'draft' id makes the pin draggable in InteractiveMap
+    isLive: false,
+    organizer: currentUser.name,
     category: Array.isArray(formData.category) ? formData.category : [formData.category],
     isSaved: false, isNearby: false, isPreferred: false,
+  };
+
+  // Shown in the right-column preview card (read-only)
+  const previewEvent: any = { ...venueMapEvent, id: 'preview' };
+
+  const [isGeocodingPin, setIsGeocodingPin] = useState(false);
+
+  const handleVenuePinDrag = async (lat: number, lng: number) => {
+    // Update coords immediately so the map re-centers smoothly
+    setFormData(prev => ({ ...prev, lat, lng }));
+    setIsGeocodingPin(true);
+    try {
+      const { reverseGeocode } = await import('../services/osmService');
+      const result = await reverseGeocode(lat, lng);
+      if (result?.displayName) {
+        // Parse a short venue name from the full address
+        // e.g. "SM City Bacoor, Tirona Highway, ..." → "SM City Bacoor"
+        const parts = result.displayName.split(',');
+        const venueName = parts[0]?.trim() || result.displayName;
+        const streetAddress = parts.slice(1).join(',').trim();
+        const finalStreet = streetAddress || result.displayName;
+        setFormData(prev => ({
+          ...prev,
+          lat,
+          lng,
+          venue: venueName,
+          street: finalStreet,
+        }));
+        setLocationQuery(finalStreet);
+      }
+    } catch (e) { /* silent — lat/lng already updated */ }
+    finally { setIsGeocodingPin(false); }
   };
 
   // ── Styles ────────────────────────────────────────────────────────────────
@@ -446,13 +511,48 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                 <DateTimeRow
                   label="End"
                   date={formData.date} time={formData.endTime}
-                  onDateChange={d => setField('date', d)}
+                  onDateChange={() => {}}
                   onTimeChange={t => { setField('endTime', t); touch('endTime'); }}
                   error={formErrors.endTime || formErrors.time}
+                  minDate={formData.date}
                   indicator="hollow"
                 />
+              </div>
 
-                <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+              {/* Publish Schedule Toggle */}
+              <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Schedule Publish Date</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">Delay when this event appears to residents.</p>
+                  </div>
+                  <button type="button" onClick={() => setIsScheduled(!isScheduled)}
+                    className={`relative w-12 h-6 shrink-0 rounded-full transition-colors ${isScheduled ? 'bg-violet-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                    <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${isScheduled ? 'left-7' : 'left-1'}`} />
+                  </button>
+                </div>
+                
+                <AnimatePresence>
+                  {isScheduled && (
+                    <motion.div initial={{ height: 0, opacity: 0, overflow: 'hidden' }} animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } }} exit={{ height: 0, opacity: 0, overflow: 'hidden' }}>
+                      <div className="bg-violet-50/50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-900/30 rounded-xl p-4 mt-2">
+                        <DateTimeRow
+                          label="Publish"
+                          date={scheduleDate} time={scheduleTime}
+                          onDateChange={d => setScheduleDate(d)}
+                          onTimeChange={t => setScheduleTime(t)}
+                        />
+                        <p className="text-[10px] text-violet-600/80 dark:text-violet-400/80 mt-3 flex items-center gap-1.5 font-medium">
+                          <Clock className="w-3 h-3" />
+                          Event will be hidden from residents until this scheduled time.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
                   <label className={label}>Time Zone</label>
                   <div className="relative">
                     <select name="timezone" value={formData.timezone} onChange={handleChange}
@@ -464,7 +564,6 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                   </div>
                 </div>
               </div>
-            </div>
 
             {/* Recurrence */}
             {!eventToEdit && (
@@ -480,38 +579,78 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             {/* Location / Venue */}
             <div className={`${card} ${formErrors.venue ? 'ring-2 ring-red-400/20 border-red-400/40' : ''}`}>
               <SectionHeader title="Location" />
-              {formData.venue ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
-                        <MapPin className="w-4 h-4 text-violet-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{formData.venue}</p>
-                        <p className="text-[11px] text-gray-400 font-medium truncate">{formData.street || `${formData.city}, ${formData.province}`}</p>
-                      </div>
-                    </div>
-                    <button type="button" onClick={() => setField('venue', '')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors ml-2">
-                      <X className="w-4 h-4 text-gray-400" />
-                    </button>
-                  </div>
-                  <div className="aspect-video rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
-                    <InteractiveMap userLocation={{ lat: formData.lat, lng: formData.lng }} isLocationLive={false} events={[previewEvent]} centerOnEvent={{ lat: formData.lat, lng: formData.lng }} className="w-full h-full" />
-                  </div>
+              <div className="space-y-4">
+                <div>
+                  <label className={label}>Venue Name</label>
+                  <input type="text" name="venue" value={formData.venue} onChange={handleChange} onBlur={() => touch('venue')}
+                    placeholder="e.g. Activity Center" className={input} />
                 </div>
-              ) : (
+                <div className="relative">
+                  <label className={label}>Street Address</label>
+                  <input type="text" name="street" value={locationQuery || formData.street} 
+                    onChange={e => {
+                        setLocationQuery(e.target.value);
+                        setField('street', e.target.value);
+                    }}
+                    onFocus={() => setShowAddressDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowAddressDropdown(false), 200)}
+                    placeholder="e.g. Bacoor City Hall…" className={input} autoComplete="off" />
+
+                  {/* Dropdown Suggestions */}
+                  <AnimatePresence>
+                    {showAddressDropdown && searchResults.length > 0 && (
+                      <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                        className="absolute z-50 top-[105%] left-0 right-0 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto"
+                      >
+                        {isSearchingLoc ? (
+                           <div className="flex justify-center items-center py-6"><Spinner size="md" /></div>
+                        ) : (
+                           searchResults.map((loc, i) => (
+                              <button key={i} type="button"
+                                onClick={() => {
+                                  setFormData(prev => ({ ...prev, venue: loc.name, street: loc.address, lat: loc.lat, lng: loc.lng }));
+                                  setLocationQuery(loc.address);
+                                  setShowAddressDropdown(false);
+                                  touch('venue');
+                                }}
+                                className="w-full text-left px-4 py-3 border-b border-gray-50 dark:border-gray-700/50 hover:bg-violet-50 dark:hover:bg-violet-900/10 transition-colors flex items-center gap-3 group"
+                              >
+                                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 flex items-center justify-center shrink-0 transition-colors">
+                                  <MapPin className="w-4 h-4 text-gray-400 group-hover:text-violet-600 transition-colors" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{loc.name}</p>
+                                  <p className="text-[11px] text-gray-400 truncate">{loc.address}</p>
+                                </div>
+                              </button>
+                           ))
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <div>
+                  <label className={label}>Location Instructions (Optional)</label>
+                  <textarea name="instructions" value={formData.instructions} onChange={handleChange}
+                    placeholder="e.g. Enter CICRD building, go left at the lobby..." rows={3} className={`${input} resize-none pt-3`} />
+                </div>
                 <button type="button" onClick={() => setLocationOpen(true)}
-                  className="w-full py-10 flex flex-col items-center justify-center gap-2.5 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:border-violet-400 dark:hover:border-violet-600 group transition-all bg-gray-50/50 dark:bg-gray-800">
-                  <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/20 flex items-center justify-center transition-colors">
-                    <MapPin className="w-5 h-5 text-gray-400 group-hover:text-violet-600 transition-colors" />
+                  className="w-full py-3 flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 rounded-xl hover:border-violet-400 dark:hover:border-violet-600 group transition-all">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isGeocodingPin ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/20'}`}>
+                    {isGeocodingPin
+                      ? <span className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                      : <MapPin className="w-4 h-4 text-gray-400 group-hover:text-violet-600 transition-colors" />}
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm font-bold text-gray-500 group-hover:text-violet-600 transition-colors">Pin event location</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Search and select from the map</p>
+                  <div className="text-left flex-1 pl-1">
+                    <p className="text-sm font-bold text-gray-600 dark:text-gray-300 group-hover:text-violet-600 transition-colors">
+                      {isGeocodingPin ? 'Pinning map location…' : 'View Map / Edit Pin'}
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Coordinates: {formData.lat.toFixed(5)}, {formData.lng.toFixed(5)}
+                    </p>
                   </div>
                 </button>
-              )}
+              </div>
               <FieldError error={formErrors.venue} />
             </div>
 
@@ -522,7 +661,23 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
             {/* Cover image */}
             <div className={`${card} border-dashed`}>
-              <SectionHeader title="Cover Image" />
+              {/* Custom header with Optional badge */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-0.5 h-5 bg-violet-500 rounded-full" />
+                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-widest">Cover Image</h3>
+                  <span className="text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full tracking-wide">Optional</span>
+                </div>
+                {formData.imageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setField('imageUrl', '')}
+                    className="text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" /> Remove
+                  </button>
+                )}
+              </div>
               <label className="block cursor-pointer">
                 <input type="file" accept="image/*" onChange={handleImage} className="hidden" />
                 {formData.imageUrl ? (
@@ -596,57 +751,55 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                   ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed shadow-none'
                   : 'bg-violet-600 hover:bg-violet-700 shadow-violet-600/25 hover:-translate-y-0.5 active:scale-95'}`}
             >
-              {isLoading ? <Spinner size="sm" /> : <CheckCircle2 className="w-4 h-4" />}
-              {isLoading ? 'Publishing…' : (eventToEdit ? 'Save Changes' : 'Publish Event')}
+              {isLoading ? (<Spinner size="sm" />) : (isScheduled ? <Clock className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />)}
+              {isLoading ? 'Processing…' : (isScheduled ? 'Schedule Event' : (eventToEdit ? 'Save Changes' : 'Publish Event'))}
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Location search overlay ── */}
+      {/* ── Location Map Overlay ── */}
       <AnimatePresence>
         {locationOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-start justify-center pt-16 px-4"
+            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 lg:p-8"
             onClick={() => setLocationOpen(false)}
           >
-            <motion.div initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }}
-              className="w-full max-w-xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden max-h-[70vh] flex flex-col"
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col"
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-violet-500 shrink-0" />
-                <input autoFocus type="text" value={locationQuery}
-                  onChange={e => setLocationQuery(e.target.value)}
-                  placeholder="Search for a venue…"
-                  className="flex-1 bg-transparent border-none outline-none text-base font-semibold text-gray-900 dark:text-white placeholder-gray-400"
-                />
-                <button type="button" onClick={() => setLocationOpen(false)}>
-                  <X className="w-5 h-5 text-gray-400 hover:text-gray-600 transition-colors" />
+              <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><MapPin className="w-5 h-5 text-violet-500 shrink-0" /> Pin Event Location</h3>
+                  <p className="text-xs text-gray-500 mt-0.5 max-w-[80%]">
+                    Drag the venue pin on the map to accurately pinpoint the location. Form fields will auto-fill based on coordinates.
+                  </p>
+                </div>
+                <button type="button" onClick={() => setLocationOpen(false)} className="p-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-xl transition-colors">
+                  <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
-              <div className="overflow-y-auto flex-1 divide-y divide-gray-50 dark:divide-gray-700/50">
-                {isSearchingLoc
-                  ? <div className="flex justify-center items-center py-12"><Spinner size="md" /></div>
-                  : searchResults.map((loc, i) => (
-                    <button key={i} type="button"
-                      onClick={() => {
-                        setFormData(prev => ({ ...prev, venue: loc.name, street: loc.address, lat: loc.lat, lng: loc.lng }));
-                        touch('venue');
-                        setLocationOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 dark:hover:bg-violet-900/10 text-left transition-colors group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 flex items-center justify-center shrink-0 transition-colors">
-                        <MapPin className="w-4 h-4 text-gray-400 group-hover:text-violet-600 transition-colors" />
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{loc.name}</p>
-                        <p className="text-xs text-gray-400 truncate">{loc.address}</p>
-                      </div>
-                    </button>
-                  ))
-                }
+              
+              <div className="w-full h-[50vh] min-h-[300px] bg-gray-100 dark:bg-gray-900 relative">
+                {isGeocodingPin && (
+                    <div className="absolute top-4 right-4 z-[9999] bg-black/75 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 pointer-events-none">
+                        <span className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs font-bold text-white tracking-widest uppercase">Geocoding...</span>
+                    </div>
+                )}
+                <InteractiveMap
+                  userLocation={{ lat: formData.lat, lng: formData.lng }}
+                  isLocationLive={false}
+                  events={[venueMapEvent]}
+                  centerOnEvent={{ lat: formData.lat, lng: formData.lng }}
+                  onMapClick={handleVenuePinDrag}
+                  className="w-full h-full"
+                />
+              </div>
+
+              <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 bg-gray-50/50 dark:bg-gray-800/50">
+                 <button onClick={() => setLocationOpen(false)} className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-violet-600/25 transition-all">Confirm Location</button>
               </div>
             </motion.div>
           </motion.div>

@@ -739,11 +739,16 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     </td>
                                     <td className="py-4">
                                         <div className="flex items-center justify-between gap-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                            <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+                                                event.status === 'draft' ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 outline outline-1 outline-gray-200 dark:outline-gray-700' :
+                                                event.status === 'scheduled' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' :
                                                 event.status === 'pending' ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 
                                                 event.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' :
                                                 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400'
                                             }`}>
+                                                {event.status === 'scheduled' && (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                )}
                                                 {event.status || 'approved'}
                                             </span>
                                             <div className="flex gap-2">
@@ -754,7 +759,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h3.5M12 12h.01M16 12h.01M12 16h.01M16 16h.01M7 8h2v2H7V8zm0 0V6a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V10a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V14a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V18a2 2 0 114 0v2H7zm0 0h4" /></svg>
                                                 </button>
-                                                {onPreviewEvent && (event.status === 'pending' || event.status === 'rejected') && (
+                                                {onPreviewEvent && (event.status === 'pending' || event.status === 'rejected' || event.status === 'draft' || event.status === 'scheduled') && (
                                                     <button 
                                                         onClick={() => onPreviewEvent(event)}
                                                         className="p-1.5 text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"

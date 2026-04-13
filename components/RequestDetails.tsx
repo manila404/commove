@@ -36,6 +36,7 @@ const PushPinIcon = ({ className }: { className?: string }) => (
 const RequestDetails: React.FC<RequestDetailsProps> = ({ request, onBack }) => {
   const isRejected = request.status === 'rejected';
   const isApproved = request.status === 'published';
+  const isDraft = request.status === 'draft';
 
   // --- REJECTED VIEW ---
   if (isRejected) {
@@ -170,6 +171,60 @@ const RequestDetails: React.FC<RequestDetailsProps> = ({ request, onBack }) => {
                     <span>Approved for Release</span>
                 </div>
 
+            </main>
+        </div>
+      );
+  }
+
+  // --- DRAFT VIEW ---
+  if (isDraft) {
+      return (
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-300 font-sans">
+            <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-30 px-4 py-4 flex items-center">
+                <button onClick={onBack} className="mr-4 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                    <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-100" />
+                </button>
+                <h1 className="text-xl font-bold text-gray-800 dark:text-white">Draft Details</h1>
+            </header>
+
+            <main className="container mx-auto p-6 max-w-md animate-fade-in-up">
+                {/* Status Hero - Draft */}
+                <div className="flex flex-col items-center mb-8 pt-4">
+                    <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 shadow-inner mb-3 border-4 border-white dark:border-gray-800">
+                        <ClockIcon className="w-10 h-10" />
+                    </div>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Draft Saved</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium tracking-wide">
+                        Ref ID: #{request.id.slice(-6).toUpperCase()}
+                    </p>
+                </div>
+
+                {/* Main Content Card */}
+                <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 mb-4">
+                    <div className="flex items-center gap-2 mb-4">
+                        <InformationCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        <span className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Not Yet Submitted</span>
+                    </div>
+
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">Continue Editing</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
+                        This event is currently saved as a draft. It will not be reviewed or published until you submit it.
+                    </p>
+                    
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl flex items-center gap-3">
+                         <div className="text-gray-500">
+                             <ClockIcon className="w-5 h-5" />
+                         </div>
+                         <div>
+                             <p className="font-bold text-sm text-gray-900 dark:text-white">Event Name</p>
+                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{request.name || 'Untitled Event'}</p>
+                         </div>
+                    </div>
+                </div>
+
+                <div className="mt-6 flex justify-center">
+                    <p className="text-xs text-gray-400 italic">Click the Edit button in the main list to resume editing.</p>
+                </div>
             </main>
         </div>
       );

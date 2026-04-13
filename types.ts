@@ -1,6 +1,6 @@
 
 export type UserRole = 'admin' | 'facilitator' | 'user';
-export type EventStatus = 'published' | 'pending' | 'reviewed' | 'rejected' | 'scheduled';
+export type EventStatus = 'published' | 'pending' | 'reviewed' | 'rejected' | 'scheduled' | 'draft';
 
 export interface EventType {
   id: string;

@@ -14,11 +14,22 @@ interface NearbyViewProps {
     onToggleSave: (eventId: string) => void;
 }
 
+const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // radius of Earth in metres
+    const p1 = lat1 * Math.PI/180;
+    const p2 = lat2 * Math.PI/180;
+    const dp = (lat2-lat1) * Math.PI/180;
+    const dl = (lon2-lon1) * Math.PI/180;
+    const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+};
+
 const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocationLive, onEventSelect, onToggleSave, onOpenScanner }) => {
     const [showEventList, setShowEventList] = useState(false);
 
-    // Map events to DisplayEventType and filter for nearby
-    const nearbyEvents: DisplayEventType[] = events
+    // 1. Prepare ALL valid events for the Map
+    const allMapEvents: DisplayEventType[] = events
         .filter(e => {
             const isPublished = e.status === 'published' || !e.status;
             const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
@@ -26,11 +37,21 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
         })
         .map(e => ({
             ...e,
-            isNearby: true, // We'll treat them as nearby for this view
+            isNearby: false, 
             isPreferred: false,
             isSaved: false,
             isLive: false
         }));
+
+    // 2. Prepare FILTERED events for the List & Badge
+    const listEvents = allMapEvents.filter(e => {
+        if (userLocation?.lat && userLocation?.lng && e.lat && e.lng) {
+            const distance = getDistanceInMeters(userLocation.lat, userLocation.lng, e.lat, e.lng);
+            const searchRadius = userLocation.accuracy ? Math.max(userLocation.accuracy, 1500) : 5000;
+            return distance <= searchRadius;
+        }
+        return true;
+    }).map(e => ({ ...e, isNearby: true }));
 
     return (
         <div className="relative w-full h-full bg-gray-100 dark:bg-gray-900 border-l border-gray-100 dark:border-gray-800">
@@ -38,7 +59,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
             <div className="absolute inset-0 z-0">
                 <InteractiveMap 
                     userLocation={userLocation} 
-                    events={nearbyEvents} 
+                    events={allMapEvents} 
                     isLocationLive={isLocationLive} 
                     className="w-full h-full" 
                     filterPastEvents={true} 
@@ -53,9 +74,9 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                     className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center text-[#00B14F] hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-105 active:scale-95 border border-gray-100 dark:border-gray-700 relative"
                 >
                     <List className="w-6 h-6" />
-                    {nearbyEvents.length > 0 && (
+                    {listEvents.length > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-5.5 h-5.5 flex items-center justify-center rounded-full border-2 border-white dark:border-gray-800 shadow-sm animate-bounce-subtle">
-                            {nearbyEvents.length}
+                            {listEvents.length}
                         </span>
                     )}
                 </button>
@@ -75,7 +96,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                         <div>
                             <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-none mb-1">Nearby Events</h3>
                             <p className="text-[11px] text-gray-500 dark:text-gray-400 font-extrabold tracking-tight italic">
-                                {nearbyEvents.length} live events found around you
+                                {listEvents.length} live events found around you
                             </p>
                         </div>
                         <button 
@@ -87,8 +108,8 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                     </div>
                     
                     <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-4">
-                        {nearbyEvents.length > 0 ? (
-                            nearbyEvents.map((event) => (
+                        {listEvents.length > 0 ? (
+                            listEvents.map((event) => (
                                 <div 
                                     key={event.id}
                                     className="relative flex gap-4 bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden group hover:shadow-md transition-all active:scale-[0.98]"

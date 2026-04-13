@@ -867,7 +867,7 @@ const App: React.FC = () => {
                     console.warn("Location error:", error);
                     setIsLocationLive(false);
                 },
-                { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
             );
         }
     };

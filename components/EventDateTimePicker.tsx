@@ -239,7 +239,7 @@ export const DateTimeRow: React.FC<DateTimeRowProps> = ({
 
   return (
     <div ref={rootRef} className="relative">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         {/* Dot indicator */}
         <div className="flex flex-col items-center gap-0.5 shrink-0 w-5 pt-1">
           {indicator === 'filled'
@@ -248,12 +248,12 @@ export const DateTimeRow: React.FC<DateTimeRowProps> = ({
         </div>
 
         {/* Row label */}
-        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 w-12 shrink-0">{label}</span>
+        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 w-10 shrink-0">{label}</span>
 
-        {/* Date trigger */}
+        {/* Date trigger — grows to fill available space */}
         <button type="button"
           onClick={() => setOpenPanel(openPanel === 'date' ? null : 'date')}
-          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all flex-1
+          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all flex-1 min-w-0 overflow-hidden
             ${openPanel === 'date'
               ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 ring-2 ring-violet-500/20'
               : date ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-violet-400'
@@ -263,25 +263,25 @@ export const DateTimeRow: React.FC<DateTimeRowProps> = ({
           <span className="truncate">{date ? formatDate(date) : 'Select date'}</span>
         </button>
 
-        {/* Time trigger */}
+        {/* Time trigger — shrinks gracefully, never overflows */}
         <button type="button"
           onClick={() => setOpenPanel(openPanel === 'time' ? null : 'time')}
-          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all w-36 shrink-0
+          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all shrink-0 min-w-0
             ${openPanel === 'time'
               ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 ring-2 ring-violet-500/20'
               : time ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-violet-400'
               : 'border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-gray-400 hover:border-violet-400'}`}
         >
           <Clock className="w-3.5 h-3.5 shrink-0 text-gray-400" />
-          <span>{time ? formatTime(time) : 'Set time'}</span>
+          <span className="whitespace-nowrap">{time ? formatTime(time) : 'Set time'}</span>
         </button>
       </div>
 
       {error && (
-        <p className="ml-[76px] mt-1 text-xs font-semibold text-red-500">{error}</p>
+        <p className="mt-1 pl-[60px] text-xs font-semibold text-red-500">{error}</p>
       )}
 
-      {/* Inline Popover — opens BELOW the row, inside its own container */}
+      {/* Popover — left-0 on mobile, offset on larger screens; capped to viewport width */}
       <AnimatePresence>
         {openPanel && (
           <motion.div
@@ -290,7 +290,7 @@ export const DateTimeRow: React.FC<DateTimeRowProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-[300] left-[76px] top-[calc(100%+8px)] w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl shadow-black/10 overflow-hidden"
+            className="absolute z-[300] left-0 sm:left-[60px] top-[calc(100%+8px)] w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl shadow-black/10 overflow-hidden"
           >
             <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-100 dark:border-gray-700">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">

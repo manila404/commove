@@ -164,7 +164,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
   const dashboardTitle = currentUser.role === 'admin' ? 'Admin Analytics' : 'Facilitator Dashboard';
 
   const publishedEvents = events.filter(event => {
-      const isPublished = event.status === 'published' || !event.status;
+      const isPublished = event.status === 'published' || event.status === 'scheduled' || !event.status;
       if (currentUser.role === 'facilitator') {
           return isPublished && event.createdBy === currentUser.uid;
       }
@@ -174,11 +174,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
   // Filter Logic
   let baseRequests: EventType[] = [];
   if (currentUser.role === 'facilitator') {
-      // Facilitators see their own pending/rejected events so they can track or resubmit them
-      baseRequests = events.filter(e => (e.status === 'pending' || e.status === 'rejected') && e.createdBy === currentUser.uid);
+      // Facilitators see their own pending/rejected/draft events so they can track or resubmit them
+      baseRequests = events.filter(e => (e.status === 'pending' || e.status === 'rejected' || e.status === 'draft') && e.createdBy === currentUser.uid);
   } else if (currentUser.role === 'admin') {
-      // Admins see all pending events to approve them
-      baseRequests = events.filter(e => e.status === 'pending');
+      // Admins see all pending events to approve them, PLUS their own local drafts
+      baseRequests = events.filter(e => e.status === 'pending' || (e.status === 'draft' && e.createdBy === currentUser.uid));
   }
 
   // Filter Requests based on Department and Search
