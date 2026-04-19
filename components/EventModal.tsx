@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Image as ImageIcon, ArrowLeft, Share2, Heart, Phone, MessageCircle, MapPin, X } from 'lucide-react';
+import { Image as ImageIcon, ArrowLeft, Share2, Heart, Phone, MessageCircle, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { EventType, Reminder, User } from '../types';
-import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, BellIcon, StarIcon, ShieldCheckIcon } from '../constants';
+import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, BellIcon, StarIcon, ShieldCheckIcon, formatDisplayDate } from '../constants';
 import InteractiveMap from './InteractiveMap';
 import { useAlert } from '../contexts/AlertContext';
 import { usePermissions } from '../contexts/PermissionContext';
@@ -54,6 +54,9 @@ const EventModal: React.FC<EventModalProps> = ({
   const [userReg, setUserReg] = useState<Registration | null>(null);
   const [isLoadingReg, setIsLoadingReg] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+
+  const allPhotos = [event.imageUrl, ...(event.additionalImageUrls || [])].filter(Boolean);
 
   React.useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -190,12 +193,51 @@ const EventModal: React.FC<EventModalProps> = ({
           background: #9ca3af;
         }
       `}</style>
-      {/* Header Image */}
-      <div className="relative rounded-[10px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700">
-        {event.imageUrl ? (
-          <img src={event.imageUrl || undefined} alt={event.name} className="w-full h-96 object-cover" referrerPolicy="no-referrer" />
-        ) : (
-          <div className="w-full h-96 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+      {/* Header Image Carousel */}
+      <div className="relative rounded-[10px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 aspect-video md:aspect-auto md:h-96 group">
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={activePhotoIndex}
+            src={allPhotos[activePhotoIndex] || undefined}
+            alt={`${event.name} - ${activePhotoIndex + 1}`}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        </AnimatePresence>
+
+        {allPhotos.length > 1 && (
+          <>
+            <button
+              onClick={() => setActivePhotoIndex(prev => (prev - 1 + allPhotos.length) % allPhotos.length)}
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-20"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => setActivePhotoIndex(prev => (prev + 1) % allPhotos.length)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-20"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+            
+            {/* Indicators */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+              {allPhotos.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActivePhotoIndex(i)}
+                  className={`h-1.5 rounded-full transition-all ${i === activePhotoIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {!allPhotos.length && (
+          <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
             <ImageIcon className="w-16 h-16 text-gray-400" />
           </div>
         )}
@@ -257,7 +299,7 @@ const EventModal: React.FC<EventModalProps> = ({
             <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-sm">
               <CalendarIcon className="w-5 h-5" />
             </div>
-            <span className="font-bold text-gray-500 dark:text-gray-400">{event.date}</span>
+            <span className="font-bold text-gray-500 dark:text-gray-400">{formatDisplayDate(event.date, event.endDate)}</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-sm">
@@ -279,6 +321,11 @@ const EventModal: React.FC<EventModalProps> = ({
           <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-medium text-sm md:text-base">
             {event.description}
           </p>
+          {event.creatorUsername && (
+            <p className="pt-4 text-xs font-black text-purple-600 dark:text-purple-400 uppercase tracking-[0.2em]">
+              Lead Office: {event.creatorUsername.replace(/^@/, '').toUpperCase()}
+            </p>
+          )}
         </div>
 
         {/* Further Instructions */}
@@ -547,6 +594,11 @@ const EventModal: React.FC<EventModalProps> = ({
         <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-medium text-sm md:text-base">
           {event.description}
         </p>
+        {event.creatorUsername && (
+          <p className="pt-2 text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest">
+            Lead Office: {event.creatorUsername.replace(/^@/, '').toUpperCase()}
+          </p>
+        )}
       </div>
 
       {/* Further Instructions */}
@@ -846,15 +898,50 @@ const EventModal: React.FC<EventModalProps> = ({
         className="fixed inset-0 bg-white dark:bg-gray-900 z-[6000] overflow-y-auto flex flex-col"
       >
         {/* Header Image Section */}
-        <div className="relative w-full h-[40vh] flex-shrink-0">
-          {event.imageUrl ? (
-            <img 
-              src={event.imageUrl || undefined} 
-              alt={event.name} 
-              className="w-full h-full object-cover" 
+        <div className="relative w-full h-[45vh] flex-shrink-0 group">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={activePhotoIndex}
+              src={allPhotos[activePhotoIndex] || undefined}
+              alt={`${event.name} - ${activePhotoIndex + 1}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
             />
-          ) : (
+          </AnimatePresence>
+
+          {allPhotos.length > 1 && (
+            <>
+              {/* Left/Right controls for mobile/overlay */}
+              <button
+                onClick={(e) => { e.stopPropagation(); setActivePhotoIndex(prev => (prev - 1 + allPhotos.length) % allPhotos.length); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-all z-20"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setActivePhotoIndex(prev => (prev + 1) % allPhotos.length); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-all z-20"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              {/* Indicators */}
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                {allPhotos.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActivePhotoIndex(i)}
+                    className={`h-1.5 rounded-full transition-all ${i === activePhotoIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {!allPhotos.length && (
             <div className="w-full h-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
               <ImageIcon className="w-16 h-16 text-gray-400" />
             </div>

@@ -32,8 +32,8 @@ service cloud.firestore {
     // Users Collection
     // ─────────────────────────────────────────
     match /users/{userId} {
-      allow get: if isOwner(userId) || isStaff();
-      allow list: if isStaff();
+      allow get: if isOwner(userId) || isStaff() || get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
+      allow list: if isAuthenticated(); // Allow admin discovery for notifications
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isStaff();
       allow delete: if isAdmin();
@@ -44,16 +44,23 @@ service cloud.firestore {
     // ─────────────────────────────────────────
     match /events/{eventId} {
       allow read: if true;
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        isAdmin() || 
+        (request.resource.data.status in ['pending', 'draft'])
+      );
 
-      allow update: if isStaff() ||
-        (
-          isAuthenticated() &&
-          resource.data.createdBy == request.auth.uid &&
-          resource.data.status == 'pending' &&
-          !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['status', 'isAdmin', 'role', 'createdBy'])
-        );
+      allow update: if isAdmin() || (
+        isStaff() && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
+          request.resource.data.status in ['pending', 'draft']
+        )
+      ) || (
+        isAuthenticated() &&
+        resource.data.createdBy == request.auth.uid &&
+        resource.data.status == 'pending' &&
+        !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['status', 'isAdmin', 'role', 'createdBy'])
+      );
 
       allow delete: if isStaff();
     }
@@ -80,9 +87,11 @@ service cloud.firestore {
       allow read, update, delete: if isOwner(resource.data.userId);
 
       // Staff (admin/facilitator) can create notifications for ANY user (to send approve/reject alerts).
-      // Regular users can only create notifications for THEMSELVES (self-reminders).
+      // Regular users can only create notifications for THEMSELVES (self-reminders) OR for ADMINS (facilitator requests).
       allow create: if isAuthenticated() && (
-        isStaff() || request.resource.data.userId == request.auth.uid
+        isStaff() || 
+        request.resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.role == 'admin'
       );
     }
   }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { DisplayEventType } from '../types';
+import { formatDisplayDate } from '../constants';
 
 interface HighlightsSliderProps {
   events: DisplayEventType[];
@@ -48,7 +49,7 @@ const HighlightsSlider: React.FC<HighlightsSliderProps> = ({ events, onEventSele
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
             <h3 className="text-white text-2xl font-bold">{currentHighlight.name}</h3>
-            <p className="text-gray-200 text-sm">{currentHighlight.venue} • {currentHighlight.date}</p>
+            <p className="text-gray-200 text-sm">{currentHighlight.venue} • {formatDisplayDate(currentHighlight.date, currentHighlight.endDate)}</p>
           </div>
         </motion.div>
       </AnimatePresence>

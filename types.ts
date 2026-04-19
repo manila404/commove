@@ -8,11 +8,13 @@ export interface EventType {
   date: string;
   startTime: string;
   endTime: string;
+  endDate?: string;
   city: string;
   barangay: string;
   venue: string;
   description: string;
   imageUrl: string;
+  additionalImageUrls?: string[];
   lat: number;
   lng: number;
   category: string[];
@@ -58,6 +60,7 @@ export interface EventType {
   philJobNetUrl?: string;
   agencyDocumentsUrl?: string;
   noPendingCaseUrl?: string;
+  creatorUsername?: string; // Cache creator's username for branding
 }
 
 export interface DisplayEventType extends EventType {
@@ -81,6 +84,7 @@ export interface User {
   faceUrl?: string;  // New: Face verification for facilitator
   birthday?: string; // YYYY-MM-DD format
   sex?: string;      // 'Male', 'Female', or custom string
+  username?: string; // @username
   address?: string;
   avatarUrl?: string;
   homeLat?: number;

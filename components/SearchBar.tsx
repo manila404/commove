@@ -65,14 +65,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
       {/* Backdrop for focus */}
       {isFocused && (
         <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[20] transition-opacity duration-300" 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[1000] transition-opacity duration-300" 
           onClick={() => setIsFocused(false)}
         />
       )}
 
       <form 
         onSubmit={(e) => { e.preventDefault(); handleSearch(query); }} 
-        className="relative z-30"
+        className="relative z-[1001]"
       >
         <div className="absolute inset-y-0 left-0 pl-3.5 md:pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-purple-600">
           <Search size={16} className={`md:w-[18px] md:h-[18px] ${isFocused ? 'text-purple-600' : 'text-gray-400 dark:text-gray-500'}`} />
@@ -98,7 +98,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
 
       {/* Suggested & History Dropdown */}
       {isFocused && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-[24px] shadow-2xl z-30 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-[24px] shadow-2xl z-[1001] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           
           {/* Recent Searches */}
           {(!query && history.length > 0) && (

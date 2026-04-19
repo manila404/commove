@@ -2,7 +2,8 @@
 import React, { useState, useRef } from 'react';
 import { auth } from '../services/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { createUserProfile } from '../services/userService';
+import { createUserProfile, getAdmins, isUsernameUnique } from '../services/userService';
+import { createNotification } from '../services/notificationService';
 import type { User } from '../types';
 import { ChevronLeftIcon, EyeIcon, EyeSlashIcon, PREDEFINED_AVATARS } from '../constants';
 import Spinner from './Spinner';
@@ -21,6 +22,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
     const [email, setEmail] = useState('');
     const [birthday, setBirthday] = useState('');
     const [sex, setSex] = useState('');
+    const [username, setUsername] = useState('');
     const [customSex, setCustomSex] = useState('');
     const [selectedAvatar, setSelectedAvatar] = useState(PREDEFINED_AVATARS[0]);
     
@@ -39,9 +41,24 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
     const [idImage, setIdImage] = useState<string | null>(null);
     const [faceImage, setFaceImage] = useState<string | null>(null);
 
-    const handleNextStep = (e: React.FormEvent) => {
+    const handleNextStep = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setIsLoading(true);
+
+        if (!username.trim()) {
+            setError("Please choose a username.");
+            setIsLoading(false);
+            return;
+        }
+
+        const cleanUsername = username.trim().startsWith('@') ? username.trim() : `@${username.trim()}`;
+        const isUnique = await isUsernameUnique(cleanUsername);
+        if (!isUnique) {
+            setError("This username is already taken. Please choose another.");
+            setIsLoading(false);
+            return;
+        }
 
         if (!/^[A-Z]/.test(firstName.trim())) {
             setError("First name must start with a capital letter.");
@@ -140,11 +157,32 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                 faceUrl: faceImage || undefined,
                 birthday: birthday,
                 sex: sex === 'Others' ? customSex.trim() : sex,
+                username: username.trim().startsWith('@') ? username.trim() : `@${username.trim()}`,
                 avatarUrl: selectedAvatar,
                 savedEventIds: [],
                 reminders: {},
             };
             await createUserProfile(user.uid, newUserProfileData);
+            
+            // Notify Admins if it's a facilitator request
+            if (isFacilitator) {
+                try {
+                    const admins = await getAdmins();
+                    const notificationBody = `${displayName} has signed up as a facilitator and is awaiting approval.`;
+                    
+                    for (const admin of admins) {
+                        await createNotification(
+                            admin.uid,
+                            'system',
+                            'New Facilitator Request',
+                            notificationBody
+                        );
+                    }
+                } catch (notiErr) {
+                    console.error("Error sending admin notifications:", notiErr);
+                    // Don't block sign up success if notification fails
+                }
+            }
 
             onAuthSuccess();
 
@@ -224,7 +262,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                         />
                     </div>
-                     <div className="mt-1">
+                      <div className="mt-1">
                         <input
                             type="email"
                             placeholder="Email"
@@ -235,6 +273,20 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             title="Please enter a valid @gmail.com address"
                             className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                         />
+                    </div>
+
+                    <div className="mt-1">
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 font-bold">@</span>
+                            <input
+                                type="text"
+                                placeholder="Username"
+                                value={username.startsWith('@') ? username.slice(1) : username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                required
+                                className="w-full pl-8 pr-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
+                            />
+                        </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-4">

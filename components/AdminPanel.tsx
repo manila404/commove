@@ -405,9 +405,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
           onEventUpdated({ ...event, status: nextStatus, rejectionReason: undefined });
           
           if (event.createdBy) {
-              const statusLabel = nextStatus === 'published' ? 'Approved & Published' : 'Reviewed';
-              const body = nextStatus === 'published' 
-                  ? `Congratulations! ${event.name} has been approved and is now live on Commove.`
+              const isApproved = nextStatus === 'published';
+              const statusLabel = isApproved ? 'Approved & Published' : 'Reviewed';
+              const body = isApproved 
+                  ? `Your created event "${event.name}" has been approved by the admin.`
                   : `Your request for ${event.name} has been reviewed by the Facilitator and forwarded to the Admin.`;
                   
               createNotification(
@@ -417,6 +418,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                   body,
                   event.id
               ).catch(e => console.error("Could not notify creator on approval", e));
+
+              if (isApproved) {
+                  // Notify Admin
+                  createNotification(
+                      currentUser.uid,
+                      'event_approved',
+                      'Event Published',
+                      'You have published an facilitator event.',
+                      event.id
+                  ).catch(e => console.error("Could not notify admin on approval", e));
+              }
           }
           
           showAlert('Success', `${msg}: ${event.name}`, 'success');

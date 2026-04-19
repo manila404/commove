@@ -12,7 +12,7 @@ interface FacilitatorAuthFlowProps {
     initialStep?: 'question' | 'login' | 'request' | 'success' | 'signup';
 }
 
-import { submitFacilitatorRequest, getAllUsers } from '../services/userService';
+import { submitFacilitatorRequest, getAdmins } from '../services/userService';
 import { createNotification } from '../services/notificationService';
 import { useAlert } from '../contexts/AlertContext';
 
@@ -124,8 +124,7 @@ const FacilitatorAuthFlow: React.FC<FacilitatorAuthFlowProps> = ({ currentUser, 
                                     await submitFacilitatorRequest(currentUser.uid, idUrl);
                                     
                                     // Notify Admins
-                                    const allUsers = await getAllUsers();
-                                    const admins = allUsers.filter(u => u.role === 'admin');
+                                    const admins = await getAdmins();
                                     
                                     for (const admin of admins) {
                                         await createNotification(

@@ -48,6 +48,7 @@ const initialFormData = {
   date: '',
   startTime: '',
   endTime: '',
+  endDate: '',
   province: 'Cavite',
   city: 'Bacoor',
   barangay: '',
@@ -55,6 +56,7 @@ const initialFormData = {
   venue: '',
   description: '',
   imageUrl: '',
+  additionalImageUrls: ['', ''] as string[],
   category: [CATEGORIES[0]] as string[],
   lat: 14.4534,
   lng: 120.9442,
@@ -81,7 +83,18 @@ const validateForm = (formData: typeof initialFormData): FormErrors => {
   if (formData.startTime && formData.endTime) {
     const s = formData.startTime.split(':').map(Number);
     const e = formData.endTime.split(':').map(Number);
-    if (e[0] * 60 + e[1] <= s[0] * 60 + s[1]) errors.time = 'End time must be after start time.';
+    const sDate = formData.date;
+    const eDate = formData.endDate || formData.date;
+    
+    // Only check time sequence if it's the same day. 
+    // If eDate > sDate, any time is valid.
+    if (sDate === eDate) {
+        if (e[0] * 60 + e[1] <= s[0] * 60 + s[1]) {
+            errors.time = 'End time must be after start time.';
+        }
+    } else if (eDate < sDate) {
+        errors.date = 'End date cannot be before start date.';
+    }
   }
   if (!formData.venue) errors.venue = 'A venue is required.';
   if (!formData.description.trim()) errors.description = 'A description is required.';
@@ -160,6 +173,8 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         city: eventToEdit.city || 'Bacoor',
         street: eventToEdit.street || '',
         instructions: eventToEdit.instructions || '',
+        endDate: eventToEdit.endDate || eventToEdit.date || '',
+        additionalImageUrls: eventToEdit.additionalImageUrls || ['', ''],
       });
       if (eventToEdit.street) {
         setLocationQuery(eventToEdit.street);
@@ -242,13 +257,29 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
     setShowCatInput(false);
   };
 
-  const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImage = async (e: React.ChangeEvent<HTMLInputElement>, index: number = 0) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
       const resized = await resizeImage(file, 1200, 0.8);
-      setField('imageUrl', resized);
+      if (index === 0) {
+        setField('imageUrl', resized);
+      } else {
+        const newAdd = [...formData.additionalImageUrls];
+        newAdd[index - 1] = resized;
+        setField('additionalImageUrls', newAdd);
+      }
     } catch { showAlert('Error', 'Failed to process image.', 'error'); }
+  };
+
+  const removeImage = (index: number) => {
+    if (index === 0) {
+      setField('imageUrl', '');
+    } else {
+      const newAdd = [...formData.additionalImageUrls];
+      newAdd[index - 1] = '';
+      setField('additionalImageUrls', newAdd);
+    }
   };
 
   const submitAction = async (mode: 'draft' | 'publish') => {
@@ -282,12 +313,25 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         maxParticipants: isPublic ? null : Number(formData.maxParticipants),
         publishAt: publishTimestamp,
         requestedPublishDate: publishTimestamp ? new Date(publishTimestamp).toISOString() : null,
-        status: (mode === 'draft' ? 'draft' : (isScheduled ? (isAdmin ? 'scheduled' : 'pending') : (eventToEdit?.status === 'scheduled' ? 'published' : eventToEdit?.status || 'published'))) as EventStatus,
+        creatorUsername: currentUser?.username || undefined,
+        status: (mode === 'draft' ? 'draft' : (isAdmin ? (isScheduled ? 'scheduled' : 'published') : 'pending')) as EventStatus,
       };
 
       if (eventToEdit) {
         await updateEvent(eventToEdit.id, payload);
         onSuccess({ ...eventToEdit, ...payload } as EventType);
+        if (!isAdmin && mode === 'publish') {
+          try {
+            const admins = await getAdmins();
+            admins.forEach(a => createNotification(a.uid, 'event_created', 'Event Update Request', `${currentUser.name} updated an event for review.`, eventToEdit.id));
+            // Notify Facilitator
+            await createNotification(currentUser.uid, 'event_created', 'Event Submitted', 'Your event update has been submitted for review.', eventToEdit.id);
+          } catch (e) { console.error(e); }
+        } else if (isAdmin && mode === 'publish') {
+           try {
+             await createNotification(currentUser.uid, 'event_created', 'Event Published', 'You have published an event.', eventToEdit.id);
+           } catch (e) { console.error(e); }
+        }
       } else {
         const dates = recurrenceRule ? generateRecurringDates(formData.date, recurrenceRule) : undefined;
         const newEvent = await addEvent(payload, dates);
@@ -295,8 +339,14 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         if (!isAdmin && mode === 'publish') {
           try {
             const admins = await getAdmins();
-            admins.forEach(a => createNotification(a.uid, 'event_created', 'New Event Request', `${currentUser.name} submitted an event.`, newEvent.id));
+            admins.forEach(a => createNotification(a.uid, 'event_created', 'New Event Request', `${currentUser.name} submitted an event for review.`, newEvent.id));
+            // Notify Facilitator
+            await createNotification(currentUser.uid, 'event_created', 'Event Submitted', 'Your event has been submitted for review.', newEvent.id);
           } catch (e) { console.error(e); }
+        } else if (isAdmin && mode === 'publish') {
+           try {
+             await createNotification(currentUser.uid, 'event_created', 'Event Published', 'You have published an event.', newEvent.id);
+           } catch (e) { console.error(e); }
         }
       }
 
@@ -510,10 +560,10 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
                 <DateTimeRow
                   label="End"
-                  date={formData.date} time={formData.endTime}
-                  onDateChange={() => {}}
+                  date={formData.endDate || formData.date} time={formData.endTime}
+                  onDateChange={d => { setField('endDate', d); touch('endDate'); }}
                   onTimeChange={t => { setField('endTime', t); touch('endTime'); }}
-                  error={formErrors.endTime || formErrors.time}
+                  error={formErrors.endDate || formErrors.endTime || formErrors.time}
                   minDate={formData.date}
                   indicator="hollow"
                 />
@@ -659,44 +709,65 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
           {/* ══ Column 3 — Media + Live Preview ══ */}
           <div className="space-y-6 lg:sticky lg:top-6">
 
-            {/* Cover image */}
+            {/* Photos (3 slots) */}
             <div className={`${card} border-dashed`}>
-              {/* Custom header with Optional badge */}
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-0.5 h-5 bg-violet-500 rounded-full" />
-                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-widest">Cover Image</h3>
-                  <span className="text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full tracking-wide">Optional</span>
+              <SectionHeader title="Event Photos" />
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-4 font-medium uppercase tracking-wider">Upload up to 3 photos to showcase your event.</p>
+              
+              <div className="space-y-4">
+                {/* Primary Slot */}
+                <div className="relative group">
+                  <label className="block cursor-pointer">
+                    <input type="file" accept="image/*" onChange={(e) => handleImage(e, 0)} className="hidden" />
+                    {formData.imageUrl ? (
+                      <div className="relative rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 aspect-video">
+                        <img src={formData.imageUrl} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" alt="Cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                          <span className="text-white text-[10px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-4 py-2 rounded-lg border border-white/30 shadow-xl">Change Cover</span>
+                        </div>
+                        <button type="button" onClick={(e) => { e.preventDefault(); removeImage(0); }} className="absolute top-2 right-2 p-1.5 bg-red-500/80 backdrop-blur-md text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="aspect-video flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:border-violet-400 hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-all bg-gray-50/30 dark:bg-gray-800 group">
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/20 flex items-center justify-center mb-2.5 transition-colors">
+                          <ImageIcon className="w-5 h-5 text-gray-400 group-hover:text-violet-600 transition-colors" />
+                        </div>
+                        <p className="text-xs font-bold text-gray-400 group-hover:text-violet-600 transition-colors">Primary Cover Photo</p>
+                        <p className="text-[9px] text-gray-300 mt-1 uppercase font-black tracking-widest">Main Thumbnail</p>
+                      </div>
+                    )}
+                  </label>
                 </div>
-                {formData.imageUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setField('imageUrl', '')}
-                    className="text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors flex items-center gap-1"
-                  >
-                    <X className="w-3 h-3" /> Remove
-                  </button>
-                )}
+
+                {/* Additional Slots */}
+                <div className="grid grid-cols-2 gap-3">
+                  {[1, 2].map(idx => (
+                    <div key={idx} className="relative group">
+                      <label className="block cursor-pointer">
+                        <input type="file" accept="image/*" onChange={(e) => handleImage(e, idx)} className="hidden" />
+                        {formData.additionalImageUrls[idx - 1] ? (
+                          <div className="relative rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 aspect-square">
+                            <img src={formData.additionalImageUrls[idx - 1]} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" alt={`Photo ${idx+1}`} />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                               <Plus className="w-5 h-5 text-white" />
+                            </div>
+                            <button type="button" onClick={(e) => { e.preventDefault(); removeImage(idx); }} className="absolute top-1.5 right-1.5 p-1 bg-red-500/80 backdrop-blur-md text-white rounded-md opacity-0 group-hover:opacity-100 transition-all">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:border-violet-400 hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-all bg-gray-50/30 dark:bg-gray-800 group">
+                            <Plus className="w-4 h-4 text-gray-400 group-hover:text-violet-600 transition-colors mb-1" />
+                            <span className="text-[10px] font-black text-gray-400 group-hover:text-violet-600 uppercase tracking-tighter transition-colors">Photo {idx + 1}</span>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <label className="block cursor-pointer">
-                <input type="file" accept="image/*" onChange={handleImage} className="hidden" />
-                {formData.imageUrl ? (
-                  <div className="relative group rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
-                    <img src={formData.imageUrl} className="w-full aspect-video object-cover transition-transform duration-300 group-hover:scale-105" alt="Cover" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                      <span className="text-white text-xs font-bold bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">Change Image</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="aspect-video flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:border-violet-400 hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-all bg-gray-50/30 dark:bg-gray-800 group">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/20 flex items-center justify-center mb-2.5 transition-colors">
-                      <Plus className="w-5 h-5 text-gray-400 group-hover:text-violet-600 transition-colors" />
-                    </div>
-                    <p className="text-xs font-bold text-gray-400 group-hover:text-violet-600 transition-colors">Upload Cover</p>
-                    <p className="text-[10px] text-gray-300 mt-1">PNG, JPG up to 5MB</p>
-                  </div>
-                )}
-              </label>
             </div>
 
             {/* Live preview */}

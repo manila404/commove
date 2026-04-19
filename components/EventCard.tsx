@@ -1,7 +1,6 @@
-
 import React from 'react';
 import type { DisplayEventType } from '../types';
-import { LocationIcon, CalendarIcon, ClockIcon, StarIcon, BookmarkIcon } from '../constants';
+import { LocationIcon, CalendarIcon, ClockIcon, StarIcon, BookmarkIcon, formatDisplayDate } from '../constants';
 
 interface EventCardProps {
   event: DisplayEventType;
@@ -99,7 +98,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onSelect, onToggleSave }) 
         <div className="space-y-2 text-gray-500 dark:text-gray-400 text-xs font-medium pt-4 border-t border-gray-100 dark:border-gray-700 mt-auto">
             <div className="flex items-center">
               <CalendarIcon className="w-4 h-4 mr-2 text-primary-500 dark:text-primary-400 flex-shrink-0" />
-              <span>{event.date}</span>
+              <span>{formatDisplayDate(event.date, event.endDate)}</span>
             </div>
             <div className="flex items-center">
               <ClockIcon className="w-4 h-4 mr-2 text-primary-500 dark:text-primary-400 flex-shrink-0" />

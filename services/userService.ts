@@ -1,5 +1,5 @@
 
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs, arrayUnion, query, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs, arrayUnion, query, where, limit } from 'firebase/firestore';
 import { db } from './firebase';
 import type { User, Reminder, UserRole } from '../types';
 
@@ -16,6 +16,19 @@ const sanitizeUserData = (data: any) => {
         }
     });
     return cleaned;
+};
+
+export const isUsernameUnique = async (username: string): Promise<boolean> => {
+    if (!username) return true;
+    try {
+        const usersRef = collection(db, usersCollectionRef);
+        const q = query(usersRef, where("username", "==", username), limit(1));
+        const snapshot = await getDocs(q);
+        return snapshot.empty;
+    } catch (error) {
+        console.error("Error checking username uniqueness:", error);
+        return true; // Default to true to not block if there's a permission error reading all usernames
+    }
 };
 
 export const getUserProfile = async (uid: string): Promise<User | null> => {
@@ -38,18 +51,11 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
 
 export const createUserProfile = async (uid: string, data: Omit<User, 'uid'>): Promise<void> => {
     try {
-        // Determine Role based on specific email accounts
-        let role: UserRole = 'user';
-        if (data.email === 'admin@commove.com') {
-            role = 'admin';
-        } else if (data.email === 'facilitator@commove.com') {
-            role = 'facilitator';
-        }
+        const role: UserRole = data.email === 'admin@commove.com' ? 'admin' : (data.email === 'facilitator@commove.com' ? 'facilitator' : 'user');
 
         const dataWithRole = {
             ...data,
             role: data.role || role,
-            // isAdmin is deprecated but kept for UI compatibility in older components
             isAdmin: (data.role || role) === 'admin', 
             viewedEventIds: []
         };
@@ -63,6 +69,17 @@ export const createUserProfile = async (uid: string, data: Omit<User, 'uid'>): P
             return; 
         }
         console.error("Error creating user profile:", error);
+        throw error;
+    }
+};
+
+export const updateUserData = async (uid: string, data: Partial<User>): Promise<void> => {
+    try {
+        const userDocRef = doc(db, usersCollectionRef, uid);
+        const cleanedData = sanitizeUserData(data);
+        await setDoc(userDocRef, cleanedData, { merge: true });
+    } catch (error) {
+        console.error("Error updating user data:", error);
         throw error;
     }
 };

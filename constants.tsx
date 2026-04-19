@@ -15,6 +15,50 @@ export const BACOOR_BARANGAYS: string[] = [
     'San Nicolas III', 'Sineguelasan', 'Talaba I', 'Talaba II', 'Talaba III', 'Talaba IV', 
     'Talaba V', 'Talaba VI', 'Talaba VII', 'Zapote I', 'Zapote II', 'Zapote III', 'Zapote IV', 'Zapote V'
 ];
+export const formatDisplayDate = (dateStr: string | null, endDateStr?: string | null) => {
+    if (!dateStr) return '';
+    try {
+        // Handle YYYY-MM-DD format
+        const [year, month, day] = dateStr.split('-').map(Number);
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return dateStr;
+        const startDate = new Date(year, month - 1, day);
+
+        if (!endDateStr || endDateStr === dateStr) {
+            return startDate.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        const [eyear, emonth, eday] = endDateStr.split('-').map(Number);
+        if (isNaN(eyear) || isNaN(emonth) || isNaN(eday)) {
+            return startDate.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+        const endDate = new Date(eyear, emonth - 1, eday);
+
+        const startMonthStr = startDate.toLocaleDateString('en-US', { month: 'long' });
+        const startYear = startDate.getFullYear();
+        const endMonthStr = endDate.toLocaleDateString('en-US', { month: 'long' });
+        const endYear = endDate.getFullYear();
+
+        if (startYear !== endYear) {
+            return `${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+        }
+
+        if (startMonthStr !== endMonthStr) {
+            return `${startMonthStr} ${startDate.getDate()} - ${endMonthStr} ${endDate.getDate()}, ${startYear}`;
+        }
+
+        return `${startMonthStr} ${startDate.getDate()}-${endDate.getDate()}, ${startYear}`;
+    } catch (e) {
+        return dateStr;
+    }
+};
 
 export const BACOOR_STREETS: string[] = [
     // Major Thoroughfares & Highways

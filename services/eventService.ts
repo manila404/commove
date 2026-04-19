@@ -53,7 +53,8 @@ export const addEvent = async (eventData: Omit<EventType, 'id'>, recurrenceDates
         // If it's a user request, status will be 'pending' as passed from component.
         const finalData = {
             ...cleanedData,
-            status: cleanedData.status || (cleanedData.createdByAdmin ? 'published' : 'pending'),
+            // Force 'pending' for non-admin submissions, unless it's a draft
+            status: cleanedData.status === 'draft' ? 'draft' : (cleanedData.createdByAdmin ? (cleanedData.status || 'published') : 'pending'),
             submittedAt: Date.now() // Add creation timestamp
         };
         
@@ -99,6 +100,14 @@ export const addEvent = async (eventData: Omit<EventType, 'id'>, recurrenceDates
 export const updateEvent = async (eventId: string, eventData: Partial<EventType>): Promise<void> => {
     try {
         const cleanedData = sanitizeData(eventData);
+        
+        // Fail-safe: If a facilitator is updating, ensure it goes back to pending/draft
+        if (cleanedData.status && !cleanedData.createdByAdmin) {
+            if (cleanedData.status !== 'draft') {
+                cleanedData.status = 'pending';
+            }
+        }
+        
         const eventDocRef = doc(db, 'events', eventId);
         await updateDoc(eventDocRef, cleanedData);
     } catch (error) {

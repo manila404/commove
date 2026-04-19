@@ -170,11 +170,17 @@ export const getKNNRankedEvents = (
         const timeScore = getTimeScore(event.date, event.startTime, event.isLive);
 
         // --- COMPONENT 4: SERENDIPITY (The "Discovery" Engine) ---
-        // This is the specific "TikTok" feature. We inject random noise.
-        // Why? It prevents the "Filter Bubble". Occasionally, a highly-rated event 
-        // from a category the user *hasn't* expressed interest in will bubble up.
-        // If they click it, the algorithm learns. If not, it disappears.
-        const noise = Math.random(); 
+        // We use a deterministic pseudo-random value based on the event ID 
+        // to ensure the noise stays consistent for the same event until a fresh session.
+        const hashId = (id: string) => {
+            let hash = 0;
+            for (let i = 0; i < id.length; i++) {
+                hash = ((hash << 5) - hash) + id.charCodeAt(i);
+                hash |= 0;
+            }
+            return Math.abs(hash % 1000) / 1000;
+        };
+        const noise = hashId(event.id); 
 
         // --- FINAL WEIGHTED SUM ---
         const finalScore = 

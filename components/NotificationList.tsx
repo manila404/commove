@@ -374,10 +374,12 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                         event.createdBy,
                         'event_approved',
                         'Event Approved',
-                        `Congratulations! Your event "${event.name}" has been approved and is now live.`,
+                        `Your created event "${event.name}" has been approved by the admin.`,
                         event.id
                     );
                 }
+                // Notify Admin
+                await createNotification(userId, 'event_approved', 'Event Published', 'You have published an facilitator event.', event.id);
             } else if (action === 'approve_review') {
                 // Reverted: No longer updates database status to 'reviewed'
                 // keeping it pending but restricting the button locally

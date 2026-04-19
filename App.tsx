@@ -5,7 +5,7 @@ import { auth } from './services/firebase';
 import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserReminders, updateUserRole, addUserViewedEvent, updateUserParticipation, getAllUsers } from './services/userService';
 import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights } from './services/eventService';
 import { getKNNRankedEvents } from './services/recommendationService'; // Import Recommendation Service
-import { CATEGORIES } from './constants';
+import { CATEGORIES, formatDisplayDate } from './constants';
 import { Tag } from 'lucide-react';
 import type { User, EventType, DisplayEventType, Reminder, AppNotification } from './types';
 import { createNotification, subscribeToNotifications } from './services/notificationService';
@@ -35,6 +35,7 @@ import HelpSupportView from './components/HelpSupportView';
 import TermsAndConditionsView from './components/TermsAndConditionsView';
 import ManageRegistrations from './components/ManageRegistrations';
 import FacilitatorAuthFlow from './components/FacilitatorAuthFlow';
+import EditProfileModal from './components/EditProfileModal';
 import HighlightsSlider from './components/HighlightsSlider';
 import QRScannerModal from './components/QRScannerModal';
 import PermissionManager from './components/PermissionManager';
@@ -158,9 +159,11 @@ const App: React.FC = () => {
     const [pendingFacilitatorCount, setPendingFacilitatorCount] = useState(0);
 
     // Overlay Views
-    const [viewAsUser, setViewAsUser] = useState(false); // Mode for staff to toggle between dashboard and feed
     const [showPermitDashboard, setShowPermitDashboard] = useState(false);
+    const [pinnedEventIds, setPinnedEventIds] = useState<string[]>([]);
+
     const [showProfilePanel, setShowProfilePanel] = useState(false);
+    const [showEditProfileModal, setShowEditProfileModal] = useState(false);
     const [showCalendarEventsPopup, setShowCalendarEventsPopup] = useState(false);
     const [calendarPopupDate, setCalendarPopupDate] = useState<Date | null>(null);
 
@@ -193,16 +196,6 @@ const App: React.FC = () => {
     const notifiedStartedEvents = useRef<Set<string>>(new Set());
     const notifiedCustomReminders = useRef<Set<string>>(new Set());
 
-    const formatDisplayDate = (dateStr: string | null) => {
-        if (!dateStr) return '';
-        const [year, month, day] = dateStr.split('-').map(Number);
-        const date = new Date(year, month - 1, day);
-        return date.toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-        });
-    };
 
     const safeParseDate = (date: string, time: string) => {
         if (!date || !time) return new Date(0);
@@ -290,8 +283,6 @@ const App: React.FC = () => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 try {
-                    // Reset View-as-User for all sessions
-                    setViewAsUser(false);
 
                     // Reset Navigation on Login
                     setActiveTab('feed');
@@ -431,6 +422,73 @@ const App: React.FC = () => {
 
         const checkReminders = () => {
             const now = Date.now();
+            
+            // 0. Central Event Reaper: Auto-publish scheduled events
+            // Gate: only admin clients act as reapers — no backend cron needed
+            if (currentUser.role === 'admin') {
+                events.forEach(event => {
+                    // Only fire once per session per event using the ref as a guard
+                    if (
+                        event.status === 'scheduled' &&
+                        event.publishAt &&
+                        now >= event.publishAt &&
+                        !notifiedCustomReminders.current.has(`reaped_${event.id}`)
+                    ) {
+                        // Mark immediately so subsequent interval ticks don't re-fire
+                        notifiedCustomReminders.current.add(`reaped_${event.id}`);
+
+                        updateEventStatus(event.id, 'published')
+                            .then(() => {
+                                // Update local state immutably — never mutate event.status directly
+                                setEvents(prev =>
+                                    prev.map(e =>
+                                        e.id === event.id ? { ...e, status: 'published' as const, publishAt: null } : e
+                                    )
+                                );
+
+                                // Notify admin
+                                createNotification(
+                                    currentUser.uid,
+                                    'event_approved',
+                                    '📢 Scheduled Event Published',
+                                    `"${event.name}" has been automatically published and is now visible to residents.`,
+                                    event.id
+                                ).catch(console.error);
+
+                                // Notify the facilitator who created it (if different from admin)
+                                if (event.createdBy && event.createdBy !== currentUser.uid) {
+                                    createNotification(
+                                        event.createdBy,
+                                        'event_approved',
+                                        '🎉 Your Event is Now Live!',
+                                        `Your scheduled event "${event.name}" has been published and is now visible to all residents.`,
+                                        event.id
+                                    ).catch(console.error);
+                                }
+
+                                // Browser push notification for the admin
+                                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                                    try {
+                                        new Notification('Scheduled Event Published', {
+                                            body: `"${event.name}" is now live!`,
+                                            icon: '/logo192.png',
+                                        });
+                                    } catch (e) { console.warn('Push notification error', e); }
+                                }
+
+                                toast.success(`"${event.name}" is now live!`, {
+                                    description: 'The scheduled event has been automatically published.'
+                                });
+                            })
+                            .catch(err => {
+                                // Remove the guard so it can retry next tick
+                                notifiedCustomReminders.current.delete(`reaped_${event.id}`);
+                                console.error('Failed to auto-publish event', event.id, err);
+                            });
+                    }
+                });
+            }
+
             const settings = currentUser.notificationSettings || {
                 pushEnabled: true,
                 emailEnabled: true,
@@ -570,30 +628,10 @@ const App: React.FC = () => {
                     }
                 });
             }
-
-            // Auto-publish scheduled events if user is admin
-            if (currentUser.role === 'admin') {
-                events.forEach(event => {
-                    if (event.status === 'scheduled' && event.publishAt && now >= event.publishAt) {
-                        updateEventStatus(event.id, 'published').then(() => {
-                            // Mute local event immediately to stop repeated calls
-                            event.status = 'published';
-                            // Notify Admin
-                            createNotification(currentUser.uid, 'event_approved', 'Scheduled Event Published', `The scheduled event "${event.name}" is now public!`, event.id).catch(e => console.error(e));
-                            // Notify Facilitator (Creator)
-                            if (event.createdBy && event.createdBy !== currentUser.uid) {
-                                createNotification(event.createdBy, 'event_approved', 'Scheduled Event Published', `Your scheduled event "${event.name}" is now public!`, event.id).catch(e => console.error(e));
-                            }
-                            toast.success(`Scheduled Event "${event.name}" has been published!`);
-                            loadEvents(); // Trigger comprehensive reload
-                        }).catch(console.error);
-                    }
-                });
-            }
         };
 
-        const interval = setInterval(checkReminders, 60000); // Check every minute
-        checkReminders(); // Initial check
+        const interval = setInterval(checkReminders, 30000); // Check every 30 seconds for faster response
+        checkReminders(); // Run immediately on mount
 
         return () => clearInterval(interval);
     }, [currentUser, events]);
@@ -678,10 +716,6 @@ const App: React.FC = () => {
         setSelectedEvent(null);
     }, [activeTab, loadEvents]);
 
-    const handleToggleViewMode = useCallback(() => {
-        setViewAsUser(prev => !prev);
-    }, []);
-
     const handleDateSelect = (date: Date) => {
         setCalendarPopupDate(date);
         setShowCalendarEventsPopup(true);
@@ -697,7 +731,6 @@ const App: React.FC = () => {
         // For admin/facilitator: route approval-type notifications to Admin Panel
         if (isStaffUser && (notifType === 'event_created' || notifType === 'event_approved' || notifType === 'event_rejected')) {
             setActiveTab('feed');
-            setViewAsUser(false); // ensure admin panel is visible
             // Give AdminPanel a moment to mount, then dispatch the preview event
             setTimeout(() => {
                 window.dispatchEvent(new CustomEvent('admin-preview-event', { detail: event }));
@@ -733,6 +766,9 @@ const App: React.FC = () => {
         setManagingEventRegistrations(null);
         setShowQRScanner(false);
         setShowCalendarEventsPopup(false);
+        setShowPreferences(false);
+        setShowFacilitatorAuth(false);
+        setShowLogoutConfirm(false);
 
         // 2. Safely synchronize the URL/History WITHOUT using history.back()
         // history.back() is dangerous because it can exit the app entirely if the user refreshed
@@ -1126,9 +1162,8 @@ const App: React.FC = () => {
 
     // --- Filtering Logic with KNN ---
     const getDisplayEvents = useMemo(() => {
-        // 1. Base Filter (Status)
         let baseEvents = events.filter(e => {
-            const isPublished = e.status === 'published' || !e.status;
+            const isPublished = e.status === 'published';
             const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
             return isPublished || isScheduled;
         });
@@ -1168,8 +1203,6 @@ const App: React.FC = () => {
             const start = safeParseDate(event.date, event.startTime);
             let end = safeParseDate(event.date, event.endTime);
 
-            // If end time is earlier than start time (e.g. 9PM to 1AM), 
-            // it means the event ends the next day.
             if (end < start) {
                 end.setDate(end.getDate() + 1);
             }
@@ -1198,11 +1231,9 @@ const App: React.FC = () => {
         } else {
             // "All" Category selected: Apply KNN Ranking
             if (currentUser) {
-                // Returns ranked list based on KNN Score
                 return getKNNRankedEvents(currentUser, processedEvents, userLocation);
             }
 
-            // Fallback for Guests or No User Data: Sort by basic relevance (Live -> Nearby -> Date)
             return processedEvents.sort((a, b) => {
                 if (a.isLive && !b.isLive) return -1;
                 if (!a.isLive && b.isLive) return 1;
@@ -1211,8 +1242,31 @@ const App: React.FC = () => {
                 return new Date(a.date).getTime() - new Date(b.date).getTime();
             });
         }
+    }, [events, searchQuery, currentUser, userLocation, selectedCategory, selectedDateFilter, currentTime]);
 
-    }, [events, searchQuery, currentUser, userLocation, selectedCategory, selectedDateFilter]);
+    // 7. Stable Order Management: Pin the sort order only when necessary
+    useEffect(() => {
+        if (getDisplayEvents.length > 0) {
+            setPinnedEventIds(getDisplayEvents.map(e => e.id));
+        } else {
+            setPinnedEventIds([]);
+        }
+    }, [getDisplayEvents.length, searchQuery, selectedCategory, selectedDateFilter, selectedDateFilter]);
+
+    // 8. Final Display: Map reactive events to the pinned order
+    const finalDisplayEvents = useMemo(() => {
+        if (!pinnedEventIds.length) return getDisplayEvents;
+        
+        const eventMap = new Map(getDisplayEvents.map(e => [e.id, e]));
+        const ordered = pinnedEventIds
+            .map(id => eventMap.get(id))
+            .filter((e): e is DisplayEventType => !!e);
+        
+        const pinnedSet = new Set(pinnedEventIds);
+        const newEvents = getDisplayEvents.filter(e => !pinnedSet.has(e.id));
+        
+        return [...ordered, ...newEvents];
+    }, [pinnedEventIds, getDisplayEvents]);
 
     // Derived saved events list for the SavedEventsView
     const savedEvents = useMemo(() => {
@@ -1383,7 +1437,7 @@ const App: React.FC = () => {
                         ? 'h-full overflow-hidden'
                         : 'w-full px-0'
                     } ${activeTab === 'feed' ? 'pb-24' : ''} overflow-x-hidden`}>
-                    {activeTab === 'feed' && (!isStaff || viewAsUser) && (
+                    {activeTab === 'feed' && !isStaff && (
                         <div className="space-y-4 animate-fade-in-up pt-8 md:pt-10">
                             {currentUser?.facilitatorRequestStatus === 'rejected' && (
                                 <div className="mx-4 md:mx-8 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm">
@@ -1582,14 +1636,14 @@ const App: React.FC = () => {
                                     {areEventsLoading ? (
                                         <div className="flex justify-center py-10"><Spinner size="lg" /></div>
                                     ) : (
-                                        <EventList events={getDisplayEvents} onEventSelect={handleOpenEvent} onToggleSave={handleToggleSaveEvent} />
+                                        <EventList events={finalDisplayEvents} onEventSelect={handleOpenEvent} onToggleSave={handleToggleSaveEvent} />
                                     )}
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {activeTab === 'feed' && isStaff && !viewAsUser && (
+                    {activeTab === 'feed' && isStaff && (
                         <div className="animate-fade-in-up h-full flex flex-col pt-4 md:pt-6 px-2 md:px-6">
                             <AdminPanel
                                 currentUser={currentUser!}
@@ -1597,7 +1651,7 @@ const App: React.FC = () => {
                                 onEventCreated={handleEventCreated}
                                 onEventUpdated={handleEventUpdated}
                                 onEventDeleted={handleEventDeleted}
-                                onClose={() => setViewAsUser(true)}
+                                onClose={handleCloseAllModals}
                             />
                         </div>
                     )}
@@ -1606,11 +1660,11 @@ const App: React.FC = () => {
                         <div className="px-4 md:px-8 pt-8 md:pt-10 animate-fade-in-up">
                             <CalendarView
                                 events={events.filter(e => {
-                                    if (isStaff && !viewAsUser) {
+                                    if (isStaff) {
                                         if (currentUser?.role === 'admin') return true;
                                         if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
                                     }
-                                    const isPublished = e.status === 'published' || !e.status;
+                                    const isPublished = e.status === 'published';
                                     const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
                                     return isPublished || isScheduled;
                                 })}
@@ -1627,11 +1681,11 @@ const App: React.FC = () => {
                             date={calendarPopupDate}
                             events={events.filter(e => {
                                 let isVisible = false;
-                                if (isStaff && !viewAsUser) {
+                                if (isStaff) {
                                     if (currentUser?.role === 'admin') isVisible = true;
                                     else if (currentUser?.role === 'facilitator') isVisible = e.createdBy === currentUser.uid;
                                 } else {
-                                    const isPublished = e.status === 'published' || !e.status;
+                                    const isPublished = e.status === 'published';
                                     const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
                                     isVisible = isPublished || isScheduled;
                                 }
@@ -1660,7 +1714,6 @@ const App: React.FC = () => {
                                     onEventUpdated={handleEventUpdated}
                                     onNavigateToAdmin={(event, tab) => {
                                         setActiveTab('feed');
-                                        setViewAsUser(false);
                                         setTimeout(() => {
                                             window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { event, tab } }));
                                         }, 300);
@@ -1690,9 +1743,10 @@ const App: React.FC = () => {
                         <NearbyView
                             userLocation={userLocation}
                             isLocationLive={isLocationLive}
-                            events={events}
+                            events={finalDisplayEvents}
                             onEventSelect={handleOpenEvent}
                             onToggleSave={handleToggleSaveEvent}
+                            savedEventIds={currentUser?.savedEventIds || []}
                             onOpenScanner={() => setShowQRScanner(true)}
                         />
                     )}
@@ -1723,15 +1777,21 @@ const App: React.FC = () => {
                             theme={theme}
                             toggleTheme={toggleTheme}
                             onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
-                            viewAsUser={viewAsUser}
-                            onToggleViewMode={handleToggleViewMode}
                             onProfileCardClick={() => {
                                 setShowProfilePanel(false);
-                                handleOpenProfile();
+                                setShowEditProfileModal(true);
                             }}
                         />
                     </div>
                 </>
+            )}
+
+            {showEditProfileModal && (
+                <EditProfileModal
+                    user={currentUser}
+                    onClose={() => setShowEditProfileModal(false)}
+                    onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
+                />
             )}
 
             <BottomNav

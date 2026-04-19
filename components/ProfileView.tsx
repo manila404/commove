@@ -42,8 +42,6 @@ interface ProfileViewProps {
     toggleTheme: () => void;
     onUserUpdate: (updatedUser: User) => void;
     onProfileCardClick?: () => void;
-    viewAsUser?: boolean;
-    onToggleViewMode?: () => void;
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({ 
@@ -62,8 +60,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     toggleTheme,
     onUserUpdate,
     onProfileCardClick,
-    viewAsUser,
-    onToggleViewMode,
 }) => {
     const [isChangingAvatar, setIsChangingAvatar] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
@@ -88,15 +84,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     const roleLabel = isGuest ? 'Guest' : (user.role === 'admin' ? 'Administrator' : (user.role === 'facilitator' ? 'Facilitator' : 'Resident'));
     const badgeColor = 'bg-white/20 text-white';
     const isPendingFacilitator = user?.facilitatorRequestStatus === 'pending';
-    
-    // Dashboard title
-    const dashboardTitle = viewAsUser 
-        ? 'Return to Dashboard' 
-        : 'Preview Resident View';
-    const dashboardSubtitle = viewAsUser
-        ? 'Exit preview mode'
-        : 'See exactly what residents see';
-    const DashboardIcon = viewAsUser ? ShieldCheckIcon : EyeIcon;
 
     return (
         <div className="overflow-x-hidden relative flex flex-col">
@@ -213,33 +200,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 
 
 
-                 {/* Admin/Facilitator Toggle Card */}
-                {isStaff && onToggleViewMode && (
-                    <div 
-                        className={`rounded-2xl p-4 shadow-xl flex items-center justify-between cursor-pointer animate-slide-in hover:scale-[1.02] transition-transform duration-200 ${
-                            !viewAsUser 
-                            ? 'bg-blue-600 dark:bg-blue-700' 
-                            : 'bg-gray-900 dark:bg-black'
-                        }`}
-                        onClick={() => {
-                            onToggleViewMode();
-                            if (onProfileCardClick) onProfileCardClick(); // Close profile panel if open
-                        }}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white">
-                                <DashboardIcon className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h3 className="text-white font-bold text-sm">{dashboardTitle}</h3>
-                                <p className="text-white/80 text-xs">{dashboardSubtitle}</p>
-                            </div>
-                        </div>
-                        <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-white/80">
-                            <ChevronRightIcon className="w-4 h-4" />
-                        </div>
-                    </div>
-                )}
 
                 {/* Settings Section (Always Visible) */}
                 <div className="shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-gray-800">
