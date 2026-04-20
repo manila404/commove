@@ -60,7 +60,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
 
             {/* Left Side (Desktop) / Top Side (Mobile): Branding with Primary Purple on Mobile */}
             <div className="flex md:w-[55%] bg-primary-600 md:bg-white md:dark:bg-[#111827] p-4 pt-safe md:p-12 flex-col justify-start md:justify-between border-b md:border-b-0 md:border-r border-primary-500 md:border-gray-100 dark:md:border-gray-800 relative z-0 min-h-[45vh] max-h-[50vh] md:max-h-none md:min-h-0">
-                <div className="flex flex-col items-center md:items-start text-center md:text-left mt-2 md:mt-0">
+                <div className="flex flex-col items-center md:items-start text-center md:text-left mt-2 md:mt-10">
                     <div className="flex items-center select-none text-3xl tracking-tighter" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
                         <div className="relative inline-flex items-center justify-center text-white md:text-gray-900 dark:md:text-white mr-[-0.08em]">
                             <svg style={{ width: '0.65em', height: '0.65em', transform: 'translateY(0.06em)' }} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="20">

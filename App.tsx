@@ -335,7 +335,7 @@ const App: React.FC = () => {
                     if (profile.role === 'admin' || profile.role === 'facilitator') {
                         setActiveTab('feed');
                     }
- 
+
                     setCurrentUser(profile);
                     setOnboardingStep('completed');
                     setIsGuest(false);
@@ -425,7 +425,7 @@ const App: React.FC = () => {
 
         const checkReminders = () => {
             const now = Date.now();
-            
+
             // 0. Central Event Reaper: Auto-publish scheduled events
             // Gate: only admin clients act as reapers — no backend cron needed
             if (currentUser.role === 'admin') {
@@ -1259,15 +1259,15 @@ const App: React.FC = () => {
     // 8. Final Display: Map reactive events to the pinned order
     const finalDisplayEvents = useMemo(() => {
         if (!pinnedEventIds.length) return getDisplayEvents;
-        
+
         const eventMap = new Map(getDisplayEvents.map(e => [e.id, e]));
         const ordered = pinnedEventIds
             .map(id => eventMap.get(id))
             .filter((e): e is DisplayEventType => !!e);
-        
+
         const pinnedSet = new Set(pinnedEventIds);
         const newEvents = getDisplayEvents.filter(e => !pinnedSet.has(e.id));
-        
+
         return [...ordered, ...newEvents];
     }, [pinnedEventIds, getDisplayEvents]);
 
@@ -1310,7 +1310,7 @@ const App: React.FC = () => {
     }
 
     const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'facilitator';
- 
+
 
 
     if (showPermitDashboard) {
@@ -1437,8 +1437,8 @@ const App: React.FC = () => {
                     unreadNotificationCount={unreadNotificationCount}
                 />
                 <main className={`flex-1 transition-all duration-300 ${activeTab === 'nearby'
-                        ? 'h-full overflow-hidden'
-                        : 'w-full px-0'
+                    ? 'h-full overflow-hidden'
+                    : 'w-full px-0'
                     } ${activeTab === 'feed' ? 'pb-24' : ''} overflow-x-hidden`}>
                     {activeTab === 'feed' && !isStaff && (
                         <div className="space-y-4 animate-fade-in-up pt-8 md:pt-10">
@@ -1449,7 +1449,7 @@ const App: React.FC = () => {
                                             <h3 className="text-red-800 dark:text-red-400 font-bold text-sm">Facilitator Request Rejected</h3>
                                             <p className="text-red-600 dark:text-red-300 text-xs">{currentUser.facilitatorRejectionReason || "Your ID may have been blurry or invalid."}</p>
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={() => {
                                                 setFacilitatorAuthInitialStep('request');
                                                 setShowFacilitatorAuth(true);
@@ -1765,7 +1765,7 @@ const App: React.FC = () => {
                         className="hidden md:block fixed inset-0 z-[5005]"
                         onClick={() => setShowProfilePanel(false)}
                     />
-                    <div className="fixed inset-0 pt-nav-safe pb-16 bg-white dark:bg-gray-900 z-[35] md:z-[5010] md:pt-0 md:pb-0 md:top-20 md:right-4 md:bottom-auto md:left-auto md:w-80 md:max-h-[calc(100vh-140px)] md:shadow-2xl md:bg-white md:dark:bg-gray-900 md:rounded-2xl md:border border-gray-200 dark:border-gray-700 overflow-y-auto">
+                    <div className="fixed inset-0 pt-nav-safe pb-16 bg-white dark:bg-gray-900 z-[35] md:z-[5010] md:!pt-5 md:pb-0 md:top-[60px] md:right-4 md:bottom-auto md:left-auto md:w-80 md:max-h-[calc(100vh-140px)] md:shadow-2xl md:bg-white md:dark:bg-gray-900 md:rounded-2xl md:border border-gray-200 dark:border-gray-700 overflow-y-auto">
                         <ProfileView
                             user={currentUser}
                             onLogout={handleLogout}
@@ -1840,7 +1840,7 @@ const App: React.FC = () => {
             {/* Onboarding Modals */}
             <AnimatePresence>
                 {!currentUser && !isGuest && (
-                    <motion.div 
+                    <motion.div
                         key="onboarding-backdrop"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
