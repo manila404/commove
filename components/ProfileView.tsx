@@ -99,7 +99,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 
             {/* Header Section */}
             <div 
-                className={`bg-primary-600 dark:bg-primary-800 p-5 rounded-2xl shadow-lg relative z-20 mx-4 mt-4 ${onProfileCardClick ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}`}
+                className={`bg-primary-600 dark:bg-primary-800 p-5 rounded-2xl shadow-lg relative z-20 mx-4 mt-2 ${onProfileCardClick ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}`}
                 onClick={(e) => {
                     if ((e.target as HTMLElement).closest('button')) return;
                     if (onProfileCardClick) onProfileCardClick();

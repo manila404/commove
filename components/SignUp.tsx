@@ -205,7 +205,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
     };
 
     return (
-        <div className="w-full flex flex-col">
+        <div className="w-full flex-1 flex flex-col min-h-0">
             <div className="relative flex items-center text-left mb-6 mt-0 flex-shrink-0">
                 <button onClick={step === 1 ? onSwitchToSignIn : () => setStep(step - 1)} className="-ml-2 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 transition-colors mr-1">
                     <ChevronLeftIcon className="w-5 h-5" />
@@ -216,8 +216,8 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             </div>
 
             {step === 1 && (
-                <div className="flex-1 pr-2 pb-6 -mr-2 overflow-y-auto scrollbar-hide max-h-[60vh] md:max-h-none">
-                    <form onSubmit={handleNextStep} className="space-y-2 md:space-y-4">
+                <div className="flex-1 pr-2 -mr-2 overflow-y-auto scrollbar-hide">
+                    <form onSubmit={handleNextStep} className="space-y-2 md:space-y-4 pb-12 px-2">
                     <div className="mb-1">
                         <label className="block text-[10px] font-bold text-gray-500 mb-0.5 px-2 uppercase tracking-wider">Choose your avatar</label>
                         <div className="flex gap-2 overflow-x-auto py-1.5 px-2 scrollbar-hide -mx-2">
@@ -375,15 +375,13 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                         </label>
                     </div>
 
-                    {/* Captcha moved to bottom to persist across steps */}
-
                     {error && (
-                        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-2 rounded-xl">
+                        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-2 rounded-xl mt-4">
                             <p className="text-red-600 dark:text-red-300 text-xs text-center">{error}</p>
                         </div>
                     )}
 
-                    <div className="pt-4">
+                    <div className="pt-8">
                         <p className="text-[10px] text-gray-500 dark:text-gray-400 text-center mb-3">
                             By signing up, you agree to our{' '}
                             <button 

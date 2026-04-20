@@ -1762,7 +1762,7 @@ const App: React.FC = () => {
                         className="hidden md:block fixed inset-0 z-[5005]"
                         onClick={() => setShowProfilePanel(false)}
                     />
-                    <div className="fixed inset-0 pt-[56px] pb-16 bg-white dark:bg-gray-900 z-[35] md:z-[5010] md:pt-0 md:pb-0 md:top-20 md:right-4 md:bottom-auto md:left-auto md:w-80 md:max-h-[calc(100vh-140px)] md:shadow-2xl md:bg-white md:dark:bg-gray-900 md:rounded-2xl md:border border-gray-200 dark:border-gray-700 overflow-y-auto">
+                    <div className="fixed inset-0 pt-nav-safe pb-16 bg-white dark:bg-gray-900 z-[35] md:z-[5010] md:pt-0 md:pb-0 md:top-20 md:right-4 md:bottom-auto md:left-auto md:w-80 md:max-h-[calc(100vh-140px)] md:shadow-2xl md:bg-white md:dark:bg-gray-900 md:rounded-2xl md:border border-gray-200 dark:border-gray-700 overflow-y-auto">
                         <ProfileView
                             user={currentUser}
                             onLogout={handleLogout}

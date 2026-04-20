@@ -44,12 +44,22 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 20px);
 }
 .pt-safe {
-  padding-top: env(safe-area-inset-top, 12px);
+  padding-top: env(safe-area-inset-top, 30px);
 }
 
 @supports not (padding-top: env(safe-area-inset-top)) {
   .pt-safe {
-    padding-top: 12px;
+    padding-top: 30px;
+  }
+}
+
+.pt-nav-safe {
+  padding-top: calc(56px + env(safe-area-inset-top, 0px));
+}
+
+@supports not (padding-top: env(safe-area-inset-top)) {
+  .pt-nav-safe {
+    padding-top: 86px;
   }
 }
 
