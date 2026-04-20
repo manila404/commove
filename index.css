@@ -54,12 +54,12 @@ body {
 }
 
 .pt-nav-safe {
-  padding-top: calc(56px + env(safe-area-inset-top, 0px));
+  padding-top: calc(72px + env(safe-area-inset-top, 0px));
 }
 
 @supports not (padding-top: env(safe-area-inset-top)) {
   .pt-nav-safe {
-    padding-top: 86px;
+    padding-top: 102px;
   }
 }
 
