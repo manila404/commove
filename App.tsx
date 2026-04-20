@@ -264,10 +264,13 @@ const App: React.FC = () => {
 
     // 1. Theme
     useEffect(() => {
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
+            if (themeColorMeta) themeColorMeta.setAttribute('content', '#111827');
         } else {
             document.documentElement.classList.remove('dark');
+            if (themeColorMeta) themeColorMeta.setAttribute('content', '#ffffff');
         }
         try {
             localStorage.setItem('theme', theme);

@@ -7,11 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface NearbyViewProps {
     userLocation: { lat: number; lng: number; accuracy?: number };
-    events: EventType[];
+    events: DisplayEventType[];
     isLocationLive: boolean;
     onOpenScanner: () => void;
     onEventSelect: (event: EventType) => void;
     onToggleSave: (eventId: string) => void;
+    savedEventIds: string[];
 }
 
 const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -25,7 +26,7 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
     return R * c;
 };
 
-const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocationLive, onEventSelect, onToggleSave, onOpenScanner }) => {
+const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocationLive, onEventSelect, onToggleSave, onOpenScanner, savedEventIds }) => {
     const [showEventList, setShowEventList] = useState(false);
 
     // 1. Prepare ALL valid events for the Map
@@ -39,7 +40,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
             ...e,
             isNearby: false, 
             isPreferred: false,
-            isSaved: false,
+            isSaved: savedEventIds.includes(e.id),
             isLive: false
         }));
 
