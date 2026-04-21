@@ -63,7 +63,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) 
               </h3>
               <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
                 <MapPin size={12} className="flex-shrink-0 text-red-500" />
-                <span className="truncate">{event.venue}, {event.barangay}</span>
+                <span className="truncate">{event.venue}</span>
               </div>
             </div>
           </button>

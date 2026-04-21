@@ -51,7 +51,6 @@ const initialFormData = {
   endDate: '',
   province: 'Cavite',
   city: 'Bacoor',
-  barangay: '',
   street: '',
   venue: '',
   description: '',

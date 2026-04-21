@@ -453,7 +453,7 @@ const EventModal: React.FC<EventModalProps> = ({
             </div>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-            {event.venue}, {event.street}, {event.barangay}, {event.city}, {event.province || 'Philippines'}
+            {event.venue}, {event.street}, {event.city}, {event.province || 'Philippines'}
           </p>
           <div className="rounded-[10px] overflow-hidden h-96 shadow-inner border border-gray-100 dark:border-gray-700">
             <InteractiveMap
@@ -716,7 +716,7 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
         </div>
         <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">
-          {event.venue}, {event.street}, {event.barangay}, {event.city}, {event.province || 'Philippines'}
+          {event.venue}, {event.street}, {event.city}, {event.province || 'Philippines'}
         </p>
         <div className="rounded-2xl md:rounded-[2rem] overflow-hidden h-48 md:h-64 shadow-inner border border-gray-100 dark:border-gray-700">
           <InteractiveMap

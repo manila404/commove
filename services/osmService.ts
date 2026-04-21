@@ -33,7 +33,7 @@ export const searchAddressGeoapify = async (query: string): Promise<any[]> => {
 /**
  * Searches for address suggestions using Nominatim (OpenStreetMap) API.
  */
-export const searchAddress = async (query: string, type: 'province' | 'city' | 'barangay' | 'street'): Promise<any[]> => {
+export const searchAddress = async (query: string, type: 'province' | 'city' | 'street'): Promise<any[]> => {
     if (query.length < 3) return [];
     
     try {
@@ -51,7 +51,7 @@ export const searchAddress = async (query: string, type: 'province' | 'city' | '
             displayName: f.display_name,
             province: f.address.state || f.address.region,
             city: f.address.city || f.address.town || f.address.county,
-            barangay: f.address.suburb || f.address.village || f.address.neighbourhood,
+
             street: f.address.road,
             lat: parseFloat(f.lat),
             lng: parseFloat(f.lon)
@@ -95,7 +95,7 @@ export const getStreetsFromOSM = async (lat: number, lng: number): Promise<strin
 /**
  * Reverse geocodes coordinates to an address string using Nominatim API.
  */
-export const reverseGeocode = async (lat: number, lng: number): Promise<{ displayName: string, city: string, barangay: string } | null> => {
+export const reverseGeocode = async (lat: number, lng: number): Promise<{ displayName: string, city: string } | null> => {
     try {
         const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
         const response = await fetch(url, {
@@ -110,8 +110,7 @@ export const reverseGeocode = async (lat: number, lng: number): Promise<{ displa
         if (data && data.address) {
             return {
                 displayName: data.display_name,
-                city: data.address.city || data.address.town || data.address.county || '',
-                barangay: data.address.suburb || data.address.village || data.address.neighbourhood || ''
+                city: data.address.city || data.address.town || data.address.county || ''
             };
         }
         return null;

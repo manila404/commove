@@ -108,7 +108,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onSelect, onToggleSave }) 
               <LocationIcon className="w-4 h-4 mr-2 text-primary-500 dark:text-primary-400 flex-shrink-0" />
               <span className="truncate">
                 {event.venue}
-                {event.street ? `, ${event.street}` : ''}, {event.barangay}
+                {event.street ? `, ${event.street}` : ''}
               </span>
             </div>
         </div>

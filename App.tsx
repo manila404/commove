@@ -240,8 +240,7 @@ const App: React.FC = () => {
                         lat: 14.4446,
                         lng: 120.9444,
                         venue: "Bacoor Government Center",
-                        street: "NoMo Avenue",
-                        barangay: "San Nicolas II"
+                        street: "NoMo Avenue"
                     });
                     // Update local state immediately for better UX
                     handleEventUpdated({
@@ -249,8 +248,7 @@ const App: React.FC = () => {
                         lat: 14.4446,
                         lng: 120.9444,
                         venue: "Bacoor Government Center",
-                        street: "NoMo Avenue",
-                        barangay: "San Nicolas II"
+                        street: "NoMo Avenue"
                     });
                 }
             } catch (e) {
@@ -1179,7 +1177,6 @@ const App: React.FC = () => {
                 return (event.name || '').toLowerCase().includes(lowercasedQuery) ||
                     categories.some(cat => (cat || '').toLowerCase().includes(lowercasedQuery)) ||
                     (event.street || '').toLowerCase().includes(lowercasedQuery) ||
-                    (event.barangay || '').toLowerCase().includes(lowercasedQuery) ||
                     (event.venue || '').toLowerCase().includes(lowercasedQuery) ||
                     (event.city || '').toLowerCase().includes(lowercasedQuery) ||
                     (event.description || '').toLowerCase().includes(lowercasedQuery);
@@ -1531,7 +1528,7 @@ const App: React.FC = () => {
                                                         </h3>
                                                         <div className="flex items-center gap-1 text-[11px] md:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
                                                             <MapPin size={10} className="flex-shrink-0 text-red-500 md:w-3 md:h-3" />
-                                                            <span className="truncate">{event.venue}, {event.barangay}</span>
+                                                            <span className="truncate">{event.venue}</span>
                                                         </div>
                                                     </div>
                                                 </button>

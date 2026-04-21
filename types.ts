@@ -10,7 +10,6 @@ export interface EventType {
   endTime: string;
   endDate?: string;
   city: string;
-  barangay: string;
   venue: string;
   description: string;
   imageUrl: string;

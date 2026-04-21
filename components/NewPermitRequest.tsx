@@ -30,7 +30,6 @@ const NewPermitRequest: React.FC<NewPermitRequestProps> = ({ onBack, initialDepa
     endTime: '',
     province: 'Cavite',
     city: 'Bacoor Cavite',
-    barangay: BACOOR_BARANGAYS[0],
     street: '',
     venue: '', // Specific Location
     description: '',
@@ -50,8 +49,8 @@ const NewPermitRequest: React.FC<NewPermitRequestProps> = ({ onBack, initialDepa
     agencyDocumentsUrl: '',
     noPendingCaseUrl: '',
 
-    lat: BARANGAY_COORDS[BACOOR_BARANGAYS[0]].lat,
-    lng: BARANGAY_COORDS[BACOOR_BARANGAYS[0]].lng,
+    lat: 14.4445,
+    lng: 120.9526,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
@@ -65,35 +64,22 @@ const NewPermitRequest: React.FC<NewPermitRequestProps> = ({ onBack, initialDepa
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    if (name === 'barangay') {
-        const coords = BARANGAY_COORDS[value];
-        setFormData(prev => ({
-            ...prev,
-            barangay: value,
-            lat: coords?.lat || prev.lat,
-            lng: coords?.lng || prev.lng,
-            street: '', // Clear street when barangay changes to avoid mismatch
-            venue: '', // Clear venue when barangay changes
-        }));
-    } else {
-        setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleAddressBlur = async () => {
-      // Don't geocode if we just have the default barangay and no specific details
+      // Don't geocode if we just have the default details
       if (!formData.street && !formData.venue) return;
 
       setIsGeocoding(true);
 
-      // Construct search query. Prioritize Venue + Street, fallback to Street + Barangay
       let query = '';
       if (formData.venue && formData.street) {
-          query = `${formData.venue}, ${formData.street}, ${formData.barangay}`;
+          query = `${formData.venue}, ${formData.street}`;
       } else if (formData.street) {
-          query = `${formData.street}, ${formData.barangay}`;
+          query = `${formData.street}`;
       } else if (formData.venue) {
-           query = `${formData.venue}, ${formData.barangay}`;
+           query = `${formData.venue}`;
       }
 
       if (query) {
@@ -104,15 +90,6 @@ const NewPermitRequest: React.FC<NewPermitRequestProps> = ({ onBack, initialDepa
                   lat: result.lat,
                   lng: result.lng
               }));
-          } else {
-              // Fallback: if specific geocode fails, ensure we at least have the barangay center
-              if (formData.barangay && BARANGAY_COORDS[formData.barangay]) {
-                  setFormData(prev => ({
-                      ...prev,
-                      lat: BARANGAY_COORDS[formData.barangay].lat,
-                      lng: BARANGAY_COORDS[formData.barangay].lng
-                  }));
-              }
           }
       }
       setIsGeocoding(false);
@@ -200,7 +177,6 @@ const NewPermitRequest: React.FC<NewPermitRequestProps> = ({ onBack, initialDepa
             venue: formData.venue, // Specific Location
             description: formData.description,
             city: formData.city,
-            barangay: formData.barangay,
             province: formData.province,
             street: formData.street,
             category: [CATEGORIES[0]], // Default category
@@ -449,25 +425,7 @@ const NewPermitRequest: React.FC<NewPermitRequestProps> = ({ onBack, initialDepa
 
                     {/* Detailed Location Address Section */}
                     <div className="space-y-4 pt-2">
-                        {/* Baranggay */}
-                        <div>
-                            <label htmlFor="barangay" className={labelClass}>Baranggay</label>
-                            <div className="relative">
-                                <select
-                                    name="barangay"
-                                    id="barangay"
-                                    value={formData.barangay}
-                                    onChange={handleChange}
-                                    required
-                                    className={`${inputClass} appearance-none cursor-pointer`}
-                                >
-                                    {BACOOR_BARANGAYS.map(b => <option key={b} value={b}>{b}</option>)}
-                                </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                                </div>
-                            </div>
-                        </div>
+
 
                         {/* Street/Road */}
                         <div>
@@ -485,7 +443,7 @@ const NewPermitRequest: React.FC<NewPermitRequestProps> = ({ onBack, initialDepa
                                     className={`${inputClass} appearance-none cursor-pointer`}
                                 >
                                     <option value="">Select a street...</option>
-                                    {(BARANGAY_STREETS[formData.barangay] || BACOOR_STREETS).map(street => (
+                                    {BACOOR_STREETS.map(street => (
                                         <option key={street} value={street}>{street}</option>
                                     ))}
                                 </select>
@@ -516,7 +474,7 @@ const NewPermitRequest: React.FC<NewPermitRequestProps> = ({ onBack, initialDepa
                                     autoComplete="off"
                                 />
                                 <datalist id="venues-list-permit">
-                                    {(RECOMMENDED_VENUES[formData.barangay] || []).map(venue => (
+                                    {Object.values(RECOMMENDED_VENUES).flat().map(venue => (
                                         <option key={venue} value={venue} />
                                     ))}
                                 </datalist>
