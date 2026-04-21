@@ -47,6 +47,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [viewingDate, setViewingDate] = useState<Date>(new Date());
     const [isMobile, setIsMobile] = React.useState(false);
 
+    const [eventFilter, setEventFilter] = useState<'all' | 'pending' | 'scheduled' | 'published'>('all');
+    const [eventSortOrder, setEventSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [showSortMenu, setShowSortMenu] = useState(false);
+
     React.useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         checkMobile();
@@ -697,8 +701,67 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 )}
             </div>
 
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 overflow-x-auto">
-                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">All Events</h3>
+            <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 overflow-visible min-h-[400px]">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">All Events</h3>
+                    <div className="relative">
+                        <button 
+                            onClick={() => setShowSortMenu(!showSortMenu)}
+                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                        >
+                            Sort by
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                        </button>
+
+                        {showSortMenu && (
+                            <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#1f2937] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-[100] overflow-hidden">
+                                <div className="p-4">
+                                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Sort by</h4>
+                                    <div className="space-y-3">
+                                        {[
+                                            { id: 'all', label: 'All events' },
+                                            { id: 'pending', label: 'Pending' },
+                                            { id: 'scheduled', label: 'Scheduled' },
+                                            { id: 'published', label: 'Published' },
+                                        ].map(opt => (
+                                            <label key={opt.id} className="flex items-center gap-3 cursor-pointer group">
+                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${eventFilter === opt.id ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600 group-hover:border-gray-400'}`}>
+                                                    {eventFilter === opt.id && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
+                                                </div>
+                                                <span className={`text-sm ${eventFilter === opt.id ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-700 dark:text-gray-300'}`}>{opt.label}</span>
+                                                <input 
+                                                    type="radio" 
+                                                    className="hidden" 
+                                                    checked={eventFilter === opt.id} 
+                                                    onChange={() => {
+                                                        setEventFilter(opt.id as any);
+                                                    }} 
+                                                />
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="border-t border-gray-100 dark:border-gray-800 p-2 space-y-1">
+                                    <button 
+                                        onClick={() => { setEventSortOrder('asc'); setShowSortMenu(false); }}
+                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'asc' ? 'border-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${eventSortOrder === 'asc' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg>
+                                        Ascending (A-Z)
+                                    </button>
+                                    <button 
+                                        onClick={() => { setEventSortOrder('desc'); setShowSortMenu(false); }}
+                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'desc' ? 'border-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${eventSortOrder === 'desc' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m0 0l-7-7m7-7l7-7" /></svg>
+                                        Descending (Z-A)
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="overflow-x-auto">
                 <table className="w-full min-w-[600px] text-left">
                     <thead>
                         <tr className="border-b border-gray-100 dark:border-gray-800 text-sm text-gray-500 dark:text-gray-400">
@@ -710,7 +773,18 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </tr>
                     </thead>
                     <tbody>
-                                {events.map(event => {
+                                {events
+                                    .filter(event => eventFilter === 'all' ? true : event.status === eventFilter)
+                                    .sort((a, b) => {
+                                        const nameA = a.name.toLowerCase();
+                                        const nameB = b.name.toLowerCase();
+                                        if (eventSortOrder === 'asc') {
+                                            return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
+                                        } else {
+                                            return nameA > nameB ? -1 : nameA < nameB ? 1 : 0;
+                                        }
+                                    })
+                                    .map(event => {
                             // Calculate real attendee count from the users list
                             const attendeeCount = users.filter(u => u.checkedInEventIds?.includes(event.id)).length;
                             const attendeesStr = event.maxParticipants ? `${attendeeCount}/${event.maxParticipants}` : `${attendeeCount} (No Limit)`;
@@ -790,6 +864,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         })}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     );
