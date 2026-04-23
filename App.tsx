@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserReminders, updateUserRole, addUserViewedEvent, updateUserParticipation, getAllUsers } from './services/userService';
+import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, addUserViewedEvent, updateUserParticipation, getAllUsers } from './services/userService';
 import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights } from './services/eventService';
 import { getKNNRankedEvents } from './services/recommendationService'; // Import Recommendation Service
 import { CATEGORIES, formatDisplayDate } from './constants';
@@ -41,6 +41,7 @@ import QRScannerModal from './components/QRScannerModal';
 import PermissionManager from './components/PermissionManager';
 import PopularEvents from './components/PopularEvents';
 import DateEventsModal from './components/DateEventsModal';
+import EventFeedbackModal from './components/EventFeedbackModal';
 
 import {
     Globe,
@@ -179,6 +180,7 @@ const App: React.FC = () => {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
     const [showPermissionManager, setShowPermissionManager] = useState(false);
+    const [showFeedbackModal, setShowFeedbackModal] = useState<EventType | null>(null);
 
     // Location State
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy?: number }>({
@@ -195,6 +197,7 @@ const App: React.FC = () => {
     const notifiedTomorrowEvents = useRef<Set<string>>(new Set());
     const notifiedStartedEvents = useRef<Set<string>>(new Set());
     const notifiedCustomReminders = useRef<Set<string>>(new Set());
+    const notifiedFeedbackEvents = useRef<Set<string>>(new Set());
 
 
     const safeParseDate = (date: string, time: string) => {
@@ -552,10 +555,17 @@ const App: React.FC = () => {
                 });
             }
 
-            // 2. Check Saved Events (Auto logic: 1hr before, Tomorrow)
-            if (settings.pushEnabled !== false && settings.upcomingReminders !== false && currentUser.savedEventIds && Array.isArray(currentUser.savedEventIds)) {
-                currentUser.savedEventIds.forEach(savedId => {
-                    const event = events.find(e => e.id === savedId);
+            // 2. Check Interacted Events (Auto logic: 1hr before, Tomorrow, and Just Started)
+            // Monitor events that are Saved, Liked (Heart), or marked as Interested
+            const monitorIds = new Set([
+                ...(currentUser.savedEventIds || []),
+                ...(currentUser.likedEventIds || []),
+                ...(currentUser.interestedEventIds || [])
+            ]);
+
+            if (settings.pushEnabled !== false && settings.upcomingReminders !== false && monitorIds.size > 0) {
+                monitorIds.forEach(id => {
+                    const event = events.find(e => e.id === id);
                     if (!event) return;
 
                     const start = safeParseDate(event.date, event.startTime);
@@ -578,7 +588,7 @@ const App: React.FC = () => {
                             currentUser.uid,
                             'event_upcoming',
                             `Upcoming Event: ${event.name}`,
-                            `Your saved event starts in only 1 hour at ${event.venue}.`,
+                            `Your interacted event starts in only 1 hour at ${event.venue}.`,
                             event.id
                         );
 
@@ -586,16 +596,16 @@ const App: React.FC = () => {
                         notifiedUpcomingEvents.current.add(event.id);
                     }
 
-                    // Just Started (Notifications within first 5 mins of start)
+                    // Just Started / Ongoing (Notifications within first 5 mins of start)
                     if (timeDiff <= 0 && timeDiff >= -5 * 60 * 1000 && !notifiedStartedEvents.current.has(event.id)) {
                         createNotification(
                             currentUser.uid,
                             'reminder',
-                            `Event Starting Now: ${event.name}`,
-                            `${event.name} has just started at ${event.venue}! Enjoy the event.`,
+                            `Event Ongoing: ${event.name}`,
+                            `${event.name} is now ongoing at ${event.venue}! Join the event.`,
                             event.id
                         );
-                        toast.info(`Starting Now: ${event.name}`, { description: `Event has started at ${event.venue}` });
+                        toast.info(`Ongoing Now: ${event.name}`, { description: `Event is currently ongoing at ${event.venue}` });
                         notifiedStartedEvents.current.add(event.id);
                     }
 
@@ -626,6 +636,34 @@ const App: React.FC = () => {
 
                         toast.info(`Happening Tomorrow: ${event.name}`, { description: `Don't forget! ${event.name} is tomorrow.` });
                         notifiedTomorrowEvents.current.add(event.id);
+                    }
+                });
+            }
+
+            // 3. Check Ended Events (For Feedback)
+            if (currentUser.checkedInEventIds && Array.isArray(currentUser.checkedInEventIds)) {
+                currentUser.checkedInEventIds.forEach(checkedId => {
+                    const event = events.find(e => e.id === checkedId);
+                    if (!event) return;
+
+                    const end = safeParseDate(event.date, event.endTime);
+                    // If event ended in the last hour and we haven't notified yet
+                    if (now > end.getTime() && now < end.getTime() + 60 * 60 * 1000 && !notifiedFeedbackEvents.current.has(event.id)) {
+                        createNotification(
+                            currentUser.uid,
+                            'event_feedback',
+                            `How was ${event.name}?`,
+                            `We noticed the event just ended. Would you like to leave a quick rating?`,
+                            event.id
+                        );
+                        toast.info(`Rate "${event.name}"`, { 
+                            description: "Tell us about your experience!",
+                            action: {
+                                label: "Rate Now",
+                                onClick: () => setShowFeedbackModal(event)
+                            }
+                        });
+                        notifiedFeedbackEvents.current.add(event.id);
                     }
                 });
             }
@@ -736,6 +774,11 @@ const App: React.FC = () => {
             setTimeout(() => {
                 window.dispatchEvent(new CustomEvent('admin-preview-event', { detail: event }));
             }, 150);
+            return;
+        }
+
+        if (notifType === 'event_feedback') {
+            setShowFeedbackModal(event);
             return;
         }
 
@@ -1005,6 +1048,27 @@ const App: React.FC = () => {
             toast.success("Event Saved", { description: `${event?.name || 'Event'} has been added to your saved events.` });
         } else {
             toast.info("Event Removed", { description: `${event?.name || 'Event'} has been removed from your saved events.` });
+        }
+    };
+
+    const handleToggleLikeEvent = async (eventId: string) => {
+        if (!currentUser) {
+            setIsGuest(false);
+            return;
+        }
+        const currentLiked = new Set<string>(currentUser.likedEventIds || []);
+        const isLiking = !currentLiked.has(eventId);
+        if (currentLiked.has(eventId)) {
+            currentLiked.delete(eventId);
+        } else {
+            currentLiked.add(eventId);
+        }
+        const newLikedArray = Array.from(currentLiked);
+        setCurrentUser({ ...currentUser, likedEventIds: newLikedArray });
+        await updateUserLikes(currentUser.uid, new Set(newLikedArray));
+
+        if (isLiking) {
+            toast.success("Event Liked", { description: "Event added to your likes." });
         }
     };
 
@@ -1824,6 +1888,8 @@ const App: React.FC = () => {
                     onClose={handleCloseAllModals}
                     isSaved={currentUser?.savedEventIds?.includes(selectedEvent.id) || false}
                     onToggleSave={handleToggleSaveEvent}
+                    isLiked={currentUser?.likedEventIds?.includes(selectedEvent.id) || false}
+                    onToggleLike={handleToggleLikeEvent}
                     reminder={currentUser?.reminders?.[selectedEvent.id]}
                     onSetReminder={handleSetReminder}
                     onCancelReminder={handleCancelReminder}
@@ -1831,6 +1897,14 @@ const App: React.FC = () => {
                     currentUser={currentUser}
                     isLocationLive={isLocationLive}
                     onToggleParticipation={handleToggleParticipation}
+                />
+            )}
+
+            {showFeedbackModal && currentUser && (
+                <EventFeedbackModal
+                    event={showFeedbackModal}
+                    user={currentUser}
+                    onClose={() => setShowFeedbackModal(null)}
                 />
             )}
 

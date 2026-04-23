@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { AppNotification, EventType } from '../types';
-import { BellIcon, CalendarIcon, MoreVerticalIcon, SlidersHorizontal, CheckCheck, Trash2, ChevronDown, ChevronUp, ExternalLink, Eye, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { BellIcon, CalendarIcon, MoreVerticalIcon, SlidersHorizontal, CheckCheck, Trash2, ChevronDown, ChevronUp, ExternalLink, Eye, CheckCircle, XCircle, Clock, Star } from 'lucide-react';
 import {
     subscribeToNotifications,
     markNotificationRead,
@@ -264,6 +264,16 @@ const NotificationActionPanel: React.FC<{
                         </button>
                     )}
 
+                    {notif.type === 'event_feedback' && event && (
+                        <button
+                            onClick={() => onViewEvent()}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-yellow-400 hover:bg-yellow-500 text-black text-xs font-bold rounded-lg transition-colors shadow-sm"
+                        >
+                            <Star className="w-3.5 h-3.5" />
+                            Rate Event
+                        </button>
+                    )}
+
                     {/* System / generic */}
                     {notif.type === 'system' && (
                         <button
@@ -275,7 +285,7 @@ const NotificationActionPanel: React.FC<{
                     )}
 
                     {/* Generic fallback if event exists but no specific handler */}
-                    {event && !['event_created', 'event_approved', 'event_rejected', 'reminder', 'event_upcoming', 'event_tomorrow', 'system'].includes(notif.type) && (
+                    {event && !['event_created', 'event_approved', 'event_rejected', 'reminder', 'event_upcoming', 'event_tomorrow', 'event_feedback', 'system'].includes(notif.type) && (
                         <button
                             onClick={() => onViewEvent()}
                             className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-lg transition-colors"

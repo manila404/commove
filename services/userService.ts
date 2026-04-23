@@ -164,6 +164,23 @@ export const updateUserSavedEvents = async (uid: string, eventIds: Set<string>):
     }
 };
 
+export const updateUserLikes = async (uid: string, eventIds: Set<string>): Promise<void> => {
+    try {
+        if (!uid) throw new Error("User ID is required to update liked events");
+        
+        const userDocRef = doc(db, usersCollectionRef, uid);
+        await setDoc(userDocRef, {
+            likedEventIds: Array.from(eventIds)
+        }, { merge: true });
+    } catch (error: any) {
+        if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+             console.debug("Update liked events blocked by security rules.");
+            return;
+        }
+        console.error("Error updating liked events:", error);
+    }
+};
+
 export const updateUserParticipation = async (
     uid: string, 
     type: 'interested' | 'checkedIn', 

@@ -314,6 +314,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         requestedPublishDate: publishTimestamp ? new Date(publishTimestamp).toISOString() : null,
         creatorUsername: currentUser?.username || undefined,
         status: (mode === 'draft' ? 'draft' : (isAdmin ? (isScheduled ? 'scheduled' : 'published') : 'pending')) as EventStatus,
+        createdByAdmin: isAdmin,
       };
 
       if (eventToEdit) {

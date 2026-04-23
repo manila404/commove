@@ -48,6 +48,19 @@ const getUserCategoryAffinities = (user: User, allEvents: EventType[]): Record<s
         });
     }
 
+    // B2. Implicit Actions (Likes/Heart - Strong Signal)
+    if (user.likedEventIds && user.likedEventIds.length > 0) {
+        user.likedEventIds.forEach(id => {
+            const event = allEvents.find(e => e.id === id);
+            if (event && event.category) {
+                const categories = Array.isArray(event.category) ? event.category : [event.category];
+                categories.forEach(cat => {
+                    if (affinity[cat] !== undefined) affinity[cat] += 20;
+                });
+            }
+        });
+    }
+
     // C. Implicit Actions (Views/Taps - Medium Signal)
     // If a user clicks to view details, they are interested.
     if (user.viewedEventIds && user.viewedEventIds.length > 0) {
@@ -62,14 +75,14 @@ const getUserCategoryAffinities = (user: User, allEvents: EventType[]): Record<s
         });
     }
 
-    // D. Implicit Actions (Interested/RSVP - Very Strong Signal)
+    // D. Implicit Actions (Interested/RSVP - Strong Signal)
     if (user.interestedEventIds && user.interestedEventIds.length > 0) {
         user.interestedEventIds.forEach(id => {
             const event = allEvents.find(e => e.id === id);
             if (event && event.category) {
                 const categories = Array.isArray(event.category) ? event.category : [event.category];
                 categories.forEach(cat => {
-                    if (affinity[cat] !== undefined) affinity[cat] += 25;
+                    if (affinity[cat] !== undefined) affinity[cat] += 20;
                 });
             }
         });

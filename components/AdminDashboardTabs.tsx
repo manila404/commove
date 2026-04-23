@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { EventType, User } from '../types';
 import { XMarkIcon } from '../constants';
+import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon } from 'lucide-react';
 import AdminReports from './AdminReports';
 import { getHighlights, setHighlights } from '../services/eventService';
+import { fetchAllFeedback } from '../services/feedbackService';
+import type { EventFeedback } from '../types';
 
 interface AdminDashboardTabsProps {
     events: EventType[];
@@ -51,6 +54,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [eventSortOrder, setEventSortOrder] = useState<'asc' | 'desc'>('asc');
     const [showSortMenu, setShowSortMenu] = useState(false);
 
+    const [allFeedback, setAllFeedback] = useState<EventFeedback[]>([]);
+    const [viewingFeedbackEvent, setViewingFeedbackEvent] = useState<EventType | null>(null);
+
     React.useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         checkMobile();
@@ -81,6 +87,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             setHighlightIds(ids);
             setHighlightsLoading(false);
         }).catch(() => setHighlightsLoading(false));
+
+        // Also fetch feedback
+        fetchAllFeedback().then(setAllFeedback);
     }, []);
 
     const toggleHighlight = (eventId: string) => {
@@ -351,7 +360,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 )}
             </div>
         );
-    };;
+    };
 
     const residents = users.filter(u => u.role === 'user' || (!u.role && !u.isAdmin));
     // Correctly calculate participants who joined at least one event in the provided events list
@@ -667,32 +676,33 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 ) : (
                     <div className="space-y-4">
                         {pendingRequests.map(event => (
-                            <div key={event.id} className="flex items-center justify-between p-4 border border-gray-100 dark:border-gray-800/60 rounded-xl bg-gray-50/50 dark:bg-gray-800/30">
-                                <div className="flex items-center gap-4">
-                                    <img src={event.imageUrl || undefined} alt="" className="w-12 h-12 rounded-lg object-cover" />
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="font-bold text-gray-900 dark:text-white">{event.name}</h4>
-                                            {event.priority === 'urgent' && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black uppercase rounded-lg">Urgent</span>}
-                                            {event.priority === 'average' && <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 text-[10px] font-black uppercase rounded-lg">Average</span>}
+                            <div key={event.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-gray-100 dark:border-gray-800/60 rounded-xl bg-gray-50/50 dark:bg-gray-800/30 gap-4">
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <img src={event.imageUrl || undefined} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h4 className="font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-none">{event.name}</h4>
+                                            {event.priority === 'urgent' && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Urgent</span>}
+                                            {event.priority === 'average' && <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Average</span>}
+                                            {event.status === 'draft' && <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Draft</span>}
                                         </div>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">{event.organizer || 'Unknown'} • {event.date}</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{event.organizer || 'Unknown'} • {event.date}</p>
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 justify-end">
                                     {onPreviewEvent && (
-                                        <button onClick={() => onPreviewEvent(event)} className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" title="Preview Event">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        <button onClick={() => onPreviewEvent(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" title="Preview Event">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         </button>
                                     )}
-                                    <button onClick={() => onApprove(event)} className="w-10 h-10 flex items-center justify-center rounded-full border border-green-200 dark:border-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" title="Approve & Publish Now">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                    <button onClick={() => onApprove(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-green-200 dark:border-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" title="Approve & Publish Now">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                                     </button>
-                                    <button onClick={() => onSchedule(event)} className="w-10 h-10 flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Schedule Publication">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <button onClick={() => onSchedule(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Schedule Publication">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     </button>
-                                    <button onClick={() => onReject(event.id)} className="w-10 h-10 flex items-center justify-center rounded-full border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Disapprove">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    <button onClick={() => onReject(event.id)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Disapprove">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </div>
                             </div>
@@ -769,7 +779,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             <th className="pb-3 font-medium">Date</th>
                             <th className="pb-3 font-medium">Location</th>
                             <th className="pb-3 font-medium">Attendees</th>
-                            <th className="pb-3 font-medium">Status</th>
+                            <th className="pb-3 font-medium">Feedback</th>
+                            <th className="pb-3 font-medium text-right pr-4">Status & Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -812,6 +823,23 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         </div>
                                     </td>
                                     <td className="py-4">
+                                        {(() => {
+                                            const eventFeedback = allFeedback.filter(f => f.eventId === event.id);
+                                            if (eventFeedback.length === 0) return <span className="text-xs text-gray-400 italic">No ratings</span>;
+                                            
+                                            const avgRating = eventFeedback.reduce((acc, f) => acc + f.rating, 0) / eventFeedback.length;
+                                            return (
+                                                <div className="flex items-center gap-1.5 group cursor-pointer" onClick={() => setViewingFeedbackEvent(event)}>
+                                                    <div className="flex items-center text-yellow-500">
+                                                        <Star className="w-3.5 h-3.5 fill-current" />
+                                                        <span className="text-xs font-black ml-1">{avgRating.toFixed(1)}</span>
+                                                    </div>
+                                                    <span className="text-[10px] text-gray-400 font-bold">({eventFeedback.length})</span>
+                                                </div>
+                                            );
+                                        })()}
+                                    </td>
+                                    <td className="py-4">
                                         <div className="flex items-center justify-between gap-4">
                                             <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
                                                 event.status === 'draft' ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 outline outline-1 outline-gray-200 dark:outline-gray-700' :
@@ -825,7 +853,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 )}
                                                 {event.status || 'approved'}
                                             </span>
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 pr-4">
+                                                <button 
+                                                    onClick={() => setViewingFeedbackEvent(event)}
+                                                    className="p-1.5 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                                                    title="View Feedback"
+                                                >
+                                                    <MessageSquare className="w-4 h-4" />
+                                                </button>
                                                 <button 
                                                     onClick={() => onViewQRCode(event)}
                                                     className="p-1.5 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
@@ -833,7 +868,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h3.5M12 12h.01M16 12h.01M12 16h.01M16 16h.01M7 8h2v2H7V8zm0 0V6a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V10a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V14a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V18a2 2 0 114 0v2H7zm0 0h4" /></svg>
                                                 </button>
-                                                {onPreviewEvent && (event.status === 'pending' || event.status === 'rejected' || event.status === 'draft' || event.status === 'scheduled') && (
+                                                {onPreviewEvent && (
                                                     <button 
                                                         onClick={() => onPreviewEvent(event)}
                                                         className="p-1.5 text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
@@ -1084,9 +1119,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     )}
                 </div>
             )}
-        </div>
-    );
-};
+            </div>
+        );
+    };
 
     const renderCalendar = () => {
         const year = viewingDate.getFullYear();
@@ -1188,7 +1223,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         <div className="flex-1 flex flex-col items-center justify-center py-12 text-center opacity-60">
                             <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                             </div>
                             <p className="font-bold text-gray-900 dark:text-white">No events scheduled</p>
@@ -1370,6 +1405,71 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             {activeTab === 'calendar' && renderCalendar()}
             {activeTab === 'reports' && renderReports()}
             {activeTab === 'highlights' && canManageUsers && renderHighlights()}
+
+            {/* Feedback Details Modal */}
+            {viewingFeedbackEvent && (
+                <div className="fixed inset-0 z-[11000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-[#111827] w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                        <div className="p-8 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-black text-gray-900 dark:text-white">Event Feedback</h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Ratings and reviews for "{viewingFeedbackEvent.name}"</p>
+                            </div>
+                            <button onClick={() => setViewingFeedbackEvent(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                            {(() => {
+                                const reviews = allFeedback.filter(f => f.eventId === viewingFeedbackEvent.id);
+                                if (reviews.length === 0) {
+                                    return (
+                                        <div className="py-20 text-center space-y-4">
+                                            <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto">
+                                                <Star className="w-8 h-8 text-gray-200" />
+                                            </div>
+                                            <p className="text-gray-400 font-medium italic">No feedback has been submitted for this event yet.</p>
+                                        </div>
+                                    );
+                                }
+
+                                return reviews.map(review => (
+                                    <div key={review.id} className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-[2rem] border border-transparent hover:border-purple-100 dark:hover:border-purple-900/30 transition-all">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center overflow-hidden">
+                                                    {review.userAvatar ? (
+                                                        <img src={review.userAvatar} alt="" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <UserIcon className="w-5 h-5 text-purple-600" />
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-gray-900 dark:text-white leading-tight">{review.userName}</p>
+                                                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-0.5">
+                                                        {new Date(review.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-yellow-500">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? 'fill-current' : 'text-gray-200 dark:text-gray-700'}`} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                        {review.comment && (
+                                            <p className="text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed italic">
+                                                "{review.comment}"
+                                            </p>
+                                        )}
+                                    </div>
+                                ));
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

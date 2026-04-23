@@ -18,6 +18,8 @@ interface EventModalProps {
   onClose: () => void;
   isSaved: boolean;
   onToggleSave: (eventId: string) => void;
+  isLiked: boolean;
+  onToggleLike: (eventId: string) => void;
   reminder: Reminder | undefined;
   onSetReminder: (eventId: string, reminderOffset: string) => void;
   onCancelReminder: (eventId: string) => void;
@@ -32,6 +34,8 @@ const EventModal: React.FC<EventModalProps> = ({
   onClose, 
   isSaved, 
   onToggleSave, 
+  isLiked,
+  onToggleLike,
   reminder, 
   onSetReminder, 
   onCancelReminder, 
@@ -961,10 +965,10 @@ const EventModal: React.FC<EventModalProps> = ({
                 <Share2 className="w-5 h-5 text-gray-900 dark:text-white" />
               </button>
               <button 
-                onClick={() => onToggleSave(event.id)}
+                onClick={() => onToggleLike(event.id)}
                 className="w-10 h-10 bg-white/90 dark:bg-gray-800/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
               >
-                <Heart className={`w-5 h-5 ${isSaved ? 'fill-red-500 text-red-500' : 'text-gray-900 dark:text-white'}`} />
+                <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-900 dark:text-white'}`} />
               </button>
             </div>
           </div>

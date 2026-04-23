@@ -89,6 +89,7 @@ export interface User {
   homeLat?: number;
   homeLng?: number;
   savedEventIds?: string[];
+  likedEventIds?: string[];
   interestedEventIds?: string[]; // New: Participation
   checkedInEventIds?: string[];  // New: Participation
   viewedEventIds?: string[]; // New: Track tapped events for algorithm
@@ -135,6 +136,7 @@ export type NotificationType =
   | 'event_rejected' // admin rejected a permit request
   | 'event_registration' // user registered for an event
   | 'event_created'      // facilitator created an event (notifies admin)
+  | 'event_feedback'     // request for feedback after event ends
   | 'system';        // generic system message
 
 export interface AppNotification {
@@ -146,4 +148,15 @@ export interface AppNotification {
   eventId?: string;   // linked event (optional)
   isRead: boolean;
   createdAt: number;  // Unix timestamp (ms)
+}
+
+export interface EventFeedback {
+  id: string;
+  eventId: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  rating: number; // 1-5
+  comment?: string;
+  createdAt: number;
 }
