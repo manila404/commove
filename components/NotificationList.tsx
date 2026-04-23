@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { AppNotification, EventType } from '../types';
+import { ShieldCheckIcon } from '../constants';
 import { BellIcon, CalendarIcon, MoreVerticalIcon, SlidersHorizontal, CheckCheck, Trash2, ChevronDown, ChevronUp, ExternalLink, Eye, CheckCircle, XCircle, Clock, Star } from 'lucide-react';
 import {
     subscribeToNotifications,
@@ -10,12 +11,14 @@ import {
 } from '../services/notificationService';
 import { updateEventStatus } from '../services/eventService';
 import { createNotification } from '../services/notificationService';
+import { getUserProfile } from '../services/userService';
+import type { User } from '../types';
 
 interface NotificationListProps {
     userId: string;
     events: EventType[];
     onEventSelect: (event: EventType, notifType: AppNotification['type']) => void;
-    onNavigateToAdmin?: (event: EventType | undefined, tab?: 'requests' | 'list') => void;
+    onNavigateToAdmin?: (event: EventType | undefined, tab?: 'requests' | 'list' | 'users', targetId?: string) => void;
     onEventUpdated?: (event: EventType) => void;
     isStaff?: boolean;
     isAdmin?: boolean;
@@ -53,6 +56,15 @@ const TypeIcon: React.FC<{ type: AppNotification['type']; isRead: boolean }> = (
             </div>
         );
     }
+    if (type === 'facilitator_request') {
+        return (
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isRead ? 'bg-gray-100 dark:bg-gray-700 text-gray-400' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </div>
+        );
+    }
     if (type === 'reminder' || type === 'event_upcoming' || type === 'event_tomorrow') {
         return <div className={base}><CalendarIcon className="w-5 h-5" /></div>;
     }
@@ -66,7 +78,7 @@ const NotificationActionPanel: React.FC<{
     isStaff: boolean;
     isAdmin: boolean;
     onViewEvent: () => void;
-    onGoToAdmin: (tab: 'requests' | 'list') => void;
+    onGoToAdmin: (tab: 'requests' | 'list' | 'users', targetId?: string) => void;
     onClose: () => void;
     onInlineApprove: (event: EventType, action: 'approve_review' | 'approve_publish' | 'reject', rejectReason?: string) => Promise<void>;
     isReviewedInSession?: boolean;
@@ -145,6 +157,24 @@ const NotificationActionPanel: React.FC<{
                         >
                             <ExternalLink className="w-3.5 h-3.5" />
                             Full Review
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Quick action for facilitator requests */}
+            {isAdmin && notif.type === 'facilitator_request' && (
+                <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Quick Actions</p>
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            onClick={() => {
+                                onGoToAdmin('users', notif.eventId);
+                            }} 
+                            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors"
+                        >
+                            <ShieldCheckIcon className="w-3.5 h-3.5" />
+                            Manage Users
                         </button>
                     </div>
                 </div>
@@ -316,9 +346,10 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
     }, [userId]);
 
     const filteredNotifications = useMemo(() => {
-        if (filter === 'unread') return notifications.filter(n => !n.isRead);
-        if (filter === 'read') return notifications.filter(n => n.isRead);
-        return notifications;
+        let result = notifications;
+        if (filter === 'unread') result = result.filter(n => !n.isRead);
+        if (filter === 'read') result = result.filter(n => n.isRead);
+        return result;
     }, [notifications, filter]);
 
     const groupedNotifications = useMemo(() => {
@@ -345,7 +376,10 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
     // Click on notification row → expand/collapse action panel
     const handleClick = async (notif: AppNotification) => {
         setOpenMenuId(null);
-        if (!notif.isRead) await markNotificationRead(notif.id);
+        // Virtual facilitator notifications are not in Firestore, skip markRead
+        if (!notif.id.startsWith('pending-facilitator-') && !notif.isRead) {
+            await markNotificationRead(notif.id);
+        }
         setExpandedId(prev => prev === notif.id ? null : notif.id);
     };
 
@@ -552,12 +586,15 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                                                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                                     </span>
                                                 )}
+                                                {/* Hide 3-dot menu for virtual facilitator notifications */}
+                                                {!notif.id.startsWith('pending-facilitator-') && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === notif.id ? null : notif.id); }}
                                                     className="p-1.5 text-gray-300 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                                                 >
                                                     <MoreVerticalIcon className="w-4 h-4" />
                                                 </button>
+                                                )}
                                             </div>
 
                                             {openMenuId === notif.id && (
@@ -580,8 +617,26 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                                             )}
                                         </div>
 
-                                        {/* Expanded Action Panel */}
-                                        {isExpanded && (
+                                        {/* Always-visible Quick Actions for facilitator requests */}
+                                        {notif.type === 'facilitator_request' && isAdmin && (
+                                            <NotificationActionPanel
+                                                notif={notif}
+                                                event={linkedEvent}
+                                                isStaff={isStaff}
+                                                isAdmin={isAdmin}
+                                                isReviewedInSession={false}
+                                                onViewEvent={() => {}}
+                                                onGoToAdmin={(tab, targetId) => {
+                                                    setExpandedId(null);
+                                                    if (onNavigateToAdmin) onNavigateToAdmin(linkedEvent, tab, targetId);
+                                                }}
+                                                onInlineApprove={handleInlineApprove}
+                                                onClose={() => {}}
+                                            />
+                                        )}
+
+                                        {/* Expanded Action Panel for other types */}
+                                        {isExpanded && notif.type !== 'facilitator_request' && (
                                             <NotificationActionPanel
                                                 notif={notif}
                                                 event={linkedEvent}
@@ -592,9 +647,9 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                                                     setExpandedId(null);
                                                     if (linkedEvent) onEventSelect(linkedEvent, notif.type);
                                                 }}
-                                                onGoToAdmin={(tab) => {
+                                                onGoToAdmin={(tab, targetId) => {
                                                     setExpandedId(null);
-                                                    if (onNavigateToAdmin) onNavigateToAdmin(linkedEvent, tab);
+                                                    if (onNavigateToAdmin) onNavigateToAdmin(linkedEvent, tab, targetId);
                                                 }}
                                                 onInlineApprove={handleInlineApprove}
                                                 onClose={() => setExpandedId(null)}

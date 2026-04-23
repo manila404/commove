@@ -315,6 +315,8 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         creatorUsername: currentUser?.username || undefined,
         status: (mode === 'draft' ? 'draft' : (isAdmin ? (isScheduled ? 'scheduled' : 'published') : 'pending')) as EventStatus,
         createdByAdmin: isAdmin,
+        createdBy: eventToEdit?.createdBy || currentUser.uid,
+        organizer: eventToEdit?.organizer || currentUser.name,
       };
 
       if (eventToEdit) {

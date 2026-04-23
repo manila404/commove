@@ -18,14 +18,17 @@ service cloud.firestore {
       return isAuthenticated() &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'facilitator'] ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'admin@commove.com'
         );
     }
 
     function isAdmin() {
       return isAuthenticated() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'admin@commove.com'
+        );
     }
 
     // ─────────────────────────────────────────
@@ -35,8 +38,13 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isStaff() || get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
       allow list: if isAuthenticated(); // Allow admin discovery for notifications
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isStaff();
-      allow delete: if isAdmin();
+      allow update: if (isOwner(userId) || isStaff()) && 
+        // Root Admin Protection: cannot change email or role for the master admin account
+        !(resource.data.email == 'admin@commove.com' && (
+          request.resource.data.email != 'admin@commove.com' || 
+          request.resource.data.role != 'admin'
+        ));
+      allow delete: if isAdmin() && resource.data.email != 'admin@commove.com';
     }
 
     // ─────────────────────────────────────────
@@ -84,7 +92,8 @@ service cloud.firestore {
       allow create: if isAuthenticated() && (
         isStaff() || 
         request.resource.data.userId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.role == 'admin'
+        get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.email == 'admin@commove.com'
       );
     }
 

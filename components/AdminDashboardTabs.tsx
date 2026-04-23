@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { EventType, User } from '../types';
 import { XMarkIcon } from '../constants';
@@ -36,6 +37,8 @@ interface AdminDashboardTabsProps {
     canManageUsers: boolean;
     initialTab?: 'analytics' | 'events' | 'users';
     onInitialTabConsumed?: () => void;
+    highlightUserId?: string;
+    onHighlightConsumed?: () => void;
 }
 
 const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({ 
@@ -43,7 +46,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     onSchedule, onPreviewEvent,
     filteredUsers, userSearchQuery, setUserSearchQuery, userFilter, setUserFilter,
     isLoadingUsers, userError, fetchUsers, handleRoleUpdate, onApproveFacilitator, onRejectFacilitator, onDeleteUser, canManageUsers,
-    initialTab, onInitialTabConsumed
+    initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed
 }) => {
     const [activeTab, setActiveTab] = useState<'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights'>('analytics');
     const [selectedDate, setSelectedDate] = useState<number>(new Date().getDate());
@@ -56,6 +59,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
     const [allFeedback, setAllFeedback] = useState<EventFeedback[]>([]);
     const [viewingFeedbackEvent, setViewingFeedbackEvent] = useState<EventType | null>(null);
+
+    // Image Modal State
+    const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
     React.useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -71,6 +77,29 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             onInitialTabConsumed?.();
         }
     }, [initialTab]);
+
+    // Handle highlighting and scrolling to a specific user
+    React.useEffect(() => {
+        if (highlightUserId && activeTab === 'users') {
+            // Give it a tiny bit of time for the tab content to render
+            const timer = setTimeout(() => {
+                const element = document.getElementById(`user-${highlightUserId}`);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Highlight pulse effect is handled via CSS classes in the render
+                    
+                    // Consume the highlight request after a delay
+                    setTimeout(() => {
+                        onHighlightConsumed?.();
+                    }, 3000);
+                } else {
+                    // If not found (maybe in a different filter?), clear it anyway to avoid infinite loops
+                    onHighlightConsumed?.();
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [highlightUserId, activeTab]);
 
     // ── Highlights state ──────────────────────────────────────────────────────
     const [highlightIds, setHighlightIds] = useState<string[]>([]);
@@ -918,7 +947,11 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     ];
 
     const renderUsers = () => {
-        const pendingFacilitators = users.filter(u => u.facilitatorRequestStatus === 'pending');
+        // Filter logic: Include those explicitly pending OR those with an ID URL but no role yet (fallback for sync issues)
+        const pendingFacilitators = users.filter(u => 
+            u.facilitatorRequestStatus === 'pending' || 
+            (u.role === 'user' && (u.idUrl || u.faceUrl || (u as any).facilitatorIdUrl) && u.facilitatorRequestStatus !== 'approved' && u.facilitatorRequestStatus !== 'rejected')
+        );
 
         return (
             <div className="mt-6 space-y-6">
@@ -927,7 +960,15 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Facilitator Requests</h3>
                         <div className="space-y-4">
                             {pendingFacilitators.map(user => (
-                                <div key={user.uid} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-blue-50 dark:border-blue-900/30 bg-blue-50/20 dark:bg-blue-900/10 rounded-xl gap-4">
+                                <div 
+                                    key={user.uid} 
+                                    id={`user-${user.uid}`}
+                                    className={`flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-xl gap-4 transition-all duration-500 ${
+                                        highlightUserId === user.uid 
+                                        ? 'border-blue-500 bg-blue-100/30 dark:bg-blue-900/40 ring-4 ring-blue-500/20 scale-[1.02] shadow-xl shadow-blue-500/10' 
+                                        : 'border-blue-50/50 dark:border-blue-900/20 bg-blue-50/20 dark:bg-blue-900/10'
+                                    }`}
+                                >
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
                                             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -939,16 +980,26 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     </div>
                                     
                                     <div className="flex gap-4 items-center">
-                                        {user.idUrl && (
+                                        {(user.idUrl || (user as any).facilitatorIdUrl) && (
                                             <div className="flex flex-col items-center">
                                                 <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase mb-1">Gov ID</span>
-                                                <img src={user.idUrl} alt="ID" className="w-16 h-10 object-cover rounded border border-gray-200 dark:border-gray-700" />
+                                                <img 
+                                                    src={user.idUrl || (user as any).facilitatorIdUrl} 
+                                                    alt="ID" 
+                                                    className="w-16 h-10 object-cover rounded border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity" 
+                                                    onClick={() => setSelectedImageUrl(user.idUrl || (user as any).facilitatorIdUrl || null)}
+                                                />
                                             </div>
                                         )}
                                         {user.faceUrl && (
                                             <div className="flex flex-col items-center">
                                                 <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase mb-1">Face Scan</span>
-                                                <img src={user.faceUrl} alt="Face" className="w-10 h-10 object-cover rounded-full border border-gray-200 dark:border-gray-700" />
+                                                <img 
+                                                    src={user.faceUrl} 
+                                                    alt="Face" 
+                                                    className="w-10 h-10 object-cover rounded-full border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity" 
+                                                    onClick={() => setSelectedImageUrl(user.faceUrl || null)}
+                                                />
                                             </div>
                                         )}
                                     </div>
@@ -967,6 +1018,23 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </div>
                 )}
 
+                {/* Image Modal */}
+                {selectedImageUrl && typeof document !== 'undefined' && createPortal(
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedImageUrl(null)}>
+                        <div className="relative max-w-xs w-full flex flex-col items-center justify-center" onClick={e => e.stopPropagation()}>
+                            <button 
+                                onClick={() => setSelectedImageUrl(null)}
+                                className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors"
+                            >
+                                <XMarkIcon className="w-8 h-8" />
+                            </button>
+                            <img src={selectedImageUrl} alt="Full Preview" className="w-full h-auto rounded-xl shadow-2xl" />
+                        </div>
+                    </div>,
+                    document.body
+                )}
+
+                {/* User Stats Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
                     <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Users by Role</h3>
@@ -1037,9 +1105,17 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     ) : (
                         <div className="space-y-4">
                             {filteredUsers.map(user => (
-                <div key={user.uid} className="bg-white dark:bg-gray-800/50 p-4 md:p-4 rounded-[15px] md:rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 group hover:shadow-md transition-all">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 shrink-0 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 overflow-hidden">
+                                <div 
+                                    key={user.uid} 
+                                    id={`user-${user.uid}`}
+                                    className={`p-4 md:p-4 rounded-[15px] md:rounded-2xl shadow-sm border flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 group hover:shadow-md transition-all duration-500 ${
+                                        highlightUserId === user.uid 
+                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-4 ring-blue-500/20 scale-[1.01]' 
+                                        : 'bg-white dark:bg-gray-800/50 border-gray-100 dark:border-gray-700/60'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 shrink-0 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 overflow-hidden">
                                             {user.avatarUrl ? (
                                                 <img src={user.avatarUrl || undefined} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                             ) : (
@@ -1073,7 +1149,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 </button>
                                                 {((user as any).facilitatorIdUrl || user.idUrl) && (
                                                     <button 
-                                                        onClick={() => window.open((user as any).facilitatorIdUrl || user.idUrl, '_blank')}
+                                                        onClick={() => setSelectedImageUrl((user as any).facilitatorIdUrl || user.idUrl || null)}
                                                         className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors border border-transparent hover:border-blue-200"
                                                         title="View Submitted ID"
                                                     >

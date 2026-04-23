@@ -10,8 +10,8 @@ interface PopularEventsProps {
 
 const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) => {
   // Get Sibuyas and Camp Sawi specifically to control order for user request
-  const sibuyas = events.find(e => e.name.toLowerCase().includes('sibuyas'));
-  const campSawi = events.find(e => e.name.toLowerCase().includes('camp sawi'));
+  const sibuyas = events.find(e => e.name?.toLowerCase().includes('sibuyas'));
+  const campSawi = events.find(e => e.name?.toLowerCase().includes('camp sawi'));
   
   // Reorder: Sibuyas (0), others (1-3), Camp Sawi (at the end/right)
   let middleEvents = events.filter(e => e.id !== sibuyas?.id && e.id !== campSawi?.id).slice(0, 1);

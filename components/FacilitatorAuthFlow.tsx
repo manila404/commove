@@ -12,8 +12,7 @@ interface FacilitatorAuthFlowProps {
     initialStep?: 'question' | 'login' | 'request' | 'success' | 'signup';
 }
 
-import { submitFacilitatorRequest, getAdmins } from '../services/userService';
-import { createNotification } from '../services/notificationService';
+import { submitFacilitatorRequest } from '../services/userService';
 import { useAlert } from '../contexts/AlertContext';
 
 const FacilitatorAuthFlow: React.FC<FacilitatorAuthFlowProps> = ({ currentUser, onAuthSuccess, onClose, initialStep = 'question' }) => {
@@ -122,20 +121,7 @@ const FacilitatorAuthFlow: React.FC<FacilitatorAuthFlowProps> = ({ currentUser, 
 
                                 try {
                                     await submitFacilitatorRequest(currentUser.uid, idUrl);
-                                    
-                                    // Notify Admins
-                                    const admins = await getAdmins();
-                                    
-                                    for (const admin of admins) {
-                                        await createNotification(
-                                            admin.uid,
-                                            'system',
-                                            'New Facilitator Request',
-                                            `${currentUser.name || currentUser.email} has submitted a Bacoor LGU ID for review.`,
-                                            undefined
-                                        );
-                                    }
-
+                                    // submitFacilitatorRequest already notifies all admins internally
                                     setStep('success');
                                 } catch (e) {
                                     showAlert("Error", "Failed to submit request. Please try again.", "error");

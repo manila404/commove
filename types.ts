@@ -137,6 +137,7 @@ export type NotificationType =
   | 'event_registration' // user registered for an event
   | 'event_created'      // facilitator created an event (notifies admin)
   | 'event_feedback'     // request for feedback after event ends
+  | 'facilitator_request' // user applied to be a facilitator
   | 'system';        // generic system message
 
 export interface AppNotification {

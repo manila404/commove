@@ -311,15 +311,21 @@ const App: React.FC = () => {
                             uid: firebaseUser.uid,
                             name: firebaseUser.displayName || 'User',
                             email: firebaseUser.email || '',
+                            avatarUrl: firebaseUser.photoURL || '',
                             role: 'user',
                             savedEventIds: [],
                             viewedEventIds: [],
                             reminders: {}
                         };
                     } else {
-                        // Ensure name and email are present even if missing in DB
+                        // Ensure name, email and avatar are present even if missing in DB
                         if (!profile.name) profile.name = firebaseUser.displayName || 'User';
                         if (!profile.email) profile.email = firebaseUser.email || '';
+                        
+                        // Priority: Prefer Firebase Auth photoURL if it exists (instant sync)
+                        if (firebaseUser.photoURL) {
+                            profile.avatarUrl = firebaseUser.photoURL;
+                        }
                     }
 
                     // Strict Role Enforcement
@@ -1565,8 +1571,8 @@ const App: React.FC = () => {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 px-1">
                                             {[
-                                                getDisplayEvents.find(e => e.name.toLowerCase().includes('sibuyas')),
-                                                getDisplayEvents.find(e => e.name.toLowerCase().includes('camp sawi'))
+                                                getDisplayEvents.find(e => e.name?.toLowerCase().includes('sibuyas')),
+                                                getDisplayEvents.find(e => e.name?.toLowerCase().includes('camp sawi'))
                                             ].filter(Boolean).map((event: any) => (
                                                 <button
                                                     key={event.id}
@@ -1776,10 +1782,10 @@ const App: React.FC = () => {
                                     isAdmin={currentUser.role === 'admin'}
                                     onEventSelect={(event, notifType) => handleOpenEvent(event, notifType)}
                                     onEventUpdated={handleEventUpdated}
-                                    onNavigateToAdmin={(event, tab) => {
+                                    onNavigateToAdmin={(event, tab, targetId) => {
                                         setActiveTab('feed');
                                         setTimeout(() => {
-                                            window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { event, tab } }));
+                                            window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { event, tab, targetId } }));
                                         }, 300);
                                     }}
                                 />

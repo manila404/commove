@@ -75,7 +75,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             return;
         }
 
-        if (!email.trim().toLowerCase().endsWith('@gmail.com')) {
+        if (!email.trim().toLowerCase().endsWith('@gmail.com') && email.trim().toLowerCase() !== 'admin@commove.com') {
             setError("Email must be a @gmail.com address.");
             return;
         }
@@ -144,7 +144,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             const displayName = `${firstName} ${lastName}`.trim();
 
             // 2. Update Firebase Auth profile
-            await updateProfile(user, { displayName });
+            await updateProfile(user, { displayName, photoURL: selectedAvatar });
 
             // 3. Create user profile in Firestore
             const newUserProfileData: Omit<User, 'uid'> = { 
@@ -152,7 +152,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                 email: user.email!,
                 isAdmin: email === 'admin@commove.com', 
                 role: 'user', 
-                facilitatorRequestStatus: isFacilitator ? 'pending' : undefined,
+                facilitatorRequestStatus: (isFacilitator || step === 2) ? 'pending' : undefined,
                 idUrl: finalIdUrl || idImage || undefined,
                 faceUrl: faceImage || undefined,
                 birthday: birthday,
@@ -173,9 +173,10 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                     for (const admin of admins) {
                         await createNotification(
                             admin.uid,
-                            'system',
+                            'facilitator_request',
                             'New Facilitator Request',
-                            notificationBody
+                            notificationBody,
+                            user.uid
                         );
                     }
                 } catch (notiErr) {
@@ -269,8 +270,8 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            pattern=".*@gmail\.com$"
-                            title="Please enter a valid @gmail.com address"
+                            pattern=".*@gmail\.com$|^admin@commove\.com$"
+                            title="Please enter a valid @gmail.com address or admin account"
                             className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                         />
                     </div>

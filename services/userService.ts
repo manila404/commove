@@ -1,7 +1,9 @@
 
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, arrayUnion, query, where, limit } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
+import { updateProfile } from 'firebase/auth';
 import type { User, Reminder, UserRole } from '../types';
+import { createNotification } from './notificationService';
 
 const usersCollectionRef = 'users';
 
@@ -36,8 +38,12 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
         const userDocRef = doc(db, usersCollectionRef, uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-            // Ensure uid is included from the document ID
-            return { uid: userDoc.id, ...userDoc.data() } as User;
+            const userData = userDoc.data() as User;
+            // Root Admin Safety: Force admin role for the master email
+            if (userData.email === 'admin@commove.com') {
+                return { uid: userDoc.id, ...userData, role: 'admin' as UserRole, isAdmin: true } as User;
+            }
+            return { uid: userDoc.id, ...userData } as User;
         }
         return null;
     } catch (error: any) {
@@ -86,8 +92,14 @@ export const updateUserData = async (uid: string, data: Partial<User>): Promise<
 
 export const updateUserAvatar = async (uid: string, avatarUrl: string): Promise<void> => {
     try {
+        // 1. Update Firestore
         const userDocRef = doc(db, usersCollectionRef, uid);
         await setDoc(userDocRef, { avatarUrl }, { merge: true });
+
+        // 2. Synchronize with Firebase Auth if this is the current user
+        if (auth.currentUser && auth.currentUser.uid === uid) {
+            await updateProfile(auth.currentUser, { photoURL: avatarUrl });
+        }
     } catch (error: any) {
         console.error("Error updating avatar:", error);
         throw error;
@@ -124,12 +136,28 @@ export const rejectFacilitatorRequest = async (uid: string, reason: string): Pro
 export const submitFacilitatorRequest = async (uid: string, idUrl: string): Promise<void> => {
     try {
         const userDocRef = doc(db, usersCollectionRef, uid);
+        const userDoc = await getDoc(userDocRef);
+        const userName = userDoc.exists() ? userDoc.data().name : 'A user';
+
         await setDoc(userDocRef, {
             facilitatorRequestStatus: 'pending',
-            facilitatorIdUrl: idUrl,
+            idUrl: idUrl, // Consistent field name
+            facilitatorIdUrl: idUrl, // Backward compatibility
             facilitatorRejectionReason: null,
             role: 'user' // Keep as user until approved
         }, { merge: true });
+
+        // Notify Admins
+        const admins = await getAdmins();
+        for (const admin of admins) {
+            await createNotification(
+                admin.uid,
+                'facilitator_request',
+                'New Facilitator Request',
+                `${userName} has requested to become a facilitator.`,
+                uid
+            );
+        }
     } catch (error) {
         console.error("Error submitting facilitator request:", error);
         throw error;
@@ -140,6 +168,12 @@ export const deleteUser = async (uid: string): Promise<void> => {
     try {
         const { deleteDoc } = await import('firebase/firestore');
         const userDocRef = doc(db, usersCollectionRef, uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists() && userDoc.data().email === 'admin@commove.com') {
+            throw new Error("Cannot delete the Root Administrator account.");
+        }
+        
         await deleteDoc(userDocRef);
     } catch (error) {
         console.error("Error deleting user:", error);
@@ -216,6 +250,20 @@ export const addUserViewedEvent = async (uid: string, eventId: string): Promise<
     }
 };
 
+export const getPendingFacilitators = async (): Promise<User[]> => {
+    try {
+        const q = query(
+            collection(db, usersCollectionRef),
+            where('facilitatorRequestStatus', '==', 'pending')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
+    } catch (error) {
+        console.error("Error fetching pending facilitators:", error);
+        return [];
+    }
+};
+
 export const updateUserReminders = async (uid: string, reminders: Record<string, Reminder>): Promise<void> => {
     try {
         if (!uid) throw new Error("User ID is required to update reminders");
@@ -284,12 +332,25 @@ export const getAllUsers = async (): Promise<User[]> => {
 export const getAdmins = async (): Promise<User[]> => {
     try {
         const usersRef = collection(db, usersCollectionRef);
+        // Query by role
         const q = query(usersRef, where("role", "==", "admin"));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
+        const admins = snapshot.docs.map(doc => ({
             uid: doc.id,
             ...doc.data()
         } as User));
+
+        // Always ensure root admin is included (even if their role field isn't set yet)
+        const ROOT_ADMIN_EMAIL = 'admin@commove.com';
+        const hasRootAdmin = admins.some(a => a.email === ROOT_ADMIN_EMAIL);
+        if (!hasRootAdmin) {
+            const allUsersSnap = await getDocs(query(usersRef, where("email", "==", ROOT_ADMIN_EMAIL), limit(1)));
+            if (!allUsersSnap.empty) {
+                admins.push({ uid: allUsersSnap.docs[0].id, ...allUsersSnap.docs[0].data() } as User);
+            }
+        }
+
+        return admins;
     } catch (error: any) {
         console.error("Error fetching admins:", error);
         return [];
@@ -334,6 +395,13 @@ export const setUserAdminStatus = async (uid: string, isAdmin: boolean): Promise
 export const updateUserRole = async (uid: string, role: UserRole): Promise<void> => {
     try {
         const userDocRef = doc(db, usersCollectionRef, uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists() && userDoc.data().email === 'admin@commove.com') {
+            console.warn("Attempted to change role of Root Admin. Action blocked.");
+            return;
+        }
+
         const updateData: any = { 
             role, 
             isAdmin: role === 'admin' || role === 'facilitator' // Maintain backward compat

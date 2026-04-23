@@ -66,13 +66,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 
     const handleAvatarChange = async (url: string) => {
         if (!user) return;
+        const oldAvatar = user.avatarUrl;
+        
+        // Optimistic Update: Change the avatar locally first
+        onUserUpdate({ ...user, avatarUrl: url });
+        setIsChangingAvatar(false);
+        
         setIsUpdating(true);
         try {
             await updateUserAvatar(user.uid, url);
-            onUserUpdate({ ...user, avatarUrl: url });
-            setIsChangingAvatar(false);
         } catch (error) {
             console.error("Failed to update avatar", error);
+            // Rollback on failure if the backend update failed
+            onUserUpdate({ ...user, avatarUrl: oldAvatar });
         } finally {
             setIsUpdating(false);
         }

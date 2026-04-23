@@ -134,11 +134,28 @@ const getTimeScore = (dateStr: string, startTime: string, isLive: boolean): numb
     // Immediate Priority: If it's happening right now, max score.
     if (isLive) return 1.0; 
 
-    const eventDate = new Date(`${dateStr}T${startTime}`);
+    // Handle AM/PM format if present by normalizing to a simple Date object
+    let eventDate: Date;
+    try {
+        // Try to parse the date and time. StartTime might be "HH:mm" or "h:mm AM"
+        // We'll try to build a string that Date can understand.
+        const datePart = dateStr.includes('T') ? dateStr : `${dateStr}T${startTime}`;
+        eventDate = new Date(datePart);
+        
+        // If it's still invalid (e.g. AM/PM caused failure), fallback to just the date
+        if (isNaN(eventDate.getTime())) {
+            eventDate = new Date(dateStr);
+        }
+    } catch (e) {
+        eventDate = new Date(dateStr);
+    }
+    
     const now = new Date();
     
     // Calculate difference in days
     const diffTime = eventDate.getTime() - now.getTime();
+    if (isNaN(diffTime)) return 0; // Final safeguard
+    
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     // Filter out past events immediately (sanity check, though UI likely filters them too)

@@ -99,6 +99,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
   const { showAlert, showConfirm } = useAlert();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'list' | 'create' | 'users' | 'requests'>('dashboard');
   const [requestedDashboardTab, setRequestedDashboardTab] = useState<'analytics' | 'events' | 'users' | undefined>(undefined);
+  const [targetId, setTargetId] = useState<string | undefined>(undefined);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userError, setUserError] = useState('');
@@ -130,11 +131,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
 
   useEffect(() => {
      const handleNavigate = (e: any) => {
-         const { event, tab } = e.detail as { event: EventType; tab?: 'requests' | 'list' };
+         const { event, tab, targetId } = e.detail as { event: EventType; tab?: 'requests' | 'list' | 'users'; targetId?: string };
          if (tab === 'list') {
              // Navigate to dashboard and open the Events sub-tab
              setActiveTab('dashboard');
              setRequestedDashboardTab('events');
+             setTargetId(undefined);
+         } else if (tab === 'users') {
+             // Navigate to dashboard and open the Users sub-tab
+             setActiveTab('dashboard');
+             setRequestedDashboardTab('users');
+             setTargetId(targetId);
          } else {
              // Navigate to dashboard and open the Events sub-tab (requests panel is inside Events)
              setActiveTab('dashboard');
@@ -691,6 +698,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             onPreviewEvent={(e) => setPreviewingEvent(e)}
             initialTab={requestedDashboardTab}
             onInitialTabConsumed={() => setRequestedDashboardTab(undefined)}
+            highlightUserId={targetId}
+            onHighlightConsumed={() => setTargetId(undefined)}
         />
       </div>
   );
