@@ -405,18 +405,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
 
   const handleApprove = async (event: EventType) => {
       try {
-          const nextStatus = currentUser.role === 'admin' ? 'published' : 'reviewed';
-          const msg = currentUser.role === 'admin' ? "Event Published!" : "Event Forwarded to Admin!";
+          let nextStatus: 'published' | 'reviewed' | 'scheduled' = currentUser.role === 'admin' ? 'published' : 'reviewed';
+          if (currentUser.role === 'admin' && event.publishAt && event.publishAt > Date.now()) {
+              nextStatus = 'scheduled';
+          }
+          const msg = currentUser.role === 'admin' 
+              ? (nextStatus === 'scheduled' ? "Event Scheduled!" : "Event Published!") 
+              : "Event Forwarded to Admin!";
           
           await updateEventStatus(event.id, nextStatus);
           onEventUpdated({ ...event, status: nextStatus, rejectionReason: undefined });
           
           if (event.createdBy) {
-              const isApproved = nextStatus === 'published';
-              const statusLabel = isApproved ? 'Approved & Published' : 'Reviewed';
-              const body = isApproved 
-                  ? `Your created event "${event.name}" has been approved by the admin.`
-                  : `Your request for ${event.name} has been reviewed by the Facilitator and forwarded to the Admin.`;
+              const isApproved = nextStatus === 'published' || nextStatus === 'scheduled';
+              const statusLabel = nextStatus === 'scheduled' ? 'Approved & Scheduled' : (nextStatus === 'published' ? 'Approved & Published' : 'Reviewed');
+              const body = nextStatus === 'scheduled'
+                  ? `Your event "${event.name}" has been approved and scheduled for publication.`
+                  : (nextStatus === 'published' 
+                      ? `Your created event "${event.name}" has been approved by the admin.`
+                      : `Your request for ${event.name} has been reviewed by the Facilitator and forwarded to the Admin.`);
                   
               createNotification(
                   event.createdBy,
@@ -431,8 +438,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                   createNotification(
                       currentUser.uid,
                       'event_approved',
-                      'Event Published',
-                      'You have published an facilitator event.',
+                      nextStatus === 'scheduled' ? 'Event Scheduled' : 'Event Published',
+                      nextStatus === 'scheduled' ? 'You have scheduled a facilitator event.' : 'You have published an facilitator event.',
                       event.id
                   ).catch(e => console.error("Could not notify admin on approval", e));
               }

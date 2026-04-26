@@ -412,18 +412,21 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
     const handleInlineApprove = async (event: EventType, action: 'approve_review' | 'approve_publish' | 'reject', rejectReason?: string) => {
         try {
             if (action === 'approve_publish') {
-                await updateEventStatus(event.id, 'published');
+                const nextStatus = (event.publishAt && event.publishAt > Date.now()) ? 'scheduled' : 'published';
+                await updateEventStatus(event.id, nextStatus);
                 if (event.createdBy) {
                     await createNotification(
                         event.createdBy,
                         'event_approved',
-                        'Event Approved',
-                        `Your created event "${event.name}" has been approved by the admin.`,
+                        nextStatus === 'scheduled' ? 'Event Scheduled' : 'Event Approved',
+                        nextStatus === 'scheduled' 
+                            ? `Your event "${event.name}" has been approved by the admin and scheduled for publication.`
+                            : `Your created event "${event.name}" has been approved by the admin.`,
                         event.id
                     );
                 }
                 // Notify Admin
-                await createNotification(userId, 'event_approved', 'Event Published', 'You have published an facilitator event.', event.id);
+                await createNotification(userId, 'event_approved', nextStatus === 'scheduled' ? 'Event Scheduled' : 'Event Published', nextStatus === 'scheduled' ? 'You have scheduled a facilitator event.' : 'You have published an facilitator event.', event.id);
             } else if (action === 'approve_review') {
                 // Reverted: No longer updates database status to 'reviewed'
                 // keeping it pending but restricting the button locally
