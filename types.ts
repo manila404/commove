@@ -120,6 +120,8 @@ export interface Registration {
   avatarUrl?: string;
   status: RegistrationStatus;
   submittedAt: number;
+  age?: number;
+  gender?: string;
 }
 
 export interface Reminder {

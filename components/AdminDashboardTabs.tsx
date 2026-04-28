@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { EventType, User } from '../types';
 import { XMarkIcon } from '../constants';
-import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon } from 'lucide-react';
+import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon } from 'lucide-react';
 import AdminReports from './AdminReports';
 import { getHighlights, setHighlights } from '../services/eventService';
 import { fetchAllFeedback } from '../services/feedbackService';
@@ -39,6 +39,8 @@ interface AdminDashboardTabsProps {
     onInitialTabConsumed?: () => void;
     highlightUserId?: string;
     onHighlightConsumed?: () => void;
+    onManageRegistrations?: (event: EventType) => void;
+    currentUser?: import('../types').User;
 }
 
 const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({ 
@@ -46,7 +48,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     onSchedule, onPreviewEvent,
     filteredUsers, userSearchQuery, setUserSearchQuery, userFilter, setUserFilter,
     isLoadingUsers, userError, fetchUsers, handleRoleUpdate, onApproveFacilitator, onRejectFacilitator, onDeleteUser, canManageUsers,
-    initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed
+    initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed, onManageRegistrations, currentUser
 }) => {
     const [activeTab, setActiveTab] = useState<'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights'>('analytics');
     const [selectedDate, setSelectedDate] = useState<number>(new Date().getDate());
@@ -56,6 +58,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [eventFilter, setEventFilter] = useState<'all' | 'pending' | 'scheduled' | 'published'>('all');
     const [eventSortOrder, setEventSortOrder] = useState<'asc' | 'desc'>('asc');
     const [showSortMenu, setShowSortMenu] = useState(false);
+    const [eventVisibilityFilter, setEventVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
 
     const [allFeedback, setAllFeedback] = useState<EventFeedback[]>([]);
     const [viewingFeedbackEvent, setViewingFeedbackEvent] = useState<EventType | null>(null);
@@ -696,15 +699,103 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         </div>
     );
 
-    const renderEvents = () => (
+    const renderEvents = () => {
+        const visibilityFilteredEvents = eventVisibilityFilter === 'all' ? events
+            : eventVisibilityFilter === 'public' ? events.filter(e => !e.isPrivate)
+            : events.filter(e => !!e.isPrivate);
+        const visibilityFilteredPending = eventVisibilityFilter === 'all' ? pendingRequests
+            : eventVisibilityFilter === 'public' ? pendingRequests.filter(e => !e.isPrivate)
+            : pendingRequests.filter(e => !!e.isPrivate);
+
+        return (
         <div className="mt-6 space-y-6">
+            {/* Event Visibility Tabs (All / Public / Private) */}
+            <div>
+                <div className="flex bg-gray-100 dark:bg-gray-800 rounded-2xl p-1 shadow-inner">
+                    {[
+                        { key: 'all' as const, label: 'All Events', icon: Globe },
+                        { key: 'public' as const, label: 'Public', icon: Eye },
+                        { key: 'private' as const, label: 'Private', icon: Lock },
+                    ].map(tab => {
+                        const isActive = eventVisibilityFilter === tab.key;
+                        const Icon = tab.icon;
+                        return (
+                            <button
+                                key={tab.key}
+                                onClick={() => setEventVisibilityFilter(tab.key)}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-bold transition-all duration-200 ${
+                                    isActive
+                                        ? 'bg-white dark:bg-gray-700 text-purple-700 dark:text-purple-300 shadow-md'
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                }`}
+                            >
+                                <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* My Private Events — Creator Management Panel */}
+            {eventVisibilityFilter === 'private' && currentUser && onManageRegistrations && (() => {
+                const myPrivateEvents = events.filter(e =>
+                    e.isPrivate && e.createdBy === currentUser.uid
+                );
+                if (myPrivateEvents.length === 0) return null;
+                return (
+                    <div className="animate-fade-in-up">
+                        <div className="bg-gradient-to-br from-purple-50 to-orange-50 dark:from-purple-900/20 dark:to-orange-900/20 rounded-2xl border border-purple-100 dark:border-purple-800/40 overflow-hidden shadow-sm">
+                            <div className="px-4 py-3 flex items-center gap-3 border-b border-purple-100/60 dark:border-purple-800/30">
+                                <div className="w-8 h-8 bg-purple-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-purple-500/30">
+                                    <Shield className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-gray-900 dark:text-white">My Private Events</h3>
+                                    <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Manage registrations for your events</p>
+                                </div>
+                                <span className="ml-auto text-[10px] font-black text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40 px-2 py-1 rounded-full">
+                                    {myPrivateEvents.length} event{myPrivateEvents.length !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                            <div className="divide-y divide-purple-100/40 dark:divide-purple-800/20">
+                                {myPrivateEvents.map(evt => (
+                                    <div key={evt.id} className="px-4 py-3 flex items-center gap-3 hover:bg-white/60 dark:hover:bg-gray-800/30 transition-colors">
+                                        {evt.imageUrl && (
+                                            <img src={evt.imageUrl} alt={evt.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-purple-200/50 dark:border-purple-700/50 shadow-sm" />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{evt.name}</p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{evt.date} · {evt.startTime}</span>
+                                                {evt.maxParticipants != null && (
+                                                    <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 flex items-center gap-0.5">
+                                                        <UsersIcon className="w-2.5 h-2.5" />
+                                                        {evt.maxParticipants} slots
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => onManageRegistrations(evt)}
+                                            className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded-xl shadow-md shadow-purple-500/20 transition-all active:scale-95 whitespace-nowrap"
+                                        >
+                                            Manage →
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
             <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
                 <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Pending Approvals</h3>
-                {pendingRequests.length === 0 ? (
+                {visibilityFilteredPending.length === 0 ? (
                     <p className="text-gray-500 dark:text-gray-400">No pending approvals.</p>
                 ) : (
                     <div className="space-y-4">
-                        {pendingRequests.map(event => (
+                        {visibilityFilteredPending.map(event => (
                             <div key={event.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-gray-100 dark:border-gray-800/60 rounded-xl bg-gray-50/50 dark:bg-gray-800/30 gap-4">
                                 <div className="flex items-center gap-4 min-w-0">
                                     <img src={event.imageUrl || undefined} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
@@ -813,7 +904,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </tr>
                     </thead>
                     <tbody>
-                                {events
+                                {visibilityFilteredEvents
                                     .filter(event => eventFilter === 'all' ? true : event.status === eventFilter)
                                     .sort((a, b) => {
                                         const nameA = a.name.toLowerCase();
@@ -932,6 +1023,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             </div>
         </div>
     );
+    };
 
     const usersByRole = [
         { name: 'Admins', users: users.filter(u => u.role === 'admin').length },

@@ -20,6 +20,7 @@ interface NotificationListProps {
     onEventSelect: (event: EventType, notifType: AppNotification['type']) => void;
     onNavigateToAdmin?: (event: EventType | undefined, tab?: 'requests' | 'list' | 'users', targetId?: string) => void;
     onEventUpdated?: (event: EventType) => void;
+    onManageRegistrations?: (event: EventType) => void;
     isStaff?: boolean;
     isAdmin?: boolean;
 }
@@ -65,6 +66,15 @@ const TypeIcon: React.FC<{ type: AppNotification['type']; isRead: boolean }> = (
             </div>
         );
     }
+    if (type === 'event_registration') {
+        return (
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isRead ? 'bg-gray-100 dark:bg-gray-700 text-gray-400' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </div>
+        );
+    }
     if (type === 'reminder' || type === 'event_upcoming' || type === 'event_tomorrow') {
         return <div className={base}><CalendarIcon className="w-5 h-5" /></div>;
     }
@@ -82,7 +92,8 @@ const NotificationActionPanel: React.FC<{
     onClose: () => void;
     onInlineApprove: (event: EventType, action: 'approve_review' | 'approve_publish' | 'reject', rejectReason?: string) => Promise<void>;
     isReviewedInSession?: boolean;
-}> = ({ notif, event, isStaff, isAdmin, onViewEvent, onGoToAdmin, onClose, onInlineApprove, isReviewedInSession }) => {
+    onManageRegistrations?: (event: EventType) => void;
+}> = ({ notif, event, isStaff, isAdmin, onViewEvent, onGoToAdmin, onClose, onInlineApprove, isReviewedInSession, onManageRegistrations }) => {
     const [showRejectInput, setShowRejectInput] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
     const [isActioning, setIsActioning] = useState(false);
@@ -283,6 +294,31 @@ const NotificationActionPanel: React.FC<{
                         </button>
                     )}
 
+                    {/* Registration Management — event creator can approve/reject directly */}
+                    {isStaff && notif.type === 'event_registration' && event && onManageRegistrations && (
+                        <button
+                            onClick={() => {
+                                onManageRegistrations(event);
+                                onClose();
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors"
+                        >
+                            <ShieldCheckIcon className="w-3.5 h-3.5" />
+                            Manage Registrations
+                        </button>
+                    )}
+
+                    {/* Also show View Event for registration notifications so creator can see the event */}
+                    {isStaff && notif.type === 'event_registration' && event && (
+                        <button
+                            onClick={() => onViewEvent()}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg transition-colors"
+                        >
+                            <Eye className="w-3.5 h-3.5" />
+                            View Event
+                        </button>
+                    )}
+
                     {/* Reminder / upcoming events */}
                     {(notif.type === 'reminder' || notif.type === 'event_upcoming' || notif.type === 'event_tomorrow') && event && (
                         <button
@@ -315,7 +351,7 @@ const NotificationActionPanel: React.FC<{
                     )}
 
                     {/* Generic fallback if event exists but no specific handler */}
-                    {event && !['event_created', 'event_approved', 'event_rejected', 'reminder', 'event_upcoming', 'event_tomorrow', 'event_feedback', 'system'].includes(notif.type) && (
+                    {event && !['event_created', 'event_approved', 'event_rejected', 'event_registration', 'reminder', 'event_upcoming', 'event_tomorrow', 'event_feedback', 'system'].includes(notif.type) && (
                         <button
                             onClick={() => onViewEvent()}
                             className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-lg transition-colors"
@@ -330,7 +366,7 @@ const NotificationActionPanel: React.FC<{
     );
 };
 
-const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onEventSelect, onNavigateToAdmin, onEventUpdated, isStaff = false, isAdmin = false }) => {
+const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onEventSelect, onNavigateToAdmin, onEventUpdated, onManageRegistrations, isStaff = false, isAdmin = false }) => {
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
     const [filter, setFilter] = useState<FilterStatus>('all');
     const [showFilters, setShowFilters] = useState(false);
@@ -635,6 +671,7 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                                                 }}
                                                 onInlineApprove={handleInlineApprove}
                                                 onClose={() => {}}
+                                                onManageRegistrations={onManageRegistrations}
                                             />
                                         )}
 
@@ -656,6 +693,7 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                                                 }}
                                                 onInlineApprove={handleInlineApprove}
                                                 onClose={() => setExpandedId(null)}
+                                                onManageRegistrations={onManageRegistrations}
                                             />
                                         )}
                                     </div>

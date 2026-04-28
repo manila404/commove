@@ -6,7 +6,7 @@ import InteractiveMap from './InteractiveMap';
 import { useAlert } from '../contexts/AlertContext';
 import { usePermissions } from '../contexts/PermissionContext';
 import { updateUserParticipation } from '../services/userService';
-import { submitRegistration, fetchUserRegistrations } from '../services/eventService';
+import { submitRegistration, fetchUserRegistrations, subscribeToEventRegistrations } from '../services/eventService';
 import { createNotification } from '../services/notificationService';
 import type { Registration } from '../types';
 import Spinner from './Spinner';
@@ -68,23 +68,33 @@ const EventModal: React.FC<EventModalProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const [totalApprovedSlots, setTotalApprovedSlots] = useState(0);
+
   React.useEffect(() => {
-    const loadReg = async () => {
-      if (currentUser && event.isPrivate) {
-        setIsLoadingReg(true);
-        const regs = await fetchUserRegistrations(currentUser.uid);
-        const eventReg = regs.find(r => r.eventId === event.id);
-        if (eventReg) setUserReg(eventReg);
+    if (event.isPrivate) {
+      setIsLoadingReg(true);
+      const unsubscribe = subscribeToEventRegistrations(event.id, (regs) => {
+        if (currentUser) {
+          const eventReg = regs.find(r => r.userId === currentUser.uid);
+          setUserReg(eventReg || null);
+        }
+        
+        // Count approved slots taken by participants
+        const approvedCount = regs.filter(r => r.status === 'approved').length;
+        setTotalApprovedSlots(approvedCount);
         setIsLoadingReg(false);
-      }
-    };
-    loadReg();
-  }, [currentUser, event.id, event.isPrivate]);
+      });
+      
+      return () => unsubscribe();
+    }
+  }, [event.id, event.isPrivate, currentUser?.uid]);
 
   const isInterested = currentUser?.interestedEventIds?.includes(event.id);
   const isCheckedIn = currentUser?.checkedInEventIds?.includes(event.id);
   const isResident = currentUser?.role === 'user';
   const isFacilitatorOrAdmin = currentUser?.role === 'facilitator' || currentUser?.role === 'admin';
+  // True when all slots are filled — blocks new registration submissions
+  const isEventFull = event.maxParticipants != null && totalApprovedSlots >= event.maxParticipants;
 
   const reminderOptions = [
       { value: '1-minute', label: '1 minute before (Test)' },
@@ -354,6 +364,16 @@ const EventModal: React.FC<EventModalProps> = ({
             </p>
           </div>
 
+          {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
+            <div className={`p-3 rounded-xl border ${event.maxParticipants - totalApprovedSlots <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
+              <p className="font-bold text-sm">
+                {event.maxParticipants - totalApprovedSlots <= 0 
+                  ? 'Event is Full' 
+                  : `${event.maxParticipants - totalApprovedSlots} slot${event.maxParticipants - totalApprovedSlots !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
+              </p>
+            </div>
+          )}
+
           {isResident ? (
             // RESIDENT VIEW
             event.isPrivate ? (
@@ -361,23 +381,65 @@ const EventModal: React.FC<EventModalProps> = ({
                 {isLoadingReg ? (
                   <div className="flex justify-center p-4"><Spinner /></div>
                 ) : userReg ? (
+                  // User already has a registration — show their status
                   <div className={`p-6 rounded-2xl text-center shadow-sm border-2 ${
-                    userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800' :
-                    userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800' :
-                    'bg-yellow-50 border-yellow-200 text-yellow-800'
+                    userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
+                    userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
+                    'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
                   }`}>
-                    <p className="text-lg font-black mb-2 tracking-tight">Status: {userReg.status.toUpperCase()}</p>
-                    {userReg.status === 'pending' && <p className="text-sm font-medium opacity-80">Your request is waiting for approval from the organizer.</p>}
+                    {userReg.status === 'pending' && (
+                      <>
+                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-yellow-100 dark:bg-yellow-900/40 flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <p className="text-base font-black mb-1 tracking-tight">Request Pending</p>
+                        <p className="text-sm font-medium opacity-80">Your request is pending approval. The organizer will review it shortly.</p>
+                      </>
+                    )}
                     {userReg.status === 'approved' && (
-                      <button 
-                        onClick={handleCheckIn}
-                        className="mt-4 w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
-                      >
-                        {isCheckedIn ? '✓ Already Checked-In' : 'Check-In to Event'}
-                      </button>
+                      <>
+                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <p className="text-base font-black mb-1 tracking-tight">You are already registered!</p>
+                        <p className="text-sm font-medium opacity-80 mb-3">A slot has been assigned to you for this event.</p>
+                        <button 
+                          onClick={handleCheckIn}
+                          className="w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
+                        >
+                          {isCheckedIn ? '✓ Already Checked-In' : 'Check-In to Event'}
+                        </button>
+                      </>
+                    )}
+                    {userReg.status === 'rejected' && (
+                      <>
+                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <p className="text-base font-black mb-1 tracking-tight">Registration Not Approved</p>
+                        <p className="text-sm font-medium opacity-80">Your registration for this event was not approved at this time.</p>
+                      </>
                     )}
                   </div>
+                ) : isEventFull ? (
+                  // Event is full — no more registrations accepted
+                  <div className="p-6 rounded-2xl text-center bg-gray-50 dark:bg-gray-800/50 border-2 border-gray-200 dark:border-gray-700">
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                    <p className="text-base font-black text-gray-700 dark:text-gray-300 mb-1">Event is Full</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">All available slots have been filled. Registration is now closed.</p>
+                  </div>
                 ) : (
+                  // No existing registration and slots available — show the form
                   <div className="space-y-6">
                     <div className="text-center">
                       <p className="text-purple-900 dark:text-purple-100 font-bold text-lg mb-1">Request to Join</p>
@@ -513,18 +575,32 @@ const EventModal: React.FC<EventModalProps> = ({
     </div>
   );
 
+  const calculateAge = (birthday: string) => {
+    const birthDate = new Date(birthday);
+    const difference = Date.now() - birthDate.getTime();
+    const ageDate = new Date(difference);
+    return Math.abs(ageDate.getUTCFullYear() - 1970);
+  };
+
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
     setIsRegistering(true);
     try {
+      let age;
+      if (currentUser.birthday) {
+          age = calculateAge(currentUser.birthday);
+      }
+      
       const newReg = await submitRegistration({
         eventId: event.id,
         userId: currentUser.uid,
         name: regData.name,
         email: regData.email,
         phoneNumber: regData.phoneNumber,
-        status: 'pending'
+        status: 'pending',
+        age: age,
+        gender: currentUser.sex || 'Not specified'
       });
       setUserReg(newReg);
       showAlert("Registration Submitted", "Your registration is pending approval.", "success");
@@ -539,8 +615,8 @@ const EventModal: React.FC<EventModalProps> = ({
           event.id
         );
       }
-    } catch (error) {
-      showAlert("Registration Failed", "Could not submit registration.", "error");
+    } catch (error: any) {
+      showAlert("Registration Failed", error.message || "Could not submit registration.", "error");
     } finally {
       setIsRegistering(false);
     }
@@ -624,41 +700,79 @@ const EventModal: React.FC<EventModalProps> = ({
         <p className={`text-xs font-bold uppercase tracking-widest ${event.isPrivate ? 'text-orange-500' : 'text-purple-600'}`}>
           {event.isPrivate ? 'Private Event • Registration Required' : 'Public Event • Anyone Can Attend'}
         </p>
+
+        {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
+          <div className={`p-2.5 rounded-xl border ${event.maxParticipants - totalApprovedSlots <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
+            <p className="font-bold text-sm">
+              {event.maxParticipants - totalApprovedSlots <= 0 
+                ? 'Event is Full' 
+                : `${event.maxParticipants - totalApprovedSlots} slot${event.maxParticipants - totalApprovedSlots !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
+            </p>
+          </div>
+        )}
         
         {isResident ? (
           // RESIDENT VIEW
           event.isPrivate ? (
-            <div className="p-6 bg-purple-50 dark:bg-purple-900/20 rounded-3xl border border-purple-100 dark:border-purple-800">
+            <div className="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-3xl border border-purple-100 dark:border-purple-800">
               {isLoadingReg ? (
                 <div className="flex justify-center p-4"><Spinner /></div>
               ) : userReg ? (
+                // User already has a registration — show their current status
                 <div className={`p-4 rounded-2xl text-center shadow-sm border ${
-                  userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800' :
-                  userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800' :
-                  'bg-yellow-50 border-yellow-200 text-yellow-800'
+                  userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
+                  userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
+                  'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
                 }`}>
-                  <p className="font-bold mb-1 tracking-tight">Status: {userReg.status.toUpperCase()}</p>
-                  {userReg.status === 'pending' && <p className="text-xs font-medium opacity-80">Waiting for organizer approval.</p>}
+                  {userReg.status === 'pending' && (
+                    <>
+                      <p className="font-black mb-1">Request Pending</p>
+                      <p className="text-xs font-medium opacity-80">Your request is pending approval from the organizer.</p>
+                    </>
+                  )}
                   {userReg.status === 'approved' && (
-                    <button 
-                      onClick={handleCheckIn}
-                      className="mt-3 w-full py-2.5 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
-                    >
-                      {isCheckedIn ? '✓ Checked-In' : 'Check-In Now'}
-                    </button>
+                    <>
+                      <p className="font-black mb-1">You are already registered!</p>
+                      <p className="text-xs font-medium opacity-80 mb-3">A slot has been assigned to you for this event.</p>
+                      <button 
+                        onClick={handleCheckIn}
+                        className="w-full py-2.5 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
+                      >
+                        {isCheckedIn ? '✓ Checked-In' : 'Check-In Now'}
+                      </button>
+                    </>
+                  )}
+                  {userReg.status === 'rejected' && (
+                    <>
+                      <p className="font-black mb-1">Registration Not Approved</p>
+                      <p className="text-xs font-medium opacity-80">Your registration was not approved at this time.</p>
+                    </>
                   )}
                 </div>
+              ) : isEventFull ? (
+                // Event is full — block new registrations
+                <div className="p-4 rounded-2xl text-center bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                  <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <p className="font-black text-gray-700 dark:text-gray-300 text-sm mb-1">Event is Full</p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">All available slots have been filled. Registration is now closed.</p>
+                </div>
               ) : (
+                // No registration yet and slots available — show the form
                 <form onSubmit={handleRegisterSubmit} className="space-y-3">
+                  <p className="text-center text-sm font-bold text-purple-800 dark:text-purple-200 mb-1">Request to Attend</p>
                   <input 
                     type="text" placeholder="Full Name" required
                     value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})}
                     className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-purple-500 outline-none transition-all"
                   />
                   <input 
-                    type="email" placeholder="Email Address" required
-                    value={regData.email} onChange={e => setRegData({...regData, email: e.target.value})}
-                    className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-purple-500 outline-none transition-all"
+                    type="email" placeholder="Email Address" required readOnly
+                    value={regData.email}
+                    className="w-full p-3 text-sm border-2 border-gray-100 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-800 shadow-sm outline-none cursor-not-allowed opacity-70"
                   />
                   <input 
                     type="tel" placeholder="Phone Number (Optional)"
@@ -669,7 +783,7 @@ const EventModal: React.FC<EventModalProps> = ({
                     type="submit" disabled={isRegistering || !currentUser}
                     className="w-full py-3 bg-purple-600 text-white font-black rounded-2xl shadow-xl shadow-purple-500/20 hover:bg-purple-700 disabled:opacity-50 transition-all active:scale-95"
                   >
-                    {isRegistering ? 'Submiting Request...' : 'Request to Attend'}
+                    {isRegistering ? 'Submitting Request...' : 'Request to Attend'}
                   </button>
                 </form>
               )}

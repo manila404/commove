@@ -465,13 +465,13 @@ const App: React.FC = () => {
                                     event.id
                                 ).catch(console.error);
 
-                                // Notify the facilitator who created it (if different from admin)
-                                if (event.createdBy && event.createdBy !== currentUser.uid) {
+                                // Notify the creator (facilitator or admin) that their event is now live
+                                if (event.createdBy) {
                                     createNotification(
                                         event.createdBy,
                                         'event_approved',
-                                        '🎉 Your Event is Now Live!',
-                                        `Your scheduled event "${event.name}" has been published and is now visible to all residents.`,
+                                        '🎉 Your Scheduled Event is Now Live!',
+                                        `Your scheduled event "${event.name}" has been successfully published and is now visible to the public.`,
                                         event.id
                                     ).catch(console.error);
                                 }
@@ -1321,7 +1321,7 @@ const App: React.FC = () => {
         } else {
             setPinnedEventIds([]);
         }
-    }, [getDisplayEvents.length, searchQuery, selectedCategory, selectedDateFilter, selectedDateFilter]);
+    }, [getDisplayEvents.length, searchQuery, selectedCategory, selectedDateFilter]);
 
     // 8. Final Display: Map reactive events to the pinned order
     const finalDisplayEvents = useMemo(() => {
@@ -1722,6 +1722,7 @@ const App: React.FC = () => {
                                 onEventUpdated={handleEventUpdated}
                                 onEventDeleted={handleEventDeleted}
                                 onClose={handleCloseAllModals}
+                                onManageRegistrations={handleManageRegistrations}
                             />
                         </div>
                     )}
@@ -1788,6 +1789,7 @@ const App: React.FC = () => {
                                             window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { event, tab, targetId } }));
                                         }, 300);
                                     }}
+                                    onManageRegistrations={handleManageRegistrations}
                                 />
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-64 text-center px-4">

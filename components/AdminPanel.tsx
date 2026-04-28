@@ -75,6 +75,7 @@ interface AdminPanelProps {
   onEventUpdated: (event: EventType) => void;
   onEventDeleted: (eventId: string) => Promise<boolean>;
   onClose: () => void;
+  onManageRegistrations?: (event: EventType) => void;
 }
 
 const PESO_REQUIREMENTS = [
@@ -95,7 +96,7 @@ const DEFAULT_REQUIREMENTS = [
     { key: 'businessPermitUrl', label: 'Business Permit' },
 ];
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCreated, onEventUpdated, onEventDeleted, onClose }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCreated, onEventUpdated, onEventDeleted, onClose, onManageRegistrations }) => {
   const { showAlert, showConfirm } = useAlert();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'list' | 'create' | 'users' | 'requests'>('dashboard');
   const [requestedDashboardTab, setRequestedDashboardTab] = useState<'analytics' | 'events' | 'users' | undefined>(undefined);
@@ -707,6 +708,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             onInitialTabConsumed={() => setRequestedDashboardTab(undefined)}
             highlightUserId={targetId}
             onHighlightConsumed={() => setTargetId(undefined)}
+            onManageRegistrations={onManageRegistrations}
+            currentUser={currentUser}
         />
       </div>
   );

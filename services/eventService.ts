@@ -195,6 +195,14 @@ export const updateEventSeries = async (groupId: string, fromDate: string, updat
 export const submitRegistration = async (registrationData: Omit<Registration, 'id' | 'submittedAt'>): Promise<Registration> => {
     try {
         const sanitizedData = sanitizeData(registrationData);
+        
+        // Prevent duplicate registrations
+        const q = query(registrationsCollectionRef, where("eventId", "==", sanitizedData.eventId), where("userId", "==", sanitizedData.userId));
+        const existing = await getDocs(q);
+        if (!existing.empty) {
+            throw new Error("You have already registered for this event.");
+        }
+        
         const submittedAt = Date.now();
         const docRef = await addDoc(registrationsCollectionRef, {
             ...sanitizedData,
@@ -223,6 +231,22 @@ export const fetchRegistrationsForEvent = async (eventId: string): Promise<Regis
         console.error("Error fetching registrations for event:", eventId, error);
         return [];
     }
+};
+
+import { onSnapshot } from 'firebase/firestore';
+
+export const subscribeToEventRegistrations = (eventId: string, callback: (regs: Registration[]) => void) => {
+    const q = query(registrationsCollectionRef, where("eventId", "==", eventId));
+    return onSnapshot(q, (snapshot) => {
+        const regs = snapshot.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id
+        })) as Registration[];
+        callback(regs);
+    }, (error) => {
+        console.error("Error subscribing to event registrations:", error);
+        callback([]);
+    });
 };
 
 export const updateRegistrationStatus = async (registrationId: string, status: RegistrationStatus): Promise<void> => {
