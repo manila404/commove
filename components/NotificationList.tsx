@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { AppNotification, EventType } from '../types';
 import { ShieldCheckIcon } from '../constants';
-import { BellIcon, CalendarIcon, MoreVerticalIcon, SlidersHorizontal, CheckCheck, Trash2, ChevronDown, ChevronUp, ExternalLink, Eye, CheckCircle, XCircle, Clock, Star } from 'lucide-react';
+import { BellIcon, CalendarIcon, MoreVerticalIcon, SlidersHorizontal, CheckCheck, Trash2, ChevronDown, ChevronUp, ExternalLink, Eye, CheckCircle, XCircle, Clock, Star, Zap } from 'lucide-react';
 import {
     subscribeToNotifications,
     markNotificationRead,
@@ -543,7 +543,18 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
         }
     };
 
-    if (notifications.length === 0) {
+    // Check if any events are currently ongoing so we can show them even with zero notifications
+    const hasOngoingEvents = events.some(e => {
+        if (e.status !== 'published' && e.status !== 'scheduled') return false;
+        try {
+            const now = Date.now();
+            const start = new Date(`${e.date}T${e.startTime}`).getTime();
+            const end   = new Date(`${e.endDate || e.date}T${e.endTime || '23:59'}`).getTime();
+            return start <= now && now <= end;
+        } catch { return false; }
+    });
+
+    if (notifications.length === 0 && !hasOngoingEvents) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-center px-4">
                 <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4 border border-gray-100 dark:border-gray-700">
@@ -598,6 +609,92 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                     </div>
                 )}
             </div>
+
+            {/* ── Ongoing Events ───────────────────────────────────────────── */}
+            {(() => {
+                const now = Date.now();
+                const ongoingEvents = events.filter(e => {
+                    if (e.status !== 'published' && e.status !== 'scheduled') return false;
+                    try {
+                        const start = new Date(`${e.date}T${e.startTime}`).getTime();
+                        const end   = new Date(`${e.endDate || e.date}T${e.endTime || '23:59'}`).getTime();
+                        return start <= now && now <= end;
+                    } catch { return false; }
+                });
+
+                if (ongoingEvents.length === 0) return null;
+
+                const fmt12 = (t: string) => {
+                    try {
+                        const [h, m] = t.split(':').map(Number);
+                        return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+                    } catch { return t; }
+                };
+
+                return (
+                    <div className="space-y-3">
+                        {/* Section Header */}
+                        <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+                            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                <span className="relative flex h-2.5 w-2.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                                </span>
+                                Ongoing
+                            </span>
+                            <div className="h-[2px] flex-1 bg-emerald-100 dark:bg-emerald-900/40 rounded-full" />
+                        </h3>
+
+                        {ongoingEvents.map(event => (
+                            <div
+                                key={event.id}
+                                className="relative rounded-2xl overflow-hidden border border-emerald-200 dark:border-emerald-800/50 shadow-sm"
+                            >
+                                {/* Live gradient background */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40" />
+
+                                <div className="relative flex items-center gap-4 p-4">
+                                    {/* Cover image or icon */}
+                                    {event.imageUrl ? (
+                                        <img src={event.imageUrl} alt={event.name}
+                                            className="w-14 h-14 rounded-xl object-cover shrink-0 border-2 border-emerald-200 dark:border-emerald-700 shadow-sm" />
+                                    ) : (
+                                        <div className="w-14 h-14 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 border-2 border-emerald-200 dark:border-emerald-700">
+                                            <Zap className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                                        </div>
+                                    )}
+
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
+                                                LIVE NOW
+                                            </span>
+                                        </div>
+                                        <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{event.name}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
+                                            <Clock className="w-3 h-3" />
+                                            {fmt12(event.startTime)} – {fmt12(event.endTime || '23:59')}
+                                        </p>
+                                        {event.venue && (
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">📍 {event.venue}</p>
+                                        )}
+                                    </div>
+
+                                    {/* View button */}
+                                    <button
+                                        onClick={() => onEventSelect(event, 'reminder')}
+                                        className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-500/20 transition-all"
+                                    >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        View
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            })()}
 
             {/* List with Date Groups */}
             <div className="space-y-8">

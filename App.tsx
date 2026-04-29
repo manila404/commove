@@ -4,6 +4,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
 import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, addUserViewedEvent, updateUserParticipation, getAllUsers, subscribeToUserProfile } from './services/userService';
 import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights } from './services/eventService';
+import { fetchUserFeedbackForEvent } from './services/feedbackService';
 import { getKNNRankedEvents } from './services/recommendationService'; // Import Recommendation Service
 import { CATEGORIES, formatDisplayDate } from './constants';
 import { Tag } from 'lucide-react';
@@ -660,13 +661,22 @@ const App: React.FC = () => {
 
             // 3. Check Ended Events (For Feedback)
             if (currentUser.checkedInEventIds && Array.isArray(currentUser.checkedInEventIds)) {
-                currentUser.checkedInEventIds.forEach(checkedId => {
+                currentUser.checkedInEventIds.forEach(async checkedId => {
                     const event = events.find(e => e.id === checkedId);
                     if (!event) return;
 
                     const end = safeParseDate(event.date, event.endTime);
-                    // If event ended in the last hour and we haven't notified yet
+                    // If event ended in the last hour and we haven't notified this session yet
                     if (now > end.getTime() && now < end.getTime() + 60 * 60 * 1000 && !notifiedFeedbackEvents.current.has(event.id)) {
+                        // Guard immediately so concurrent interval ticks don't double-fire
+                        notifiedFeedbackEvents.current.add(event.id);
+
+                        // Check Firestore — skip if user already left feedback
+                        try {
+                            const existing = await fetchUserFeedbackForEvent(currentUser.uid, event.id);
+                            if (existing) return; // Already rated — do nothing
+                        } catch { /* network error — fall through and allow notification */ }
+
                         createNotification(
                             currentUser.uid,
                             'event_feedback',
@@ -681,7 +691,6 @@ const App: React.FC = () => {
                                 onClick: () => setShowFeedbackModal(event)
                             }
                         });
-                        notifiedFeedbackEvents.current.add(event.id);
                     }
                 });
             }
@@ -794,10 +803,25 @@ const App: React.FC = () => {
             return;
         }
 
+
         if (notifType === 'event_feedback') {
-            setShowFeedbackModal(event);
+            // Check if already submitted before re-opening the modal
+            if (currentUser) {
+                fetchUserFeedbackForEvent(currentUser.uid, event.id)
+                    .then(existing => {
+                        if (existing) {
+                            showAlert('Already Rated', `You've already submitted feedback for "${event.name}". Thank you!`, 'info');
+                        } else {
+                            setShowFeedbackModal(event);
+                        }
+                    })
+                    .catch(() => setShowFeedbackModal(event)); // fallback: open if check fails
+            } else {
+                setShowFeedbackModal(event);
+            }
             return;
         }
+
 
         // Default: open EventModal
         try {
