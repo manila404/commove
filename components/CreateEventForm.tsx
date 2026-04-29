@@ -8,7 +8,7 @@ import type { EventType, User, EventStatus } from '../types';
 import InteractiveMap from './InteractiveMap';
 import { addEvent, updateEvent } from '../services/eventService';
 import { getAdmins } from '../services/userService';
-import { createNotification } from '../services/notificationService';
+import { createNotification, notifyEventUpdated } from '../services/notificationService';
 import { CATEGORIES } from '../constants';
 import { resizeImage } from '../services/imageUtils';
 import { searchAddressGeoapify } from '../services/osmService';
@@ -322,6 +322,33 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
       if (eventToEdit) {
         await updateEvent(eventToEdit.id, payload);
         onSuccess({ ...eventToEdit, ...payload } as EventType);
+
+        // ── Auto-notify residents on published/scheduled event changes ───────
+        const wasPubliclyVisible = eventToEdit.status === 'published' || eventToEdit.status === 'scheduled';
+        const isStillPubliclyVisible = payload.status === 'published' || payload.status === 'scheduled';
+
+        if (wasPubliclyVisible && isStillPubliclyVisible) {
+          // Detect which important fields changed
+          const changes: string[] = [];
+          if (eventToEdit.name !== payload.name) changes.push(`title ("${eventToEdit.name}" → "${payload.name}")`);
+          if (eventToEdit.date !== payload.date) changes.push(`date (${eventToEdit.date} → ${payload.date})`);
+          if (eventToEdit.startTime !== payload.startTime) changes.push(`start time (${eventToEdit.startTime} → ${payload.startTime})`);
+          if (eventToEdit.endTime !== payload.endTime) changes.push(`end time (${eventToEdit.endTime} → ${payload.endTime})`);
+          if (eventToEdit.venue !== payload.venue) changes.push(`venue ("${eventToEdit.venue}" → "${payload.venue}")`);
+          if (eventToEdit.street !== payload.street) changes.push(`address`);
+          if (eventToEdit.description !== payload.description) changes.push(`description`);
+          if (eventToEdit.maxParticipants !== payload.maxParticipants) changes.push(`participant limit`);
+
+          if (changes.length > 0) {
+            const changeNote = changes.length === 1
+              ? `An event you saved or showed interest in has been updated: the ${changes[0]} has changed.`
+              : `An event you saved or showed interest in has been updated. Changes include: ${changes.slice(0, -1).join(', ')}${changes.length > 1 ? ` and ${changes[changes.length - 1]}` : ''}.`;
+
+            notifyEventUpdated(eventToEdit.id, payload.name || eventToEdit.name, changeNote)
+              .catch(e => console.error('[AutoNotify] Failed to send update notifications:', e));
+          }
+        }
+
         if (!isAdmin && mode === 'publish') {
           try {
             const admins = await getAdmins();

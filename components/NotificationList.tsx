@@ -78,6 +78,24 @@ const TypeIcon: React.FC<{ type: AppNotification['type']; isRead: boolean }> = (
     if (type === 'reminder' || type === 'event_upcoming' || type === 'event_tomorrow') {
         return <div className={base}><CalendarIcon className="w-5 h-5" /></div>;
     }
+    if (type === 'event_updated') {
+        return (
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isRead ? 'bg-gray-100 dark:bg-gray-700 text-gray-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600'}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+            </div>
+        );
+    }
+    if (type === 'event_cancelled') {
+        return (
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isRead ? 'bg-gray-100 dark:bg-gray-700 text-gray-400' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600'}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+            </div>
+        );
+    }
     return <div className={base}><BellIcon className="w-5 h-5" /></div>;
 };
 
@@ -340,6 +358,27 @@ const NotificationActionPanel: React.FC<{
                         </button>
                     )}
 
+                    {/* Event updated — resident can view the event for updated details */}
+                    {notif.type === 'event_updated' && event && (
+                        <button
+                            onClick={() => onViewEvent()}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors"
+                        >
+                            <Eye className="w-3.5 h-3.5" />
+                            View Updated Event
+                        </button>
+                    )}
+
+                    {/* Event cancelled — just a dismiss action */}
+                    {notif.type === 'event_cancelled' && (
+                        <button
+                            onClick={onClose}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg transition-colors"
+                        >
+                            Dismiss
+                        </button>
+                    )}
+
                     {/* System / generic */}
                     {notif.type === 'system' && (
                         <button
@@ -351,7 +390,7 @@ const NotificationActionPanel: React.FC<{
                     )}
 
                     {/* Generic fallback if event exists but no specific handler */}
-                    {event && !['event_created', 'event_approved', 'event_rejected', 'event_registration', 'reminder', 'event_upcoming', 'event_tomorrow', 'event_feedback', 'system'].includes(notif.type) && (
+                    {event && !['event_created', 'event_approved', 'event_rejected', 'event_registration', 'reminder', 'event_upcoming', 'event_tomorrow', 'event_feedback', 'event_updated', 'event_cancelled', 'system'].includes(notif.type) && (
                         <button
                             onClick={() => onViewEvent()}
                             className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-lg transition-colors"

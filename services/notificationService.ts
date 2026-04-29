@@ -19,6 +19,107 @@ const COLLECTION = 'notifications';
 const notificationsRef = collection(db, COLLECTION);
 
 // ─────────────────────────────────────────────────────────────────
+// Bulk Event Notification Helpers
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Notify all residents (role === 'user') who have saved or checked-in to an event
+ * that its details have been updated.
+ */
+export const notifyEventUpdated = async (
+    eventId: string,
+    eventName: string,
+    changeNote: string
+): Promise<void> => {
+    try {
+        const usersRef = collection(db, 'users');
+        const snapshot = await getDocs(usersRef);
+        const now = Date.now();
+        const batch = writeBatch(db);
+        let count = 0;
+
+        snapshot.docs.forEach(userDoc => {
+            const userData = userDoc.data();
+            // Only notify residents, not admins/facilitators
+            if (userData.role === 'admin' || userData.role === 'facilitator') return;
+
+            const saved: string[] = userData.savedEventIds || [];
+            const checkedIn: string[] = userData.checkedInEventIds || [];
+
+            const shouldNotify = saved.includes(eventId) || checkedIn.includes(eventId);
+            if (!shouldNotify) return;
+
+            const notifRef = doc(collection(db, COLLECTION));
+            batch.set(notifRef, {
+                userId: userDoc.id,
+                type: 'event_updated' as NotificationType,
+                title: `📅 Event Updated: ${eventName}`,
+                body: changeNote || `The schedule or details for "${eventName}" have changed. Please review the updated information.`,
+                eventId,
+                isRead: false,
+                createdAt: now,
+            });
+            count++;
+        });
+
+        if (count > 0) await batch.commit();
+        console.log(`[notifyEventUpdated] Sent to ${count} residents for event ${eventId}`);
+    } catch (error) {
+        console.error('Error sending event-updated notifications:', error);
+    }
+};
+
+/**
+ * Notify all residents who saved or marked interest in an event that it has been cancelled.
+ */
+export const notifyEventCancelled = async (
+    eventId: string,
+    eventName: string,
+    reason?: string
+): Promise<void> => {
+    try {
+        const usersRef = collection(db, 'users');
+        const snapshot = await getDocs(usersRef);
+        const now = Date.now();
+        const batch = writeBatch(db);
+        let count = 0;
+
+        snapshot.docs.forEach(userDoc => {
+            const userData = userDoc.data();
+            // Only notify residents
+            if (userData.role === 'admin' || userData.role === 'facilitator') return;
+
+            const saved: string[] = userData.savedEventIds || [];
+            const interested: string[] = userData.interestedEventIds || [];
+
+            const shouldNotify = saved.includes(eventId) || interested.includes(eventId);
+            if (!shouldNotify) return;
+
+            const body = reason
+                ? `"${eventName}" has been cancelled. Reason: ${reason}`
+                : `"${eventName}" has been cancelled by the organizer. We apologize for any inconvenience.`;
+
+            const notifRef = doc(collection(db, COLLECTION));
+            batch.set(notifRef, {
+                userId: userDoc.id,
+                type: 'event_cancelled' as NotificationType,
+                title: `❌ Event Cancelled: ${eventName}`,
+                body,
+                eventId,
+                isRead: false,
+                createdAt: now,
+            });
+            count++;
+        });
+
+        if (count > 0) await batch.commit();
+        console.log(`[notifyEventCancelled] Sent to ${count} residents for event ${eventId}`);
+    } catch (error) {
+        console.error('Error sending event-cancelled notifications:', error);
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────
 // Create
 // ─────────────────────────────────────────────────────────────────
 

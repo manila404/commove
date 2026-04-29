@@ -41,6 +41,8 @@ interface AdminDashboardTabsProps {
     onHighlightConsumed?: () => void;
     onManageRegistrations?: (event: EventType) => void;
     currentUser?: import('../types').User;
+    onCancelEvent?: (event: EventType) => void;
+    onNotifyUpdate?: (event: EventType) => void;
 }
 
 const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({ 
@@ -48,7 +50,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     onSchedule, onPreviewEvent,
     filteredUsers, userSearchQuery, setUserSearchQuery, userFilter, setUserFilter,
     isLoadingUsers, userError, fetchUsers, handleRoleUpdate, onApproveFacilitator, onRejectFacilitator, onDeleteUser, canManageUsers,
-    initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed, onManageRegistrations, currentUser
+    initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed, onManageRegistrations, currentUser,
+    onCancelEvent, onNotifyUpdate
 }) => {
     const [activeTab, setActiveTab] = useState<'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights'>('analytics');
     const [selectedDate, setSelectedDate] = useState<number>(new Date().getDate());
@@ -966,10 +969,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 event.status === 'scheduled' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' :
                                                 event.status === 'pending' ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 
                                                 event.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' :
+                                                event.status === 'cancelled' ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 line-through' :
                                                 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400'
                                             }`}>
                                                 {event.status === 'scheduled' && (
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                )}
+                                                {event.status === 'cancelled' && (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                                                 )}
                                                 {event.status || 'approved'}
                                             </span>
@@ -997,13 +1004,33 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                                     </button>
                                                 )}
-                                                <button 
+                                                 <button 
                                                     onClick={() => onEditEvent(event)}
                                                     className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                                                     title="Edit Event"
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                                 </button>
+                                                {/* Notify Update — only for published events */}
+                                                {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
+                                                    <button
+                                                        onClick={() => onNotifyUpdate(event)}
+                                                        className="p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                                                        title="Notify Residents: Schedule Updated"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                                    </button>
+                                                )}
+                                                {/* Cancel Event — only for published/scheduled events */}
+                                                {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
+                                                    <button
+                                                        onClick={() => onCancelEvent(event)}
+                                                        className="p-1.5 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                                                        title="Cancel Event"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                                    </button>
+                                                )}
                                                 <button 
                                                     onClick={() => onDeleteEvent(event.id)}
                                                     className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"

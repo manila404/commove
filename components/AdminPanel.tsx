@@ -7,7 +7,7 @@ import AdminDashboardTabs from './AdminDashboardTabs';
 import EventModal from './EventModal';
 import { getAllUsers, updateUserRole, getEventParticipants, rejectFacilitatorRequest, deleteUser } from '../services/userService';
 import { updateEventStatus } from '../services/eventService';
-import { createNotification } from '../services/notificationService';
+import { createNotification, notifyEventUpdated, notifyEventCancelled } from '../services/notificationService';
 import Spinner from './Spinner';
 import { useAlert } from '../contexts/AlertContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -129,6 +129,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const [rejectionReason, setRejectionReason] = useState('');
     const [schedulingEvent, setSchedulingEvent] = useState<EventType | null>(null);
     const [scheduledDateTime, setScheduledDateTime] = useState('');
+
+    // ── Cancel Event State ─────────────────────────────────────────
+    const [cancellingEvent, setCancellingEvent] = useState<EventType | null>(null);
+    const [cancelReason, setCancelReason] = useState('');
+    const [isCancelling, setIsCancelling] = useState(false);
+
+    // ── Update Event Notification State ───────────────────────────
+    const [updatingEventNotif, setUpdatingEventNotif] = useState<EventType | null>(null);
+    const [updateChangeNote, setUpdateChangeNote] = useState('');
+    const [isSendingUpdateNotif, setIsSendingUpdateNotif] = useState(false);
 
     useEffect(() => {
         const handleNavigate = (e: any) => {
@@ -513,6 +523,62 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         }
     };
 
+    // ── Cancel Event ─────────────────────────────────────────────
+    const handleConfirmCancelEvent = async () => {
+        if (!cancellingEvent) return;
+        setIsCancelling(true);
+        try {
+            await updateEventStatus(cancellingEvent.id, 'cancelled', cancelReason || 'Event has been cancelled.');
+            onEventUpdated({ ...cancellingEvent, status: 'cancelled', rejectionReason: cancelReason || undefined });
+
+            // Fan-out notifications to affected residents (saved + interested)
+            await notifyEventCancelled(cancellingEvent.id, cancellingEvent.name, cancelReason || undefined);
+
+            // Notify creator if different from admin
+            if (cancellingEvent.createdBy && cancellingEvent.createdBy !== currentUser.uid) {
+                createNotification(
+                    cancellingEvent.createdBy,
+                    'event_cancelled',
+                    `Your Event Was Cancelled: ${cancellingEvent.name}`,
+                    `The event "${cancellingEvent.name}" you organized has been cancelled by the admin.${cancelReason ? ` Reason: ${cancelReason}` : ''}`,
+                    cancellingEvent.id
+                ).catch(console.error);
+            }
+
+            setCancellingEvent(null);
+            setCancelReason('');
+            showAlert('Cancelled', `"${cancellingEvent.name}" has been cancelled and residents have been notified.`, 'info');
+        } catch (e) {
+            console.error(e);
+            showAlert('Error', 'Failed to cancel the event.', 'error');
+        } finally {
+            setIsCancelling(false);
+        }
+    };
+
+    // ── Send Update Notification ─────────────────────────────────
+    const handleSendUpdateNotification = async () => {
+        if (!updatingEventNotif) return;
+        setIsSendingUpdateNotif(true);
+        try {
+            const note = updateChangeNote.trim() ||
+                `The schedule or details for "${updatingEventNotif.name}" have changed. Please check the updated information.`;
+
+            // Fan-out to saved + checked-in residents
+            await notifyEventUpdated(updatingEventNotif.id, updatingEventNotif.name, note);
+
+            setUpdatingEventNotif(null);
+            setUpdateChangeNote('');
+            showAlert('Notified', `Residents who saved or checked-in to "${updatingEventNotif.name}" have been notified.`, 'success');
+        } catch (e) {
+            console.error(e);
+            showAlert('Error', 'Failed to send update notifications.', 'error');
+        } finally {
+            setIsSendingUpdateNotif(false);
+        }
+    };
+
+
     const handleViewParticipants = async (event: EventType) => {
         setViewingParticipantsEvent(event);
         setIsLoadingParticipants(true);
@@ -710,6 +776,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                 onHighlightConsumed={() => setTargetId(undefined)}
                 onManageRegistrations={onManageRegistrations}
                 currentUser={currentUser}
+                onCancelEvent={(e) => { setCancellingEvent(e); setCancelReason(''); }}
+                onNotifyUpdate={(e) => { setUpdatingEventNotif(e); setUpdateChangeNote(''); }}
             />
         </div>
     );
@@ -877,6 +945,117 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                         </div>
                     </div>
                 )}
+
+                {/* ── Cancel Event Modal ──────────────────────────────────────── */}
+                {cancellingEvent && (
+                    <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => !isCancelling && setCancellingEvent(null)}>
+                        <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl animate-fade-in-up">
+                            {/* Header */}
+                            <div className="flex items-start gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-2xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cancel Event</h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">"{cancellingEvent.name}"</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-2xl p-3 mb-4">
+                                <p className="text-xs text-orange-700 dark:text-orange-300 font-medium leading-relaxed">
+                                    ⚠️ Residents who <strong>saved</strong> or marked <strong>interest</strong> in this event will be notified of the cancellation.
+                                </p>
+                            </div>
+
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                                Cancellation Reason <span className="normal-case font-normal">(optional)</span>
+                            </label>
+                            <textarea
+                                placeholder="e.g., Venue unavailability, weather conditions..."
+                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm focus:outline-none focus:border-orange-500 min-h-[90px] mb-4 text-gray-900 dark:text-white resize-none"
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                disabled={isCancelling}
+                            />
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setCancellingEvent(null)}
+                                    disabled={isCancelling}
+                                    className="flex-1 py-3 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50"
+                                >
+                                    Go Back
+                                </button>
+                                <button
+                                    onClick={handleConfirmCancelEvent}
+                                    disabled={isCancelling}
+                                    className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/20 hover:bg-orange-700 transition-colors active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
+                                >
+                                    {isCancelling ? (
+                                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Cancelling...</>
+                                    ) : 'Cancel Event'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Notify Update Modal ─────────────────────────────────────── */}
+                {updatingEventNotif && (
+                    <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => !isSendingUpdateNotif && setUpdatingEventNotif(null)}>
+                        <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl animate-fade-in-up">
+                            {/* Header */}
+                            <div className="flex items-start gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Notify Schedule Update</h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">"{updatingEventNotif.name}"</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-3 mb-4">
+                                <p className="text-xs text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
+                                    📅 Residents who <strong>saved</strong> or <strong>checked-in</strong> to this event will receive a notification about the update.
+                                </p>
+                            </div>
+
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                                What Changed? <span className="normal-case font-normal">(optional)</span>
+                            </label>
+                            <textarea
+                                placeholder="e.g., New venue: Bacoor City Hall. New time: 3:00 PM..."
+                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm focus:outline-none focus:border-amber-500 min-h-[90px] mb-4 text-gray-900 dark:text-white resize-none"
+                                value={updateChangeNote}
+                                onChange={(e) => setUpdateChangeNote(e.target.value)}
+                                disabled={isSendingUpdateNotif}
+                            />
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setUpdatingEventNotif(null)}
+                                    disabled={isSendingUpdateNotif}
+                                    className="flex-1 py-3 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSendUpdateNotification}
+                                    disabled={isSendingUpdateNotif}
+                                    className="flex-1 py-3 bg-amber-500 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-colors active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
+                                >
+                                    {isSendingUpdateNotif ? (
+                                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending...</>
+                                    ) : 'Send Notification'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
 
                 {/* QR Code Modal (Admin: view any event's QR from Events table) */}
                 {viewingQRCode && (
