@@ -86,6 +86,7 @@ export interface User {
   sex?: string;      // 'Male', 'Female', or custom string
   username?: string; // @username
   address?: string;
+  contactNumber?: string;
   avatarUrl?: string;
   homeLat?: number;
   homeLng?: number;

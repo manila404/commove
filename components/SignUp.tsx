@@ -20,6 +20,8 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
+    const [address, setAddress] = useState('');
+    const [contactNumber, setContactNumber] = useState('');
     const [birthday, setBirthday] = useState('');
     const [sex, setSex] = useState('');
     const [username, setUsername] = useState('');
@@ -77,6 +79,11 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
 
         if (!email.trim().toLowerCase().endsWith('@gmail.com') && email.trim().toLowerCase() !== 'admin@commove.com') {
             setError("Email must be a @gmail.com address.");
+            return;
+        }
+
+        if (!address.trim()) {
+            setError("Please enter your address.");
             return;
         }
 
@@ -156,6 +163,8 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                 idUrl: finalIdUrl || idImage || undefined,
                 faceUrl: faceImage || undefined,
                 birthday: birthday,
+                address: address.trim(),
+                contactNumber: contactNumber.trim(),
                 sex: sex === 'Others' ? customSex.trim() : sex,
                 username: username.trim().startsWith('@') ? username.trim() : `@${username.trim()}`,
                 avatarUrl: selectedAvatar,
@@ -288,6 +297,27 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                                 className="w-full pl-8 pr-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                             />
                         </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <input
+                            type="tel"
+                            placeholder="Contact Number (Optional)"
+                            value={contactNumber}
+                            onChange={(e) => setContactNumber(e.target.value)}
+                            className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
+                        />
+                    </div>
+
+                    <div className="mt-1">
+                        <input
+                            type="text"
+                            placeholder="Address"
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            required
+                            className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
+                        />
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-4">

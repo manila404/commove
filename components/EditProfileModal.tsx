@@ -17,6 +17,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUs
     const [name, setName] = useState(user?.name || '');
     const [username, setUsername] = useState(user?.username || '');
     const [birthday, setBirthday] = useState(user?.birthday || '');
+    const [address, setAddress] = useState(user?.address || '');
+    const [contactNumber, setContactNumber] = useState(user?.contactNumber || '');
     const [sex, setSex] = useState(user?.sex || '');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -25,6 +27,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUs
         if (user) {
             setName(user.name);
             setUsername(user.username || '');
+            setAddress(user.address || '');
+            setContactNumber(user.contactNumber || '');
             setBirthday(user.birthday || '');
             setSex(user.sex || '');
         }
@@ -40,6 +44,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUs
             // Validation
             if (!name.trim()) throw new Error("Name is required.");
             if (!username.trim()) throw new Error("Username is required.");
+            if (!address.trim()) throw new Error("Address is required.");
 
             const cleanUsername = username.trim().startsWith('@') ? username.trim() : `@${username.trim()}`;
             
@@ -52,6 +57,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUs
             const updatedData: Partial<User> = {
                 name: name.trim(),
                 username: cleanUsername,
+                contactNumber: contactNumber.trim(),
+                address: address.trim(),
                 birthday,
                 sex
             };
@@ -114,6 +121,29 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUs
                                 required
                             />
                         </div>
+                    </div>
+
+                    {/* Contact & Address */}
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Contact Number (Optional)</label>
+                        <input
+                            type="tel"
+                            value={contactNumber}
+                            onChange={(e) => setContactNumber(e.target.value)}
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-primary-500 rounded-2xl font-semibold text-gray-700 dark:text-gray-200 outline-none transition-all"
+                            placeholder="Contact Number"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Address</label>
+                        <input
+                            type="text"
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-primary-500 rounded-2xl font-semibold text-gray-700 dark:text-gray-200 outline-none transition-all"
+                            placeholder="Address"
+                            required
+                        />
                     </div>
 
                     {/* Birthday & Sex */}
