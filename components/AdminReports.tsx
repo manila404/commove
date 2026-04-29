@@ -8,7 +8,7 @@ interface AdminReportsProps {
 }
 
 const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
-    const [period, setPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
+    const [period, setPeriod] = useState<'this_month' | 'previous_month' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
     const [ageGroups, setAgeGroups] = useState<Record<string, boolean>>({
         'Child': true,
         'Teen': true,
@@ -46,15 +46,32 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         // Group events by period
         const periodGroups: Record<string, { events: EventType[], participants: User[] }> = {};
 
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        
+        let prevMonth = currentMonth - 1;
+        let prevYear = currentYear;
+        if (prevMonth < 0) {
+            prevMonth = 11;
+            prevYear--;
+        }
+
         events.forEach(event => {
             const date = new Date(event.date);
             if (isNaN(date.getTime())) return;
 
+            if (period === 'this_month') {
+                if (date.getMonth() !== currentMonth || date.getFullYear() !== currentYear) return;
+            } else if (period === 'previous_month') {
+                if (date.getMonth() !== prevMonth || date.getFullYear() !== prevYear) return;
+            }
+
             let periodKey = '';
-            if (period === 'monthly') {
-                periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            if (period === 'monthly' || period === 'this_month' || period === 'previous_month') {
+                periodKey = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
             } else if (period === 'quarterly') {
-                periodKey = `${date.getFullYear()}-Q${getQuarter(date)}`;
+                periodKey = `Q${getQuarter(date)} ${date.getFullYear()}`;
             } else if (period === 'yearly') {
                 periodKey = `${date.getFullYear()}`;
             }
@@ -65,37 +82,45 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
             periodGroups[periodKey].events.push(event);
         });
 
-        // For each period, find participants
+        // For each period, find participants and events
         const results = Object.entries(periodGroups).map(([key, group]) => {
-            const eventIds = group.events.map(e => e.id);
-            
-            // Find users who checked into these events
-            const periodParticipants = users.filter(user => {
-                const hasParticipated = user.checkedInEventIds?.some(id => eventIds.includes(id));
-                if (!hasParticipated) return false;
+            const periodEvents = group.events.map(event => {
+                const eventParticipants = users.filter(user => {
+                    const hasParticipated = user.checkedInEventIds?.includes(event.id);
+                    if (!hasParticipated) return false;
 
-                // Apply Age Filter
-                const age = calculateAge(user.birthday);
-                const groupName = getAgeGroup(age);
-                if (groupName !== 'Unknown' && !ageGroups[groupName]) return false;
-                if (groupName === 'Unknown' && (!ageGroups['Teen'] || !ageGroups['Adult'] || !ageGroups['Middle Age'] || !ageGroups['Senior'])) {
-                    return false;
-                }
+                    // Apply Age Filter
+                    const age = calculateAge(user.birthday);
+                    const groupName = getAgeGroup(age);
+                    if (groupName !== 'Unknown' && !ageGroups[groupName]) return false;
+                    if (groupName === 'Unknown' && (!ageGroups['Teen'] || !ageGroups['Adult'] || !ageGroups['Middle Age'] || !ageGroups['Senior'])) {
+                        return false;
+                    }
 
-                // Apply Sex Filter
-                if (sexFilter !== 'All') {
-                    if (sexFilter === 'Male' && user.sex !== 'Male') return false;
-                    if (sexFilter === 'Female' && user.sex !== 'Female') return false;
-                    if (sexFilter === 'Others' && (user.sex === 'Male' || user.sex === 'Female' || !user.sex)) return false;
-                }
+                    // Apply Sex Filter
+                    if (sexFilter !== 'All') {
+                        if (sexFilter === 'Male' && user.sex !== 'Male') return false;
+                        if (sexFilter === 'Female' && user.sex !== 'Female') return false;
+                        if (sexFilter === 'Others' && (user.sex === 'Male' || user.sex === 'Female' || !user.sex)) return false;
+                    }
 
-                return true;
+                    return true;
+                });
+
+                return {
+                    event,
+                    participants: eventParticipants
+                };
             });
+
+            // Total participants in this period (unique)
+            const uniqueParticipants = new Set();
+            periodEvents.forEach(e => e.participants.forEach(p => uniqueParticipants.add(p.uid)));
 
             return {
                 period: key,
-                participantCount: periodParticipants.length,
-                participants: periodParticipants
+                participantCount: uniqueParticipants.size,
+                events: periodEvents
             };
         }).sort((a, b) => b.period.localeCompare(a.period));
 
@@ -108,13 +133,26 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
 
     const handleDownload = () => {
         const worksheetData = reportData.flatMap(data => 
-            data.participants.map(p => ({
-                Period: data.period,
-                Name: p.name,
-                Email: p.email,
-                Birthday: p.birthday,
-                Sex: p.sex
-            }))
+            data.events.flatMap(eventData => {
+                if (eventData.participants.length === 0) {
+                    return [{
+                        Period: data.period,
+                        Event: eventData.event.name,
+                        Name: 'No Participants',
+                        Email: '',
+                        Age: null,
+                        Sex: ''
+                    }];
+                }
+                return eventData.participants.map(p => ({
+                    Period: data.period,
+                    Event: eventData.event.name,
+                    Name: p.name,
+                    Email: p.email,
+                    Age: calculateAge(p.birthday),
+                    Sex: p.sex
+                }));
+            })
         );
 
         const worksheet = XLSX.utils.json_to_sheet(worksheetData);
@@ -128,6 +166,40 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         link.href = url;
         const cleanName = period.charAt(0).toUpperCase() + period.slice(1);
         link.setAttribute('download', `Commove_${cleanName}_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    };
+
+    const handleEventDownload = (eventData: any, periodKey: string) => {
+        const worksheetData = eventData.participants.length === 0 ? [{
+            Period: periodKey,
+            Event: eventData.event.name,
+            Name: 'No Participants',
+            Email: '',
+            Age: null,
+            Sex: ''
+        }] : eventData.participants.map((p: any) => ({
+            Period: periodKey,
+            Event: eventData.event.name,
+            Name: p.name,
+            Email: p.email,
+            Age: calculateAge(p.birthday),
+            Sex: p.sex
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Event Report");
+
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(data);
+        const link = document.createElement('a');
+        link.href = url;
+        const cleanName = eventData.event.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+        link.setAttribute('download', `Commove_Event_${cleanName}_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -151,7 +223,7 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                 <div>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Time Period</h3>
                     <div className="flex flex-col gap-2">
-                        {['monthly', 'quarterly', 'yearly'].map(p => (
+                        {['this_month', 'previous_month', 'monthly', 'quarterly', 'yearly'].map(p => (
                             <label key={p} className="flex items-center gap-2 cursor-pointer">
                                 <input 
                                     type="radio" 
@@ -161,7 +233,7 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                                     onChange={() => setPeriod(p as any)}
                                     className="text-primary-600 focus:ring-primary-500"
                                 />
-                                <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">{p}</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">{p.replace('_', ' ')}</span>
                             </label>
                         ))}
                     </div>
@@ -223,18 +295,22 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                                     </span>
                                 </div>
                                 
-                                {sexFilter === 'Others' && data.participants.length > 0 && (
-                                    <div className="mt-4">
-                                        <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Specified Genders (Others)</h5>
-                                        <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                                            {data.participants.map(p => (
-                                                <li key={p.uid}>
-                                                    <span className="font-medium">{p.name}</span>: {p.sex}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
+                                
+                                <div className="space-y-3">
+                                    {data.events.map(eventData => (
+                                        <div key={eventData.event.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                                            <h5 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                                                {eventData.event.name} <span className="text-gray-500 font-normal text-xs ml-2">({eventData.participants.length} Participants)</span>
+                                            </h5>
+                                            <button 
+                                                onClick={() => handleEventDownload(eventData, data.period)}
+                                                className="text-xs bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400 dark:hover:bg-primary-900/50 px-3 py-1.5 rounded-lg font-medium transition-colors shrink-0"
+                                            >
+                                                Download Excel
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ))}
                     </div>
