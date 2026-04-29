@@ -301,13 +301,32 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
         });
 
         const categories = Array.isArray(event.category) ? event.category : [event.category];
+
+        // Format date: "2026-04-30" → "April 30, 2026"
+        const formattedDate = (() => {
+          try {
+            const [y, m, d] = event.date.split('-').map(Number);
+            return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          } catch { return event.date; }
+        })();
+
+        // Format time: "09:00" → "9:00 AM" / "13:30" → "1:30 PM"
+        const formattedTime = (() => {
+          try {
+            const [h, min] = event.startTime.split(':').map(Number);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const hour12 = h % 12 || 12;
+            return `${hour12}:${String(min).padStart(2, '0')} ${ampm}`;
+          } catch { return event.startTime; }
+        })();
+
         const popupContent = `
             <div class="min-w-[200px] p-1 font-sans">
               <h3 class="font-bold text-primary-700 text-base m-0 leading-tight">${event.name}</h3>
               <div class="flex items-center mt-2 text-xs text-gray-600 font-semibold">
-                 <span>📅 ${event.date}</span>
+                 <span>📅 ${formattedDate}</span>
                  <span class="mx-1">•</span>
-                 <span>🕒 ${event.startTime}</span>
+                 <span>🕒 ${formattedTime}</span>
               </div>
               <p class="text-xs text-gray-600 m-0 mt-1 truncate">📍 ${event.venue}</p>
               <div class="mt-2 flex flex-wrap gap-1">
@@ -315,6 +334,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
               </div>
             </div>
         `;
+
 
         try {
             const marker = L.marker([event.lat, event.lng], { 
