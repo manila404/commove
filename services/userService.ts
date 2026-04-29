@@ -1,5 +1,5 @@
 
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs, arrayUnion, query, where, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs, arrayUnion, query, where, limit, onSnapshot } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { updateProfile } from 'firebase/auth';
 import type { User, Reminder, UserRole } from '../types';
@@ -39,7 +39,6 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             const userData = userDoc.data() as User;
-            // Root Admin Safety: Force admin role for the master email
             if (userData.email === 'admin@commove.com') {
                 return { uid: userDoc.id, ...userData, role: 'admin' as UserRole, isAdmin: true } as User;
             }
@@ -53,6 +52,27 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
         console.error("Error fetching user profile:", error);
         return null;
     }
+};
+
+/** Real-time subscription to the current user's Firestore document.
+ *  Keeps currentUser in App.tsx in sync whenever any field changes
+ *  (including registrationStatuses written by submitRegistration / updateRegistrationStatus). */
+export const subscribeToUserProfile = (uid: string, callback: (user: User | null) => void) => {
+    const userDocRef = doc(db, usersCollectionRef, uid);
+    return onSnapshot(userDocRef, (snap) => {
+        if (snap.exists()) {
+            const data = snap.data() as User;
+            if (data.email === 'admin@commove.com') {
+                callback({ uid: snap.id, ...data, role: 'admin' as UserRole, isAdmin: true });
+            } else {
+                callback({ uid: snap.id, ...data });
+            }
+        } else {
+            callback(null);
+        }
+    }, (error) => {
+        console.error('Error subscribing to user profile:', error);
+    });
 };
 
 export const createUserProfile = async (uid: string, data: Omit<User, 'uid'>): Promise<void> => {

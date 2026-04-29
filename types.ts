@@ -28,6 +28,7 @@ export interface EventType {
   organizer?: string;
   submittedAt?: number; // Timestamp of submission
   maxParticipants?: number | null; // New: Capacity limit
+  approvedCount?: number; // New: Count of approved participants to avoid querying registrations
   isPrivate?: boolean; // New: Private events require registration and approval
   publishAt?: number | null; // New: Schedule when to be in public
   priority?: 'urgent' | 'average' | 'less_prio'; // Admin urgency indicator
@@ -95,6 +96,7 @@ export interface User {
   viewedEventIds?: string[]; // New: Track tapped events for algorithm
   reminders?: Record<string, Reminder>;
   preferences?: string[];
+  registrationStatuses?: Record<string, { status: 'pending' | 'approved' | 'rejected'; registrationId: string }>;
   notificationSettings?: {
     pushEnabled: boolean;
     emailEnabled: boolean;

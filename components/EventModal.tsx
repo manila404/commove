@@ -6,7 +6,7 @@ import InteractiveMap from './InteractiveMap';
 import { useAlert } from '../contexts/AlertContext';
 import { usePermissions } from '../contexts/PermissionContext';
 import { updateUserParticipation } from '../services/userService';
-import { submitRegistration, fetchUserRegistrations, subscribeToEventRegistrations } from '../services/eventService';
+import { submitRegistration, subscribeToEventDoc } from '../services/eventService';
 import { createNotification } from '../services/notificationService';
 import type { Registration } from '../types';
 import Spinner from './Spinner';
@@ -57,6 +57,7 @@ const EventModal: React.FC<EventModalProps> = ({
   });
   const [userReg, setUserReg] = useState<Registration | null>(null);
   const [isLoadingReg, setIsLoadingReg] = useState(false);
+  const [liveApprovedCount, setLiveApprovedCount] = useState<number>(event.approvedCount ?? 0);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
 
@@ -68,33 +69,49 @@ const EventModal: React.FC<EventModalProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const [totalApprovedSlots, setTotalApprovedSlots] = useState(0);
-
+  // Subscribe to the live event document to get real-time approvedCount
   React.useEffect(() => {
     if (event.isPrivate) {
-      setIsLoadingReg(true);
-      const unsubscribe = subscribeToEventRegistrations(event.id, (regs) => {
-        if (currentUser) {
-          const eventReg = regs.find(r => r.userId === currentUser.uid);
-          setUserReg(eventReg || null);
-        }
-        
-        // Count approved slots taken by participants
-        const approvedCount = regs.filter(r => r.status === 'approved').length;
-        setTotalApprovedSlots(approvedCount);
-        setIsLoadingReg(false);
+      const unsubscribe = subscribeToEventDoc(event.id, (liveEvent) => {
+        if (liveEvent) setLiveApprovedCount(liveEvent.approvedCount ?? 0);
       });
-      
       return () => unsubscribe();
     }
-  }, [event.id, event.isPrivate, currentUser?.uid]);
+  }, [event.id, event.isPrivate]);
+
+  // Derive the user's registration status directly from currentUser.registrationStatuses.
+  // This requires NO Firestore collection queries — the data comes from the user document
+  // which is already loaded in app state and updates in real-time via App.tsx's user subscription.
+  React.useEffect(() => {
+    if (!event.isPrivate || !currentUser) {
+      setUserReg(null);
+      return;
+    }
+
+    const saved = currentUser.registrationStatuses?.[event.id];
+    if (saved) {
+      // Build a minimal Registration object so the existing JSX works unchanged
+      setUserReg({
+        id: saved.registrationId,
+        eventId: event.id,
+        userId: currentUser.uid,
+        name: currentUser.name || '',
+        email: currentUser.email || '',
+        status: saved.status,
+        submittedAt: 0,
+      });
+    } else {
+      setUserReg(null);
+    }
+  }, [event.id, event.isPrivate, currentUser?.uid, currentUser?.registrationStatuses]);
 
   const isInterested = currentUser?.interestedEventIds?.includes(event.id);
   const isCheckedIn = currentUser?.checkedInEventIds?.includes(event.id);
   const isResident = currentUser?.role === 'user';
   const isFacilitatorOrAdmin = currentUser?.role === 'facilitator' || currentUser?.role === 'admin';
-  // True when all slots are filled — blocks new registration submissions
-  const isEventFull = event.maxParticipants != null && totalApprovedSlots >= event.maxParticipants;
+  // True when all slots are filled with APPROVED participants — blocks new registration submissions
+  const approvedCount = liveApprovedCount;
+  const isEventFull = event.maxParticipants != null && approvedCount >= event.maxParticipants;
 
   const reminderOptions = [
       { value: '1-minute', label: '1 minute before (Test)' },
@@ -365,11 +382,11 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
-            <div className={`p-3 rounded-xl border ${event.maxParticipants - totalApprovedSlots <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
+            <div className={`p-3 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
               <p className="font-bold text-sm">
-                {event.maxParticipants - totalApprovedSlots <= 0 
+                {event.maxParticipants - approvedCount <= 0 
                   ? 'Event is Full' 
-                  : `${event.maxParticipants - totalApprovedSlots} slot${event.maxParticipants - totalApprovedSlots !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
+                  : `${event.maxParticipants - approvedCount} slot${event.maxParticipants - approvedCount !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
               </p>
             </div>
           )}
@@ -389,13 +406,21 @@ const EventModal: React.FC<EventModalProps> = ({
                   }`}>
                     {userReg.status === 'pending' && (
                       <>
-                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-yellow-100 dark:bg-yellow-900/40 flex items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                        <div className={`w-12 h-12 mx-auto mb-3 rounded-full ${isEventFull ? 'bg-red-100 dark:bg-red-900/40' : 'bg-yellow-100 dark:bg-yellow-900/40'} flex items-center justify-center`}>
+                          {isEventFull ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          )}
                         </div>
-                        <p className="text-base font-black mb-1 tracking-tight">Request Pending</p>
-                        <p className="text-sm font-medium opacity-80">Your request is pending approval. The organizer will review it shortly.</p>
+                        <p className="text-base font-black mb-1 tracking-tight">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
+                        <p className="text-sm font-medium opacity-80">
+                          {isEventFull ? 'Unfortunately, all slots for this event have been filled.' : 'Your request is pending approval. The organizer will review it shortly.'}
+                        </p>
                       </>
                     )}
                     {userReg.status === 'approved' && (
@@ -702,11 +727,11 @@ const EventModal: React.FC<EventModalProps> = ({
         </p>
 
         {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
-          <div className={`p-2.5 rounded-xl border ${event.maxParticipants - totalApprovedSlots <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
+          <div className={`p-2.5 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
             <p className="font-bold text-sm">
-              {event.maxParticipants - totalApprovedSlots <= 0 
+              {event.maxParticipants - approvedCount <= 0 
                 ? 'Event is Full' 
-                : `${event.maxParticipants - totalApprovedSlots} slot${event.maxParticipants - totalApprovedSlots !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
+                : `${event.maxParticipants - approvedCount} slot${event.maxParticipants - approvedCount !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
             </p>
           </div>
         )}
@@ -726,8 +751,10 @@ const EventModal: React.FC<EventModalProps> = ({
                 }`}>
                   {userReg.status === 'pending' && (
                     <>
-                      <p className="font-black mb-1">Request Pending</p>
-                      <p className="text-xs font-medium opacity-80">Your request is pending approval from the organizer.</p>
+                      <p className="font-black mb-1">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
+                      <p className="text-xs font-medium opacity-80">
+                        {isEventFull ? 'Unfortunately, all slots have been filled.' : 'Your request is pending approval from the organizer.'}
+                      </p>
                     </>
                   )}
                   {userReg.status === 'approved' && (

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeftIcon, UserIcon } from '../constants';
 import { Mail, Phone, CheckCircle, XCircle, Clock, Users, Lock, Calendar, RefreshCw } from 'lucide-react';
 import type { EventType, Registration } from '../types';
-import { fetchRegistrationsForEvent, updateRegistrationStatus } from '../services/eventService';
+import { fetchRegistrationsForEvent, updateRegistrationStatus, syncEventApprovedCount } from '../services/eventService';
 import { createNotification } from '../services/notificationService';
 import Spinner from './Spinner';
 import { useAlert } from '../contexts/AlertContext';
@@ -48,6 +48,8 @@ const ManageRegistrations: React.FC<ManageRegistrationsProps> = ({ event, onBack
     });
     setRegistrations(data);
     setIsLoading(false);
+    // Sync approvedCount on the event document so old events get the correct count
+    await syncEventApprovedCount(event.id, data);
   };
 
   useEffect(() => {

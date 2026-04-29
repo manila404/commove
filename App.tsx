@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, addUserViewedEvent, updateUserParticipation, getAllUsers } from './services/userService';
+import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, addUserViewedEvent, updateUserParticipation, getAllUsers, subscribeToUserProfile } from './services/userService';
 import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights } from './services/eventService';
 import { getKNNRankedEvents } from './services/recommendationService'; // Import Recommendation Service
 import { CATEGORIES, formatDisplayDate } from './constants';
@@ -28,7 +28,7 @@ import AdminPanel from './components/AdminPanel';
 import PermitDashboard from './components/PermitDashboard';
 import Spinner from './components/Spinner';
 import NearbyView from './components/NearbyView';
-import SavedEventsView from './components/SavedEventsView';
+import MyEventsView from './components/MyEventsView';
 import NotificationSettingsView from './components/NotificationSettingsView';
 import NotificationList from './components/NotificationList';
 import HelpSupportView from './components/HelpSupportView';
@@ -169,7 +169,7 @@ const App: React.FC = () => {
     const [calendarPopupDate, setCalendarPopupDate] = useState<Date | null>(null);
 
     // New Profile Views
-    const [showSavedEvents, setShowSavedEvents] = useState(false);
+    const [showMyEvents, setShowMyEvents] = useState(false);
     const [showNotificationSettings, setShowNotificationSettings] = useState(false);
     const [showHelpSupport, setShowHelpSupport] = useState(false);
     const [showTermsAndConditions, setShowTermsAndConditions] = useState(false);
@@ -291,7 +291,7 @@ const App: React.FC = () => {
                     // Reset Navigation on Login
                     setActiveTab('feed');
                     setShowPermitDashboard(false);
-                    setShowSavedEvents(false);
+                    setShowMyEvents(false);
                     setShowNotificationSettings(false);
                     setShowHelpSupport(false);
                     setManagingEventRegistrations(null);
@@ -359,6 +359,18 @@ const App: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
+    // 2b. Real-time user profile subscription
+    // Keeps currentUser in sync with Firestore so fields like registrationStatuses
+    // update immediately when written by submitRegistration or updateRegistrationStatus.
+    useEffect(() => {
+        if (!currentUser?.uid) return;
+        const unsubscribe = subscribeToUserProfile(currentUser.uid, (updatedUser) => {
+            if (updatedUser) {
+                setCurrentUser(prev => prev ? { ...prev, ...updatedUser } : updatedUser);
+            }
+        });
+        return () => unsubscribe();
+    }, [currentUser?.uid]);
     // 3. Location Check
     useEffect(() => {
         if (permissions.location === 'granted' && currentUser) {
@@ -690,46 +702,45 @@ const App: React.FC = () => {
 
         const handlePopState = (event: PopStateEvent) => {
             const state = event.state;
-
-            // Reset overlays first
-            setSelectedEvent(null);
-            setShowPermitDashboard(false);
-            setShowPreferences(false);
-            setShowSavedEvents(false);
-            setShowNotificationSettings(false);
-            setShowHelpSupport(false);
-            setShowQRScanner(false);
-
             if (!state) {
+                setSelectedEvent(null);
+                setShowPermitDashboard(false);
+                setShowMyEvents(false);
+                setShowNotificationSettings(false);
+                setShowHelpSupport(false);
+                setShowTermsAndConditions(false);
+                setManagingEventRegistrations(null);
+                setShowQRScanner(false);
                 setActiveTab('feed');
                 return;
             }
 
-            // Handle Views
-            if (state.view === 'event-details') {
-                // Usually handled by modal state
-            } else if (state.view === 'permit') {
-                setShowPermitDashboard(true);
-            } else if (state.view === 'preferences') {
-                setShowPreferences(true);
-            } else if (state.view === 'saved-events') {
-                setShowSavedEvents(true);
-            } else if (state.view === 'notifications') {
-                setShowNotificationSettings(true);
-            } else if (state.view === 'help') {
-                setShowHelpSupport(true);
-            } else if (state.view === 'scanner') {
-                setShowQRScanner(true);
-            } else if (['feed', 'calendar', 'profile'].includes(state.view)) {
-                setActiveTab(state.view);
+            const view = state.view;
+            
+            // Derive all overlay states directly from the history view
+            setSelectedEvent(null); // Modals are usually closed on back
+            setShowPermitDashboard(view === 'permit');
+            setShowMyEvents(view === 'my-events');
+            setShowNotificationSettings(view === 'notification-settings');
+            setShowHelpSupport(view === 'help');
+            setShowTermsAndConditions(view === 'terms');
+            setShowQRScanner(view === 'scanner');
+
+            if (view === 'manageRegistrations') {
+                const event = events.find(e => e.id === state.eventId);
+                if (event) setManagingEventRegistrations(event);
             } else {
-                setActiveTab('feed');
+                setManagingEventRegistrations(null);
+            }
+
+            if (['feed', 'calendar', 'nearby', 'notifications', 'profile'].includes(view)) {
+                setActiveTab(view as any);
             }
         };
 
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
-    }, []);
+    }, [events]);
 
     // --- Navigation Handlers ---
 
@@ -753,7 +764,7 @@ const App: React.FC = () => {
 
         setActiveTab(tab);
         setShowPermitDashboard(false);
-        setShowSavedEvents(false);
+        setShowMyEvents(false);
         setShowNotificationSettings(false);
         setShowHelpSupport(false);
         setShowTermsAndConditions(false);
@@ -809,7 +820,7 @@ const App: React.FC = () => {
         // 1. Clear UI states immediately
         setSelectedEvent(null);
         setShowPermitDashboard(false);
-        setShowSavedEvents(false);
+        setShowMyEvents(false);
         setShowNotificationSettings(false);
         setShowHelpSupport(false);
         setShowTermsAndConditions(false);
@@ -831,6 +842,22 @@ const App: React.FC = () => {
         }
     }, []);
 
+    const handleCloseEvent = useCallback(() => {
+        const wasInMyEvents = showMyEvents;
+        const wasInPermit = showPermitDashboard;
+        
+        setSelectedEvent(null);
+        try {
+            if (window.history.state?.view === 'event-details') {
+                window.history.back();
+            }
+        } catch (e) {}
+
+        // Immediate state restoration to prevent flickering or accidental feed redirect
+        if (wasInMyEvents) setShowMyEvents(true);
+        if (wasInPermit) setShowPermitDashboard(true);
+    }, [showMyEvents, showPermitDashboard]);
+
     const handleOpenPermitDashboard = () => {
         try {
             window.history.pushState({ view: 'permit' }, '');
@@ -845,15 +872,15 @@ const App: React.FC = () => {
         setShowPreferences(true);
     };
 
-    const handleOpenSavedEvents = () => {
+    const handleOpenMyEvents = () => {
         if (isGuest) {
             setIsGuest(false);
             return;
         }
         try {
-            window.history.pushState({ view: 'saved-events' }, '');
+            window.history.pushState({ view: 'my-events' }, '');
         } catch (e) { }
-        setShowSavedEvents(true);
+        setShowMyEvents(true);
     };
 
     const handleOpenNotificationSettings = () => {
@@ -862,7 +889,7 @@ const App: React.FC = () => {
             return;
         }
         try {
-            window.history.pushState({ view: 'notifications' }, '');
+            window.history.pushState({ view: 'notification-settings' }, '');
         } catch (e) { }
         setShowNotificationSettings(true);
     };
@@ -1019,7 +1046,7 @@ const App: React.FC = () => {
         } catch (e) { }
         setActiveTab('feed');
         setShowPermitDashboard(false);
-        setShowSavedEvents(false);
+        setShowMyEvents(false);
         setShowNotificationSettings(false);
         setShowHelpSupport(false);
         setShowLogoutConfirm(false);
@@ -1338,25 +1365,51 @@ const App: React.FC = () => {
         return [...ordered, ...newEvents];
     }, [pinnedEventIds, getDisplayEvents]);
 
-    // Derived saved events list for the SavedEventsView
+    // Derived lists for the MyEventsView
     const savedEvents = useMemo(() => {
-        if (!currentUser || !currentUser.savedEventIds) return [];
-        // Re-use logic to create display events but only for saved IDs, ignoring current filters/search
+        if (!currentUser || !currentUser.savedEventIds?.length) return [];
         return events
             .filter(e => currentUser.savedEventIds?.includes(e.id))
             .map(event => {
                 const now = new Date();
                 const start = new Date(`${event.date}T${event.startTime}`);
                 const end = new Date(`${event.date}T${event.endTime}`);
-                const isLive = now >= start && now <= end;
-
-                const categories = Array.isArray(event.category) ? event.category : [event.category];
                 return {
                     ...event,
                     isSaved: true,
-                    isLive,
-                    isPreferred: categories.some(cat => currentUser.preferences?.includes(cat)) || false,
-                    isNearby: false, // Calc distance if needed, but not strictly required for saved list view
+                    isLive: now >= start && now <= end,
+                    isPreferred: (Array.isArray(event.category) ? event.category : [event.category]).some(cat => currentUser.preferences?.includes(cat)) || false,
+                    isNearby: false,
+                } as DisplayEventType;
+            });
+    }, [events, currentUser]);
+
+    const participatedEvents = useMemo(() => {
+        if (!currentUser) return [];
+        const interestedIds = currentUser.interestedEventIds || [];
+        const checkedInIds = currentUser.checkedInEventIds || [];
+        const registeredIds = Object.keys(currentUser.registrationStatuses || {});
+        
+        const participatedIds = new Set([
+            ...interestedIds,
+            ...checkedInIds,
+            ...registeredIds
+        ]);
+
+        if (participatedIds.size === 0) return [];
+
+        return events
+            .filter(e => participatedIds.has(e.id))
+            .map(event => {
+                const now = new Date();
+                const start = new Date(`${event.date}T${event.startTime}`);
+                const end = new Date(`${event.date}T${event.endTime}`);
+                return {
+                    ...event,
+                    isSaved: currentUser.savedEventIds?.includes(event.id) || false,
+                    isLive: now >= start && now <= end,
+                    isPreferred: (Array.isArray(event.category) ? event.category : [event.category]).some(cat => currentUser.preferences?.includes(cat)) || false,
+                    isNearby: false,
                 } as DisplayEventType;
             });
     }, [events, currentUser]);
@@ -1380,112 +1433,15 @@ const App: React.FC = () => {
 
 
 
-    if (showPermitDashboard) {
-        return (
-            <div className="min-h-screen bg-white dark:bg-gray-900">
-                <Header
-                    currentUser={currentUser}
-                    reminders={currentUser?.reminders || {}}
-                    events={events}
-                    onBack={handleCloseAllModals}
-                    onProfileClick={handleOpenProfile}
-                    title="Permit Dashboard"
-                />
-                <PermitDashboard onBack={handleCloseAllModals} onManageRegistrations={handleManageRegistrations} />
-            </div>
-        );
-    }
-
-    if (managingEventRegistrations) {
-        return (
-            <div className="min-h-screen bg-white dark:bg-gray-900">
-                <Header
-                    currentUser={currentUser}
-                    reminders={currentUser?.reminders || {}}
-                    events={events}
-                    onBack={handleCloseAllModals}
-                    onProfileClick={handleOpenProfile}
-                    title="Manage Registrations"
-                />
-                <ManageRegistrations event={managingEventRegistrations} onBack={handleCloseAllModals} />
-            </div>
-        );
-    }
-
-    if (showSavedEvents) {
-        return (
-            <div className="min-h-screen bg-white dark:bg-gray-900">
-                <Header
-                    currentUser={currentUser}
-                    reminders={currentUser?.reminders || {}}
-                    events={events}
-                    onBack={handleCloseAllModals}
-                    onProfileClick={handleOpenProfile}
-                    title="Saved Events"
-                />
-                <SavedEventsView
-                    events={savedEvents}
-                    onBack={handleCloseAllModals}
-                    onEventSelect={handleOpenEvent}
-                    onToggleSave={handleToggleSaveEvent}
-                />
-            </div>
-        );
-    }
-
-    if (showNotificationSettings) {
-        return (
-            <div className="min-h-screen bg-white dark:bg-gray-900">
-                <Header
-                    currentUser={currentUser}
-                    reminders={currentUser?.reminders || {}}
-                    events={events}
-                    onBack={handleCloseAllModals}
-                    onProfileClick={handleOpenProfile}
-                    title="Notification Settings"
-                />
-                <NotificationSettingsView
-                    currentUser={currentUser}
-                    onBack={handleCloseAllModals}
-                />
-            </div>
-        );
-    }
-
-    if (showHelpSupport) {
-        return (
-            <div className="min-h-screen bg-white dark:bg-gray-900">
-                <Header
-                    currentUser={currentUser}
-                    reminders={currentUser?.reminders || {}}
-                    events={events}
-                    onBack={handleCloseAllModals}
-                    onProfileClick={handleOpenProfile}
-                    title="Help & Support"
-                />
-                <HelpSupportView onBack={handleCloseAllModals} />
-            </div>
-        );
-    }
-
-    if (showTermsAndConditions) {
-        return (
-            <div className="min-h-screen bg-white dark:bg-gray-900">
-                <Header
-                    currentUser={currentUser}
-                    reminders={currentUser?.reminders || {}}
-                    events={events}
-                    onBack={handleCloseAllModals}
-                    onProfileClick={handleOpenProfile}
-                    title="Terms & Conditions"
-                />
-                <TermsAndConditionsView onBack={handleCloseAllModals} />
-            </div>
-        );
-    }
+    const activeOverlay = showPermitDashboard ? 'Permit Dashboard' :
+                          managingEventRegistrations ? 'Manage Registrations' :
+                          showMyEvents ? 'My Events' :
+                          showNotificationSettings ? 'Notification Settings' :
+                          showHelpSupport ? 'Help & Support' :
+                          showTermsAndConditions ? 'Terms & Conditions' : null;
 
     return (
-        <div className={`h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300 font-sans ${activeTab === 'nearby' ? 'overflow-hidden' : 'min-h-screen overflow-x-hidden'}`}>
+        <div className={`h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300 font-sans ${activeTab === 'nearby' || activeOverlay ? 'overflow-hidden' : 'min-h-screen overflow-x-hidden'}`}>
             <Header
                 currentUser={currentUser}
                 reminders={currentUser?.reminders || {}}
@@ -1493,9 +1449,30 @@ const App: React.FC = () => {
                 theme={theme}
                 toggleTheme={toggleTheme}
                 onProfileClick={handleOpenProfile}
+                title={activeOverlay || undefined}
+                onBack={activeOverlay ? handleCloseAllModals : undefined}
             />
 
-            <div className={`flex flex-1 ${activeTab === 'nearby' ? 'overflow-hidden' : ''}`}>
+            {activeOverlay ? (
+                <main className="flex-1 overflow-y-auto">
+                    {showPermitDashboard && <PermitDashboard onBack={handleCloseAllModals} onManageRegistrations={handleManageRegistrations} />}
+                    {managingEventRegistrations && <ManageRegistrations event={managingEventRegistrations} onBack={handleCloseAllModals} />}
+                    {showMyEvents && (
+                        <MyEventsView
+                            savedEvents={savedEvents}
+                            participatedEvents={participatedEvents}
+                            onBack={handleCloseAllModals}
+                            onEventSelect={handleOpenEvent}
+                            onToggleSave={handleToggleSaveEvent}
+                        />
+                    )}
+                    {showNotificationSettings && <NotificationSettingsView currentUser={currentUser} onBack={handleCloseAllModals} />}
+                    {showHelpSupport && <HelpSupportView onBack={handleCloseAllModals} />}
+                    {showTermsAndConditions && <TermsAndConditionsView onBack={handleCloseAllModals} />}
+                </main>
+            ) : (
+                <>
+                <div className={`flex flex-1 ${activeTab === 'nearby' ? 'overflow-hidden' : ''}`}>
                 <Sidebar
                     activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
                     onTabChange={handleTabChange}
@@ -1558,53 +1535,10 @@ const App: React.FC = () => {
 
                                 {/* 3. Popular Events Section */}
                                 {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && (
-                                    <div className="space-y-5 pt-2 animate-fade-in-up">
-                                        <div className="flex items-center justify-between px-1">
-                                            <div>
-                                                <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">Popular Events</h2>
-                                                <p className="text-xs font-semibold text-gray-400 mt-0.5">Bacoor</p>
-                                            </div>
-                                            <button className="flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-primary-600 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl transition-all active:scale-95">
-                                                View All
-                                                <ChevronRight size={14} />
-                                            </button>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 px-1">
-                                            {[
-                                                getDisplayEvents.find(e => e.name?.toLowerCase().includes('sibuyas')),
-                                                getDisplayEvents.find(e => e.name?.toLowerCase().includes('camp sawi'))
-                                            ].filter(Boolean).map((event: any) => (
-                                                <button
-                                                    key={event.id}
-                                                    onClick={() => handleOpenEvent(event)}
-                                                    className="flex items-center gap-4 transition-all text-left group"
-                                                >
-                                                    <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 border border-gray-50 dark:border-gray-600 group-hover:scale-105 transition-transform">
-                                                        {event.imageUrl ? (
-                                                            <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
-                                                                <Calendar size={24} />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider mb-1">
-                                                            <Calendar size={11} className="text-primary-500" />
-                                                            <span>{new Date(event.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}, {event.startTime}</span>
-                                                        </div>
-                                                        <h3 className="text-sm md:text-base font-extrabold text-gray-900 dark:text-white truncate mb-1 group-hover:text-primary-600 transition-colors">
-                                                            {event.name}
-                                                        </h3>
-                                                        <div className="flex items-center gap-1 text-[11px] md:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
-                                                            <MapPin size={10} className="flex-shrink-0 text-red-500 md:w-3 md:h-3" />
-                                                            <span className="truncate">{event.venue}</span>
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
+                                    <PopularEvents 
+                                        events={getDisplayEvents} 
+                                        onEventSelect={handleOpenEvent} 
+                                    />
                                 )}
 
                                 {/* 2. Active Date Filter Indicator */}
@@ -1839,7 +1773,7 @@ const App: React.FC = () => {
                             user={currentUser}
                             onLogout={handleLogout}
                             onLogin={() => setIsGuest(false)}
-                            onShowSaved={handleOpenSavedEvents}
+                            onShowMyEvents={handleOpenMyEvents}
                             onEditPreferences={handleOpenPreferences}
                             onShowPermitDashboard={handleOpenPermitDashboard}
                             onShowNotificationSettings={handleOpenNotificationSettings}
@@ -1865,15 +1799,19 @@ const App: React.FC = () => {
                     onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
                 />
             )}
+            </>
+            )}
 
-            <BottomNav
-                activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
-                onTabChange={handleTabChange}
-                onOpenScanner={handleOpenScanner}
-                onNotificationClick={handleOpenNotifications}
-                pendingFacilitatorCount={pendingFacilitatorCount}
-                unreadNotificationCount={unreadNotificationCount}
-            />
+            {!activeOverlay && (
+                <BottomNav
+                    activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
+                    onTabChange={handleTabChange}
+                    onOpenScanner={handleOpenScanner}
+                    onNotificationClick={handleOpenNotifications}
+                    pendingFacilitatorCount={pendingFacilitatorCount}
+                    unreadNotificationCount={unreadNotificationCount}
+                />
+            )}
 
             {/* Modals & Overlays */}
             {showFacilitatorAuth && (
@@ -1893,7 +1831,7 @@ const App: React.FC = () => {
             {selectedEvent && (
                 <EventModal
                     event={selectedEvent}
-                    onClose={handleCloseAllModals}
+                    onClose={handleCloseEvent}
                     isSaved={currentUser?.savedEventIds?.includes(selectedEvent.id) || false}
                     onToggleSave={handleToggleSaveEvent}
                     isLiked={currentUser?.likedEventIds?.includes(selectedEvent.id) || false}

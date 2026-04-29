@@ -1,5 +1,5 @@
 
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where, getDoc, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where, getDoc, setDoc, writeBatch, increment, runTransaction, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import type { EventType, EventStatus, Registration, RegistrationStatus } from '../types';
 
@@ -195,19 +195,22 @@ export const updateEventSeries = async (groupId: string, fromDate: string, updat
 export const submitRegistration = async (registrationData: Omit<Registration, 'id' | 'submittedAt'>): Promise<Registration> => {
     try {
         const sanitizedData = sanitizeData(registrationData);
-        
-        // Prevent duplicate registrations
-        const q = query(registrationsCollectionRef, where("eventId", "==", sanitizedData.eventId), where("userId", "==", sanitizedData.userId));
-        const existing = await getDocs(q);
-        if (!existing.empty) {
-            throw new Error("You have already registered for this event.");
-        }
-        
         const submittedAt = Date.now();
         const docRef = await addDoc(registrationsCollectionRef, {
             ...sanitizedData,
             submittedAt
         });
+
+        // Write registration status to the user's own document so EventModal
+        // can read it directly from currentUser state without a collection query.
+        const userDocRef = doc(db, 'users', sanitizedData.userId);
+        await updateDoc(userDocRef, {
+            [`registrationStatuses.${sanitizedData.eventId}`]: {
+                status: 'pending',
+                registrationId: docRef.id,
+            }
+        });
+
         return {
             id: docRef.id,
             ...sanitizedData,
@@ -233,7 +236,31 @@ export const fetchRegistrationsForEvent = async (eventId: string): Promise<Regis
     }
 };
 
-import { onSnapshot } from 'firebase/firestore';
+export const subscribeToEventDoc = (eventId: string, callback: (event: EventType | null) => void) => {
+    const eventDocRef = doc(db, 'events', eventId);
+    return onSnapshot(eventDocRef, (snap) => {
+        if (snap.exists()) {
+            callback({ ...snap.data(), id: snap.id } as EventType);
+        } else {
+            callback(null);
+        }
+    }, (error) => {
+        console.error('Error subscribing to event doc:', error);
+        callback(null);
+    });
+};
+
+/** Staff-only: recalculates approvedCount and writes it to the event document.
+ *  Call this from ManageRegistrations on load to fix old events that pre-date
+ *  the approvedCount field. */
+export const syncEventApprovedCount = async (eventId: string, registrations: Registration[]): Promise<void> => {
+    try {
+        const count = registrations.filter(r => r.status === 'approved').length;
+        await updateDoc(doc(db, 'events', eventId), { approvedCount: count });
+    } catch (error) {
+        console.error('Error syncing approvedCount:', error);
+    }
+};
 
 export const subscribeToEventRegistrations = (eventId: string, callback: (regs: Registration[]) => void) => {
     const q = query(registrationsCollectionRef, where("eventId", "==", eventId));
@@ -252,11 +279,62 @@ export const subscribeToEventRegistrations = (eventId: string, callback: (regs: 
 export const updateRegistrationStatus = async (registrationId: string, status: RegistrationStatus): Promise<void> => {
     try {
         const regDocRef = doc(db, 'registrations', registrationId);
-        await updateDoc(regDocRef, { status });
+        
+        await runTransaction(db, async (transaction) => {
+            const regDoc = await transaction.get(regDocRef);
+            if (!regDoc.exists()) {
+                throw new Error("Registration does not exist!");
+            }
+            
+            const data = regDoc.data() as Registration;
+            const previousStatus = data.status;
+            
+            if (previousStatus === status) return;
+
+            // Update registration document
+            transaction.update(regDocRef, { status });
+
+            // Keep approvedCount on the event document in sync
+            if (status === 'approved' || previousStatus === 'approved') {
+                const eventDocRef = doc(db, 'events', data.eventId);
+                const incrementAmount = status === 'approved' ? 1 : -1;
+                transaction.update(eventDocRef, { approvedCount: increment(incrementAmount) });
+            }
+
+            // Keep registrationStatuses on the user document in sync
+            const userDocRef = doc(db, 'users', data.userId);
+            transaction.update(userDocRef, {
+                [`registrationStatuses.${data.eventId}`]: {
+                    status,
+                    registrationId,
+                }
+            });
+        });
     } catch (error) {
         console.error("Error updating registration status:", error);
         throw error;
     }
+};
+
+export const subscribeToUserEventRegistration = (eventId: string, userId: string, callback: (reg: Registration | null) => void) => {
+    // Query only by userId — this uses the default single-field index and satisfies
+    // the Firestore rule (resource.data.userId == request.auth.uid).
+    // We then filter by eventId client-side to find the correct registration.
+    const q = query(
+        registrationsCollectionRef, 
+        where("userId", "==", userId)
+    );
+    return onSnapshot(q, (snapshot) => {
+        const match = snapshot.docs.find(d => d.data().eventId === eventId);
+        if (!match) {
+            callback(null);
+            return;
+        }
+        callback({ ...match.data(), id: match.id } as Registration);
+    }, (error) => {
+        console.error("Error subscribing to user registration:", error);
+        callback(null);
+    });
 };
 
 

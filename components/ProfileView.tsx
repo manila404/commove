@@ -31,7 +31,7 @@ interface ProfileViewProps {
     onLogout: () => void;
     onLogin: () => void;
     onShowAdminPanel?: () => void;
-    onShowSaved: () => void;
+    onShowMyEvents: () => void;
     onEditPreferences: () => void;
     onShowPermitDashboard: () => void;
     onShowNotificationSettings: () => void;
@@ -49,7 +49,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     onLogout, 
     onLogin,
     onShowAdminPanel, 
-    onShowSaved,
+    onShowMyEvents,
     onEditPreferences,
     onShowPermitDashboard,
     onShowNotificationSettings,
@@ -224,10 +224,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                             </div>
                         </button>
 
-                        <button onClick={onShowSaved} className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <button onClick={onShowMyEvents} className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                              <div className="flex items-center gap-3">
                                 <div className="text-gray-400"><BookmarkIcon className="w-5 h-5" /></div>
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Saved Events</span>
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">My Events</span>
                             </div>
                             <ChevronRightIcon className="w-4 h-4 text-gray-400" />
                         </button>

@@ -18,7 +18,7 @@ import {
 interface ProfileDropdownProps {
   user: User;
   onLogout: () => void;
-  onShowSaved: () => void;
+  onShowMyEvents: () => void;
   onShowAdminPanel: () => void;
   onShowNotificationSettings?: () => void;
   onShowHelpSupport?: () => void;
@@ -30,7 +30,7 @@ interface ProfileDropdownProps {
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ 
   user, 
   onLogout, 
-  onShowSaved, 
+  onShowMyEvents, 
   onShowAdminPanel,
   onShowNotificationSettings,
   onShowHelpSupport,
@@ -152,10 +152,10 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
                 </button>
               )}
 
-              <button onClick={() => handleAction(onShowSaved)} className="w-full flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+              <button onClick={() => handleAction(onShowMyEvents)} className="w-full flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <div className="flex items-center gap-3">
                       <div className="text-gray-400"><BookmarkIcon className="w-4 h-4" /></div>
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Saved Events</span>
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">My Events</span>
                   </div>
                   <ChevronRightIcon className="w-4 h-4 text-gray-400" />
               </button>
