@@ -1748,6 +1748,8 @@ const App: React.FC = () => {
                                         }, 300);
                                     }}
                                     onManageRegistrations={handleManageRegistrations}
+                                    savedEventIds={currentUser.savedEventIds || []}
+                                    interestedEventIds={currentUser.interestedEventIds || []}
                                 />
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-64 text-center px-4">

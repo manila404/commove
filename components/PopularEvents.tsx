@@ -41,7 +41,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) 
                 <Flame size={14} />
             </div>
           </div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Top Trending in Bacoor</p>
+          <p className="text-xs font-semibold text-gray-400 mt-0.5">Top Trending in Bacoor</p>
         </div>
         <button className="flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-primary-600 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl transition-all active:scale-95">
           View All
@@ -74,7 +74,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) 
             </div>
             
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 dark:text-gray-500 mb-1">
                 <Calendar size={11} className="text-primary-500" />
                 <span>{new Date(event.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
               </div>

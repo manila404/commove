@@ -23,6 +23,8 @@ interface NotificationListProps {
     onManageRegistrations?: (event: EventType) => void;
     isStaff?: boolean;
     isAdmin?: boolean;
+    savedEventIds?: string[];
+    interestedEventIds?: string[];
 }
 
 type FilterStatus = 'all' | 'unread' | 'read';
@@ -405,7 +407,7 @@ const NotificationActionPanel: React.FC<{
     );
 };
 
-const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onEventSelect, onNavigateToAdmin, onEventUpdated, onManageRegistrations, isStaff = false, isAdmin = false }) => {
+const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onEventSelect, onNavigateToAdmin, onEventUpdated, onManageRegistrations, isStaff = false, isAdmin = false, savedEventIds = [], interestedEventIds = [] }) => {
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
     const [filter, setFilter] = useState<FilterStatus>('all');
     const [showFilters, setShowFilters] = useState(false);
@@ -544,7 +546,9 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
     };
 
     // Check if any events are currently ongoing so we can show them even with zero notifications
+    const userEventIds = new Set([...savedEventIds, ...interestedEventIds]);
     const hasOngoingEvents = events.some(e => {
+        if (!userEventIds.has(e.id)) return false; // only events user saved or is interested in
         if (e.status !== 'published' && e.status !== 'scheduled') return false;
         try {
             const now = Date.now();
@@ -614,6 +618,8 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
             {(() => {
                 const now = Date.now();
                 const ongoingEvents = events.filter(e => {
+                    // Only show events this user saved or marked as interested
+                    if (!userEventIds.has(e.id)) return false;
                     if (e.status !== 'published' && e.status !== 'scheduled') return false;
                     try {
                         const start = new Date(`${e.date}T${e.startTime}`).getTime();
