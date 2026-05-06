@@ -35,13 +35,8 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) 
     <div className="space-y-4 animate-fade-in-up">
       <div className="flex items-center justify-between px-1">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">Popular Events</h2>
-            <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 p-1 rounded-lg">
-                <Flame size={14} />
-            </div>
-          </div>
-          <p className="text-xs font-semibold text-gray-400 mt-0.5">Top Trending in Bacoor</p>
+          <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">Popular Events</h2>
+          <p className="text-xs font-semibold text-gray-400 mt-0.5">Bacoor</p>
         </div>
         <button className="flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-primary-600 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl transition-all active:scale-95">
           View All
