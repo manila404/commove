@@ -1290,6 +1290,32 @@ const App: React.FC = () => {
             return isPublished || isScheduled;
         });
 
+        // --- Recurring Event Deduplication ---
+        // For each recurrence group, show only the single most-relevant occurrence:
+        //   1. The earliest occurrence that is today or in the future, OR
+        //   2. If all occurrences are past, the most recent one.
+        // Keyed by recurrenceGroupId only — isRecurrent flag is unreliable
+        // because sanitizeData converts undefined → null (falsy).
+        const _dedupToday = new Date();
+        _dedupToday.setHours(0, 0, 0, 0);
+        const _groupMap = new Map<string, EventType>();
+        const _nonRecurring: EventType[] = [];
+        baseEvents.forEach(event => {
+            if (!event.recurrenceGroupId) { _nonRecurring.push(event); return; }
+            const gid = event.recurrenceGroupId;
+            const existing = _groupMap.get(gid);
+            const eDate = new Date(event.date + 'T00:00:00');
+            const eFuture = eDate >= _dedupToday;
+            if (!existing) { _groupMap.set(gid, event); return; }
+            const xDate = new Date(existing.date + 'T00:00:00');
+            const xFuture = xDate >= _dedupToday;
+            if (eFuture && !xFuture) { _groupMap.set(gid, event); }
+            else if (eFuture && xFuture) { if (eDate < xDate) _groupMap.set(gid, event); }
+            else if (!eFuture && !xFuture) { if (eDate > xDate) _groupMap.set(gid, event); }
+        });
+        baseEvents = [..._nonRecurring, ...Array.from(_groupMap.values())];
+        // --- End Deduplication ---
+
         // 2. Search Filter
         if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
@@ -1303,6 +1329,7 @@ const App: React.FC = () => {
                     (event.description || '').toLowerCase().includes(lowercasedQuery);
             });
         }
+
 
         // 4. Date Filter (Calendar)
         if (selectedDateFilter) {
@@ -1844,7 +1871,13 @@ const App: React.FC = () => {
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <FacilitatorAuthFlow
                         currentUser={currentUser}
-                        onAuthSuccess={() => handleAuthSuccess(false)}
+                        onAuthSuccess={async () => {
+                            // Close the facilitator modal first
+                            setShowFacilitatorAuth(false);
+                            setFacilitatorAuthInitialStep('question');
+                            // Then handle the auth state (true = new user, show preferences)
+                            await handleAuthSuccess(true);
+                        }}
                         onClose={() => {
                             setShowFacilitatorAuth(false);
                             setFacilitatorAuthInitialStep('question');

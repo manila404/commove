@@ -13,15 +13,15 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) 
   // 1. Prioritize events with the highest approvedCount (registrations)
   // 2. Secondary sort by recency (submittedAt or Date)
   // 3. We can also boost specific events if needed (like 'sibuyas' or 'camp sawi' for the user request)
-  
+
   const sortedEvents = [...events].sort((a, b) => {
     const aCount = a.approvedCount || 0;
     const bCount = b.approvedCount || 0;
-    
+
     if (bCount !== aCount) {
-        return bCount - aCount;
+      return bCount - aCount;
     }
-    
+
     // Fallback: Recency
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
@@ -49,25 +49,25 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) 
           <button
             key={event.id}
             onClick={() => onEventSelect(event)}
-            className="flex-shrink-0 w-[320px] md:w-[350px] flex items-center gap-4 transition-all text-left snap-start group"
+            className="flex-shrink-0 w-[280px] md:w-[320px] flex items-center gap-3 transition-all text-left snap-start group"
           >
-            <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 border border-gray-50 dark:border-gray-600 group-hover:scale-105 transition-transform relative">
+            <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 border border-gray-50 dark:border-gray-600 group-hover:scale-105 transition-transform relative">
               {event.imageUrl ? (
                 <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-primary-50 dark:bg-primary-900/20 text-primary-500">
-                   <Calendar size={24} />
+                  <Calendar size={24} />
                 </div>
               )}
               {/* Popularity indicator */}
               {(event.approvedCount || 0) > 0 && (
                 <div className="absolute top-1 right-1 bg-black/60 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded-lg flex items-center gap-1">
-                    <Flame size={8} className="text-orange-400" />
-                    {event.approvedCount}
+                  <Flame size={8} className="text-orange-400" />
+                  {event.approvedCount}
                 </div>
               )}
             </div>
-            
+
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 dark:text-gray-500 mb-1">
                 <Calendar size={11} className="text-primary-500" />

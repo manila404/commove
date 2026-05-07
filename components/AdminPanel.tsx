@@ -181,13 +181,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const isFacilitator = currentUser.role === 'facilitator';
     const dashboardTitle = currentUser.role === 'admin' ? 'Admin Analytics' : 'Facilitator Dashboard';
 
-    const publishedEvents = events.filter(event => {
+    // --- Recurring Event Deduplication (Admin Side) ---
+    // For admin/facilitator views: collapse recurring series so each group
+    // shows only one representative row (earliest upcoming, or most recent past).
+    // All occurrences remain accessible for editing/deleting individually via
+    // the edit form if needed.
+    const deduplicateRecurringEvents = (evts: EventType[]): EventType[] => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const groupMap = new Map<string, EventType>();
+        const nonRecurring: EventType[] = [];
+        evts.forEach(event => {
+            // Use recurrenceGroupId as the sole grouping key.
+            // isRecurrent flag may be null (sanitizeData converts undefined→null)
+            if (!event.recurrenceGroupId) {
+                nonRecurring.push(event);
+                return;
+            }
+            const groupId = event.recurrenceGroupId;
+            const existing = groupMap.get(groupId);
+            const eventDate = new Date(event.date + 'T00:00:00');
+            const isFutureOrToday = eventDate >= today;
+            if (!existing) { groupMap.set(groupId, event); return; }
+            const existingDate = new Date(existing.date + 'T00:00:00');
+            const existingIsFutureOrToday = existingDate >= today;
+            if (isFutureOrToday && !existingIsFutureOrToday) {
+                groupMap.set(groupId, event);
+            } else if (isFutureOrToday && existingIsFutureOrToday) {
+                if (eventDate < existingDate) groupMap.set(groupId, event);
+            } else if (!isFutureOrToday && !existingIsFutureOrToday) {
+                if (eventDate > existingDate) groupMap.set(groupId, event);
+            }
+        });
+        return [...nonRecurring, ...Array.from(groupMap.values())];
+    };
+
+    const publishedEvents = deduplicateRecurringEvents(events.filter(event => {
         const isPublished = event.status === 'published' || event.status === 'scheduled' || !event.status;
         if (currentUser.role === 'facilitator') {
             return isPublished && event.createdBy === currentUser.uid;
         }
         return isPublished;
-    });
+    }));
 
     // Filter Logic
     let baseRequests: EventType[] = [];
@@ -673,12 +708,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         });
     };
 
-    const accessibleEvents = events.filter(event => {
+    const accessibleEvents = deduplicateRecurringEvents(events.filter(event => {
         if (currentUser.role === 'facilitator') {
             return event.createdBy === currentUser.uid;
         }
         return true; // Admins see everything
-    });
+    }));
 
     const renderDashboard = () => (
         <div className="p-4 md:p-8 w-full max-w-5xl mx-auto animate-fade-in-up pb-24">
