@@ -45,7 +45,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 200, mass: 1 }}
-            className="w-full h-full md:h-auto max-w-4xl bg-white dark:bg-[#111827] rounded-none md:rounded-[32px] shadow-2xl overflow-hidden flex flex-col md:flex-row relative"
+            className={`w-full h-full md:h-auto bg-white dark:bg-[#111827] rounded-none md:rounded-[15px] shadow-2xl overflow-hidden flex flex-col md:flex-row relative transition-all duration-300 ${isSigningUp ? 'max-w-5xl md:max-h-[calc(100vh-4rem)]' : 'max-w-4xl'}`}
         >
             {/* Close Button */}
             <button
@@ -59,7 +59,8 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
             </button>
 
             {/* Left Side (Desktop) / Top Side (Mobile): Branding with Primary Purple on Mobile */}
-            <div className="flex md:w-[55%] bg-primary-600 md:bg-white md:dark:bg-[#111827] p-4 pt-safe md:p-12 flex-col justify-start md:justify-between border-b md:border-b-0 md:border-r border-primary-500 md:border-gray-100 dark:md:border-gray-800 relative z-0 min-h-[45vh] max-h-[50vh] md:max-h-none md:min-h-0">
+            {/* On desktop, hide this panel entirely when showing Sign Up */}
+            <div className={`flex md:w-[55%] bg-primary-600 md:bg-white md:dark:bg-[#111827] p-4 pt-safe md:p-12 flex-col justify-start md:justify-between border-b md:border-b-0 md:border-r border-primary-500 md:border-gray-100 dark:md:border-gray-800 relative z-0 min-h-[45vh] max-h-[50vh] md:max-h-none md:min-h-0 ${isSigningUp ? 'md:hidden' : ''}`}>
                 <div className="flex flex-col items-center md:items-start text-center md:text-left mt-2 md:mt-10">
                     <div className="flex items-center select-none text-3xl tracking-tighter" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
                         <div className="relative inline-flex items-center justify-center text-white md:text-gray-900 dark:md:text-white mr-[-0.08em]">
@@ -109,14 +110,31 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
                 }}
                 animate={{ y: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="w-full md:w-[45%] p-6 pt-10 md:p-8 bg-white dark:bg-[#111827] flex flex-col flex-1 min-h-0 pb-10 md:pb-8 md:max-h-none overflow-y-auto rounded-t-[32px] md:rounded-none -mt-8 md:mt-0 relative z-10 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] md:shadow-none"
+                className={`w-full p-6 pt-10 bg-white dark:bg-[#111827] flex flex-col flex-1 min-h-0 pb-10 md:pb-8 md:max-h-none overflow-y-auto rounded-t-[32px] md:rounded-none -mt-8 md:mt-0 relative z-10 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] md:shadow-none ${isSigningUp ? 'md:p-10' : 'md:w-[45%] md:p-8'}`}
             >
                 {/* Drag Handle (Mobile only - only shown for draggable Sign Up) */}
                 {isSigningUp && (
                     <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 dark:bg-gray-700/50 rounded-full" />
                 )}
 
-                {/* Removed the duplicate mobile logo as it has been moved to the top container */}
+                {/* Desktop-only Commove logo header — shown only when Sign Up is active */}
+                {isSigningUp && (
+                    <div className="hidden md:flex flex-col mb-6">
+                        <div className="flex items-center select-none text-3xl tracking-tighter mb-2" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
+                            <div className="relative inline-flex items-center justify-center text-gray-900 dark:text-white mr-[-0.08em]">
+                                <svg style={{ width: '0.65em', height: '0.65em', transform: 'translateY(0.06em)' }} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="20">
+                                    <path d="M 82 26 A 40 40 0 1 0 82 74" />
+                                    <circle cx="48" cy="50" r="14" fill="currentColor" stroke="none" className="text-primary-700 dark:text-primary-500" />
+                                </svg>
+                            </div>
+                            <span className="text-gray-900 dark:text-white font-semibold">om</span>
+                            <span className="text-primary-700 dark:text-primary-500 font-normal">move</span>
+                        </div>
+                        <p className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">
+                            Discover events and connect with your community.
+                        </p>
+                    </div>
+                )}
 
                 <div className="flex-1 flex flex-col justify-center overflow-hidden">
                     <AnimatePresence mode="wait">

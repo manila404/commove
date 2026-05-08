@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image as ImageIcon, ArrowLeft, Share2, Heart, Phone, MessageCircle, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { EventType, Reminder, User } from '../types';
-import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, BellIcon, StarIcon, ShieldCheckIcon, formatDisplayDate } from '../constants';
+import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, BellIcon, StarIcon, ShieldCheckIcon, formatDisplayDate, formatTime } from '../constants';
 import InteractiveMap from './InteractiveMap';
 import { useAlert } from '../contexts/AlertContext';
 import { usePermissions } from '../contexts/PermissionContext';
@@ -292,15 +292,12 @@ const EventModal: React.FC<EventModalProps> = ({
             ))}
           </div>
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Event Details</p>
-          <h2 className="text-4xl font-extrabold text-purple-600 dark:text-purple-400 leading-tight">{event.name}</h2>
+          <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white leading-tight">{event.name}</h2>
           
           <div className="flex flex-wrap items-center gap-3 mt-4">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-100 dark:border-purple-800/50">
-                 <span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span>
-                 <p className="text-sm font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
-                     Lead Office: <span className="text-purple-900 dark:text-purple-100">{event.organizer || 'Admin'}</span>
-                 </p>
-              </div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Lead Office: <span className="font-semibold">{event.organizer || 'Admin'}</span>
+              </p>
 
               {isFacilitatorOrAdmin && event.priority && (
                   <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${
@@ -336,7 +333,7 @@ const EventModal: React.FC<EventModalProps> = ({
             <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-sm">
               <ClockIcon className="w-5 h-5" />
             </div>
-            <span className="font-bold text-gray-500 dark:text-gray-400">{event.startTime} - {event.endTime}</span>
+            <span className="font-bold text-gray-500 dark:text-gray-400">{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-sm">
@@ -353,8 +350,8 @@ const EventModal: React.FC<EventModalProps> = ({
             {event.description}
           </p>
           {event.creatorUsername && (
-            <p className="pt-4 text-xs font-black text-purple-600 dark:text-purple-400 uppercase tracking-[0.2em]">
-              Lead Office: {event.creatorUsername.replace(/^@/, '').toUpperCase()}
+            <p className="pt-4 text-xs font-medium text-gray-500 dark:text-gray-400">
+              Lead Office: {event.creatorUsername.replace(/^@/, '')}
             </p>
           )}
         </div>
@@ -659,7 +656,7 @@ const EventModal: React.FC<EventModalProps> = ({
           ))}
         </div>
         <p className="text-xs font-bold text-gray-900 dark:text-gray-100">Event Details</p>
-        <h2 className="text-2xl md:text-4xl font-extrabold text-[#2A2A2A] dark:text-white leading-tight">{event.name}</h2>
+        <h2 className="text-2xl md:text-4xl font-extrabold text-gray-900 dark:text-white leading-tight">{event.name}</h2>
       </div>
 
       {/* Meta Info Row */}
@@ -679,7 +676,7 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
           <div className="flex flex-col">
             <span className="text-[11px] md:text-xs text-gray-500 dark:text-gray-400 font-medium leading-tight mb-0.5">Time</span>
-            <span className="text-sm md:text-base font-semibold md:font-bold text-[#2A2A2A] dark:text-white leading-tight">{event.startTime} - {event.endTime}</span>
+            <span className="text-sm md:text-base font-semibold md:font-bold text-[#2A2A2A] dark:text-white leading-tight">{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
           </div>
         </div>
         <div className="flex items-center gap-3.5">
@@ -700,8 +697,8 @@ const EventModal: React.FC<EventModalProps> = ({
           {event.description}
         </p>
         {event.creatorUsername && (
-          <p className="pt-2 text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest">
-            Lead Office: {event.creatorUsername.replace(/^@/, '').toUpperCase()}
+          <p className="pt-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+            Lead Office: {event.creatorUsername.replace(/^@/, '')}
           </p>
         )}
       </div>

@@ -34,6 +34,28 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const captchaRef = useRef<CaptchaRef>(null);
+    const avatarScrollRef = useRef<HTMLDivElement>(null);
+    const avatarDragRef = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
+
+    const handleAvatarMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        const el = avatarScrollRef.current;
+        if (!el) return;
+        avatarDragRef.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+        el.style.cursor = 'grabbing';
+    };
+    const handleAvatarMouseLeaveOrUp = () => {
+        avatarDragRef.current.isDown = false;
+        if (avatarScrollRef.current) avatarScrollRef.current.style.cursor = 'grab';
+    };
+    const handleAvatarMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!avatarDragRef.current.isDown) return;
+        e.preventDefault();
+        const el = avatarScrollRef.current;
+        if (!el) return;
+        const x = e.pageX - el.offsetLeft;
+        const walk = (x - avatarDragRef.current.startX) * 1.5;
+        el.scrollLeft = avatarDragRef.current.scrollLeft - walk;
+    };
 
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
@@ -227,10 +249,20 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
 
             {step === 1 && (
                 <div className="flex-1 pr-2 -mr-2 overflow-y-auto scrollbar-hide">
-                    <form onSubmit={handleNextStep} className="space-y-2 md:space-y-4 pb-12 px-2">
+                    <form onSubmit={handleNextStep} className="space-y-2 md:space-y-3 pb-12 px-2">
+
+                    {/* Avatar picker */}
                     <div className="mb-1">
-                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5 px-2 uppercase tracking-wider">Choose your avatar</label>
-                        <div className="flex gap-2 overflow-x-auto py-1.5 px-2 scrollbar-hide -mx-2">
+                        <label className="block text-[10px] font-bold text-gray-500 mb-0.5 px-2">Choose your avatar</label>
+                        <div
+                            ref={avatarScrollRef}
+                            className="flex gap-2 py-1.5 px-2 -mx-2 overflow-x-auto"
+                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: 'grab', userSelect: 'none' }}
+                            onMouseDown={handleAvatarMouseDown}
+                            onMouseLeave={handleAvatarMouseLeaveOrUp}
+                            onMouseUp={handleAvatarMouseLeaveOrUp}
+                            onMouseMove={handleAvatarMouseMove}
+                        >
                             {PREDEFINED_AVATARS.map((avatar, idx) => (
                                 <button
                                     key={idx}
@@ -248,7 +280,10 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                         </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4">
+                    {/* ── DESKTOP two-column grid, MOBILE single column (unchanged) ── */}
+                    <div className="md:grid md:grid-cols-2 md:gap-x-4 space-y-2 md:space-y-0 md:gap-y-3">
+
+                        {/* Row 1: First Name | Last Name */}
                         <input
                             type="text"
                             placeholder="First Name"
@@ -271,35 +306,37 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             required
                             className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                         />
-                    </div>
-                      <div className="mt-1">
-                        <input
-                            type="email"
-                            placeholder="Email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            pattern=".*@gmail\.com$|^admin@commove\.com$"
-                            title="Please enter a valid @gmail.com address or admin account"
-                            className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
-                        />
-                    </div>
 
-                    <div className="mt-1">
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 font-bold">@</span>
+                        {/* Row 2: Email – full width */}
+                        <div className="md:col-span-2">
                             <input
-                                type="text"
-                                placeholder="Username"
-                                value={username.startsWith('@') ? username.slice(1) : username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                type="email"
+                                placeholder="Email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full pl-8 pr-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
+                                pattern=".*@gmail\.com$|^admin@commove\.com$"
+                                title="Please enter a valid @gmail.com address or admin account"
+                                className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                             />
                         </div>
-                    </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4">
+                        {/* Row 3: @Username – full width */}
+                        <div className="md:col-span-2">
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 font-bold">@</span>
+                                <input
+                                    type="text"
+                                    placeholder="Username"
+                                    value={username.startsWith('@') ? username.slice(1) : username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    required
+                                    className="w-full pl-8 pr-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Row 4: Contact Number | Address */}
                         <input
                             type="tel"
                             placeholder="Contact Number (Optional)"
@@ -307,9 +344,6 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             onChange={(e) => setContactNumber(e.target.value)}
                             className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                         />
-                    </div>
-
-                    <div className="mt-1">
                         <input
                             type="text"
                             placeholder="Address"
@@ -318,9 +352,8 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             required
                             className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                         />
-                    </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4">
+                        {/* Row 5: Birthday | Gender */}
                         <div className="w-full relative">
                             <label className="absolute -top-2 left-4 bg-white dark:bg-[#111827] px-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Birthday</label>
                             <input
@@ -351,95 +384,101 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                             </div>
                         </div>
-                    </div>
 
-                    {sex === 'Others' && (
-                        <div>
+                        {/* Custom gender – only shows when 'Others' selected */}
+                        {sex === 'Others' && (
+                            <div className="md:col-span-2">
+                                <input
+                                    type="text"
+                                    placeholder="Please specify your gender"
+                                    value={customSex}
+                                    onChange={(e) => setCustomSex(e.target.value)}
+                                    required
+                                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
+                                />
+                            </div>
+                        )}
+
+                        {/* Row 6: Password | Confirm Password */}
+                        <div className="relative">
                             <input
-                                type="text"
-                                placeholder="Please specify your gender"
-                                value={customSex}
-                                onChange={(e) => setCustomSex(e.target.value)}
+                                type={passwordVisible ? 'text' : 'password'}
+                                placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
                                 required
                                 className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                             />
-                        </div>
-                    )}
-                   
-                    <div className="relative">
-                        <input
-                            type={passwordVisible ? 'text' : 'password'}
-                            placeholder="Password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
-                        />
                             <button type="button" onClick={() => setPasswordVisible(!passwordVisible)} className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 dark:text-gray-500">
-                            {passwordVisible ? <EyeSlashIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
-                        </button>
-                    </div>
-                    <div className="relative">
-                        <input
-                            type={confirmPasswordVisible ? 'text' : 'password'}
-                            placeholder="Confirm Password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
-                        />
-                        <button type="button" onClick={() => setConfirmPasswordVisible(!confirmPasswordVisible)} className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 dark:text-gray-500">
-                           {confirmPasswordVisible ? <EyeSlashIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 px-2 py-1">
-                        <input 
-                            type="checkbox" 
-                            id="isFacilitator" 
-                            checked={isFacilitator}
-                            onChange={(e) => setIsFacilitator(e.target.checked)}
-                            className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                        />
-                        <label htmlFor="isFacilitator" className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                            Sign up as Facilitator (Requires Admin Approval)
-                        </label>
-                    </div>
-
-                    {error && (
-                        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-2 rounded-xl mt-4">
-                            <p className="text-red-600 dark:text-red-300 text-xs text-center">{error}</p>
-                        </div>
-                    )}
-
-                    <div className="pt-8">
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 text-center mb-3">
-                            By signing up, you agree to our{' '}
-                            <button 
-                                type="button" 
-                                onClick={onShowTermsAndConditions} 
-                                className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
-                            >
-                                Terms and Conditions
+                                {passwordVisible ? <EyeSlashIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
                             </button>
-                            {' '}and Data Privacy Policy.
-                        </p>
-                        <button 
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full flex items-center justify-center bg-primary-600 text-white font-bold py-3 px-4 rounded-full hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/20 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-base active:scale-95"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Spinner size="sm" />
-                                    <span className="ml-2">Creating...</span>
-                                </>
-                            ) : isFacilitator ? 'Next Step' : 'Sign Up'}
-                        </button>
-                    </div>
+                        </div>
+                        <div className="relative">
+                            <input
+                                type={confirmPasswordVisible ? 'text' : 'password'}
+                                placeholder="Confirm Password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                required
+                                className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
+                            />
+                            <button type="button" onClick={() => setConfirmPasswordVisible(!confirmPasswordVisible)} className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 dark:text-gray-500">
+                               {confirmPasswordVisible ? <EyeSlashIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
+                            </button>
+                        </div>
+
+                        {/* Facilitator checkbox – full width */}
+                        <div className="md:col-span-2 flex items-center gap-2 px-2 py-1">
+                            <input 
+                                type="checkbox" 
+                                id="isFacilitator" 
+                                checked={isFacilitator}
+                                onChange={(e) => setIsFacilitator(e.target.checked)}
+                                className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                            />
+                            <label htmlFor="isFacilitator" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                Sign up as Facilitator (Requires Admin Approval)
+                            </label>
+                        </div>
+
+                        {/* Error – full width */}
+                        {error && (
+                            <div className="md:col-span-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-2 rounded-xl">
+                                <p className="text-red-600 dark:text-red-300 text-xs text-center">{error}</p>
+                            </div>
+                        )}
+
+                        {/* Submit – full width */}
+                        <div className="md:col-span-2 pt-4">
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 text-center mb-3">
+                                By signing up, you agree to our{' '}
+                                <button 
+                                    type="button" 
+                                    onClick={onShowTermsAndConditions} 
+                                    className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
+                                >
+                                    Terms and Conditions
+                                </button>
+                                {' '}and Data Privacy Policy.
+                            </p>
+                            <button 
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full flex items-center justify-center bg-primary-600 text-white font-bold py-3 px-4 rounded-full hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/20 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-base active:scale-95"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Spinner size="sm" />
+                                        <span className="ml-2">Creating...</span>
+                                    </>
+                                ) : isFacilitator ? 'Next Step' : 'Sign Up'}
+                            </button>
+                        </div>
+
+                    </div>{/* end two-col grid */}
                 </form>
 
-                <div className="text-center mt-6">
+                <div className="text-center mt-4">
                     <p className="text-xs text-gray-600 dark:text-gray-400">Already have an account? <button onClick={onSwitchToSignIn} className="font-bold text-gray-900 dark:text-white hover:underline">Sign In</button></p>
                 </div>
                 </div>

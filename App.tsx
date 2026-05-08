@@ -1922,7 +1922,7 @@ const App: React.FC = () => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="fixed inset-0 z-[9999] flex items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm"
+                        className="fixed inset-0 z-[9999] flex items-center justify-center p-0 md:p-8 bg-black/60 backdrop-blur-sm"
                     >
                         {onboardingStep === 'auth' || onboardingStep === 'completed' ? (
                             <Auth key="auth-component" onAuthSuccess={handleAuthSuccess} onGuestAccess={onboardingStep === 'completed' ? () => setIsGuest(true) : handleOnboardingSkip} onShowTermsAndConditions={handleOpenTermsAndConditions} />

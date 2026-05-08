@@ -60,6 +60,22 @@ export const formatDisplayDate = (dateStr: string | null, endDateStr?: string | 
     }
 };
 
+/** Converts a 24-hr "HH:MM" string to 12-hr format with AM/PM. e.g. "17:00" → "5:00 PM" */
+export const formatTime = (timeStr: string | null | undefined): string => {
+    if (!timeStr) return '';
+    try {
+        const [hourStr, minStr] = timeStr.split(':');
+        let hours = parseInt(hourStr, 10);
+        const minutes = minStr || '00';
+        if (isNaN(hours)) return timeStr;
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        return `${hours}:${minutes} ${ampm}`;
+    } catch {
+        return timeStr;
+    }
+};
+
 export const BACOOR_STREETS: string[] = [
     // Major Thoroughfares & Highways
     "Aguinaldo Highway (E. Aguinaldo Hi-Way)",
