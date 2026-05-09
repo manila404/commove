@@ -712,32 +712,31 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
         return (
         <div className="mt-6 space-y-6">
-            {/* Event Visibility Tabs (All / Public / Private) */}
-            <div>
-                <div className="flex bg-gray-100 dark:bg-gray-800 rounded-2xl p-1 shadow-inner">
-                    {[
-                        { key: 'all' as const, label: 'All Events', icon: Globe },
-                        { key: 'public' as const, label: 'Public', icon: Eye },
-                        { key: 'private' as const, label: 'Private', icon: Lock },
-                    ].map(tab => {
-                        const isActive = eventVisibilityFilter === tab.key;
-                        const Icon = tab.icon;
-                        return (
-                            <button
-                                key={tab.key}
-                                onClick={() => setEventVisibilityFilter(tab.key)}
-                                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-bold transition-all duration-200 ${
-                                    isActive
-                                        ? 'bg-white dark:bg-gray-700 text-purple-700 dark:text-purple-300 shadow-md'
-                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                                }`}
-                            >
-                                <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                                {tab.label}
-                            </button>
-                        );
-                    })}
-                </div>
+            {/* Event Visibility Tabs (All / Public / Private) - Modern Underline Style */}
+            <div className="flex items-center gap-6 border-b border-gray-100 dark:border-gray-800 mb-6">
+                {[
+                    { key: 'all' as const, label: 'All Events' },
+                    { key: 'public' as const, label: 'Public' },
+                    { key: 'private' as const, label: 'Private' },
+                ].map(tab => {
+                    const isActive = eventVisibilityFilter === tab.key;
+                    return (
+                        <button
+                            key={tab.key}
+                            onClick={() => setEventVisibilityFilter(tab.key)}
+                            className={`relative py-4 px-1 text-sm font-black transition-all ${
+                                isActive
+                                    ? 'text-primary-600 dark:text-primary-400'
+                                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                            }`}
+                        >
+                            {tab.label}
+                            {isActive && (
+                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-600 dark:bg-primary-500 rounded-t-full shadow-[0_-2px_8px_rgba(124,58,237,0.3)]" />
+                            )}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* My Private Events — Creator Management Panel */}

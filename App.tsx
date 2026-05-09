@@ -41,6 +41,7 @@ import HighlightsSlider from './components/HighlightsSlider';
 import QRScannerModal from './components/QRScannerModal';
 import PermissionManager from './components/PermissionManager';
 import PopularEvents from './components/PopularEvents';
+import ViewAllPopularEvents from './components/ViewAllPopularEvents';
 import DateEventsModal from './components/DateEventsModal';
 import EventFeedbackModal from './components/EventFeedbackModal';
 
@@ -182,6 +183,7 @@ const App: React.FC = () => {
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
     const [showPermissionManager, setShowPermissionManager] = useState(false);
     const [showFeedbackModal, setShowFeedbackModal] = useState<EventType | null>(null);
+    const [showViewAllPopular, setShowViewAllPopular] = useState(false);
 
     // Location State
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy?: number }>({
@@ -718,6 +720,7 @@ const App: React.FC = () => {
                 setShowNotificationSettings(false);
                 setShowHelpSupport(false);
                 setShowTermsAndConditions(false);
+                setShowViewAllPopular(false);
                 setManagingEventRegistrations(null);
                 setShowQRScanner(false);
                 setActiveTab('feed');
@@ -734,6 +737,7 @@ const App: React.FC = () => {
             setShowHelpSupport(view === 'help');
             setShowTermsAndConditions(view === 'terms');
             setShowQRScanner(view === 'scanner');
+            setShowViewAllPopular(view === 'popular-events');
 
             if (view === 'manageRegistrations') {
                 const event = events.find(e => e.id === state.eventId);
@@ -854,13 +858,13 @@ const App: React.FC = () => {
         setShowPreferences(false);
         setShowFacilitatorAuth(false);
         setShowLogoutConfirm(false);
+        setShowViewAllPopular(false);
 
         // 2. Safely synchronize the URL/History WITHOUT using history.back()
         // history.back() is dangerous because it can exit the app entirely if the user refreshed
         try {
-            const currentPath = window.location.pathname;
             // Clean the state to 'feed' and update URL to root
-            window.history.replaceState({ view: 'feed' }, '', currentPath);
+            window.history.replaceState({ view: 'feed' }, '', '/');
         } catch (e) {
             console.warn("Failed to update history state", e);
         }
@@ -869,18 +873,30 @@ const App: React.FC = () => {
     const handleCloseEvent = useCallback(() => {
         const wasInMyEvents = showMyEvents;
         const wasInPermit = showPermitDashboard;
+        const wasInPopular = showViewAllPopular;
         
         setSelectedEvent(null);
         try {
             if (window.history.state?.view === 'event-details') {
                 window.history.back();
+            } else {
+                // If we aren't in a pushed state, just reset URL
+                window.history.replaceState({ view: 'feed' }, '', '/');
             }
         } catch (e) {}
 
         // Immediate state restoration to prevent flickering or accidental feed redirect
         if (wasInMyEvents) setShowMyEvents(true);
         if (wasInPermit) setShowPermitDashboard(true);
-    }, [showMyEvents, showPermitDashboard]);
+        if (wasInPopular) setShowViewAllPopular(true);
+    }, [showMyEvents, showPermitDashboard, showViewAllPopular]);
+
+    const handleOpenViewAllPopular = () => {
+        try {
+            window.history.pushState({ view: 'popular-events' }, '', '/popular');
+        } catch (e) { }
+        setShowViewAllPopular(true);
+    };
 
     const handleOpenPermitDashboard = () => {
         try {
@@ -1360,7 +1376,7 @@ const App: React.FC = () => {
             const categories = Array.isArray(event.category) ? event.category : [event.category];
             return {
                 ...event,
-                isNearby: d <= 3000,
+                isNearby: d <= 5000,
                 distance: d,
                 isSaved: currentUser?.savedEventIds?.includes(event.id) || false,
                 isPreferred: categories.some(cat => currentUser?.preferences?.includes(cat)) || false,
@@ -1489,7 +1505,8 @@ const App: React.FC = () => {
                           showMyEvents ? 'My Events' :
                           showNotificationSettings ? 'Notification Settings' :
                           showHelpSupport ? 'Help & Support' :
-                          showTermsAndConditions ? 'Terms & Conditions' : null;
+                          showTermsAndConditions ? 'Terms & Conditions' :
+                          showViewAllPopular ? 'Popular Events' : null;
 
     return (
         <div className={`h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300 font-sans ${activeTab === 'nearby' || activeOverlay ? 'overflow-hidden' : 'min-h-screen overflow-x-hidden'}`}>
@@ -1520,6 +1537,13 @@ const App: React.FC = () => {
                     {showNotificationSettings && <NotificationSettingsView currentUser={currentUser} onBack={handleCloseAllModals} />}
                     {showHelpSupport && <HelpSupportView onBack={handleCloseAllModals} />}
                     {showTermsAndConditions && <TermsAndConditionsView onBack={handleCloseAllModals} />}
+                    {showViewAllPopular && (
+                        <ViewAllPopularEvents
+                            events={getDisplayEvents}
+                            onBack={handleCloseAllModals}
+                            onEventSelect={handleOpenEvent}
+                        />
+                    )}
                 </main>
             ) : (
                 <>
@@ -1588,7 +1612,8 @@ const App: React.FC = () => {
                                 {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && (
                                     <PopularEvents 
                                         events={getDisplayEvents} 
-                                        onEventSelect={handleOpenEvent} 
+                                        onEventSelect={handleOpenEvent}
+                                        onViewAll={handleOpenViewAllPopular}
                                     />
                                 )}
 

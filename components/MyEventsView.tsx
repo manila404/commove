@@ -34,42 +34,46 @@ const MyEventsView: React.FC<MyEventsViewProps> = ({
             <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Manage your saved and registered events.</p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-8 max-w-md">
+        {/* Tab Switcher - Simple Underline Style */}
+        <div className="flex items-center gap-8 border-b border-gray-100 dark:border-gray-800 mb-8">
             <button
                 onClick={() => setActiveTab('saved')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${
+                className={`relative flex items-center gap-2 py-4 px-1 text-sm font-black transition-all ${
                     activeTab === 'saved'
-                    ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
                 }`}
             >
-                <BookmarkIcon className="w-4 h-4" />
                 <span>Saved</span>
                 {savedEvents.length > 0 && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                        activeTab === 'saved' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600' : 'bg-gray-200 dark:bg-gray-900/50 text-gray-500'
+                    <span className={`ml-1 text-[11px] font-bold ${
+                        activeTab === 'saved' ? 'text-primary-600/60 dark:text-primary-400/60' : 'text-gray-400'
                     }`}>
-                        {savedEvents.length}
+                        ({savedEvents.length})
                     </span>
+                )}
+                {activeTab === 'saved' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-600 dark:bg-primary-500 rounded-t-full shadow-[0_-2px_8px_rgba(124,58,237,0.3)]" />
                 )}
             </button>
             <button
                 onClick={() => setActiveTab('participated')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${
+                className={`relative flex items-center gap-2 py-4 px-1 text-sm font-black transition-all ${
                     activeTab === 'participated'
-                    ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
                 }`}
             >
-                <ShieldCheckIcon className="w-4 h-4" />
                 <span>Participated</span>
                 {participatedEvents.length > 0 && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                        activeTab === 'participated' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600' : 'bg-gray-200 dark:bg-gray-900/50 text-gray-500'
+                    <span className={`ml-1 text-[11px] font-bold ${
+                        activeTab === 'participated' ? 'text-primary-600/60 dark:text-primary-400/60' : 'text-gray-400'
                     }`}>
-                        {participatedEvents.length}
+                        ({participatedEvents.length})
                     </span>
+                )}
+                {activeTab === 'participated' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-600 dark:bg-primary-500 rounded-t-full shadow-[0_-2px_8px_rgba(124,58,237,0.3)]" />
                 )}
             </button>
         </div>

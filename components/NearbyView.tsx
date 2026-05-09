@@ -48,7 +48,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
     const listEvents = allMapEvents.filter(e => {
         if (userLocation?.lat && userLocation?.lng && e.lat && e.lng) {
             const distance = getDistanceInMeters(userLocation.lat, userLocation.lng, e.lat, e.lng);
-            const searchRadius = userLocation.accuracy ? Math.max(userLocation.accuracy, 1500) : 5000;
+            const searchRadius = 5000; // Fixed 5KM Basis
             return distance <= searchRadius;
         }
         return true;

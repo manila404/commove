@@ -7,9 +7,10 @@ import { formatTime } from '../constants';
 interface PopularEventsProps {
   events: DisplayEventType[];
   onEventSelect: (event: DisplayEventType) => void;
+  onViewAll?: () => void;
 }
 
-const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) => {
+const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, onViewAll }) => {
   // Sort by approvedCount desc, then recency
   const sortedEvents = [...events].sort((a, b) => {
     const aCount = a.approvedCount || 0;
@@ -34,7 +35,9 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) 
           <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">Popular Events</h2>
           <p className="text-xs font-semibold text-gray-400 mt-0.5">Bacoor</p>
         </div>
-        <button className="flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-primary-600 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl transition-all active:scale-95">
+        <button
+          onClick={onViewAll}
+          className="flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-primary-600 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl transition-all active:scale-95">
           View All
           <ChevronRight size={14} />
         </button>
@@ -72,7 +75,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) 
 
                   {/* Text */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 flex items-center gap-1 mb-1">
+                    <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 flex items-center gap-1 mb-1">
                       <Calendar size={10} className="text-primary-500" />
                       {formatShortDate(event.date)}
                       {event.startTime && (
@@ -85,7 +88,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) 
                     <h3 className="text-sm font-extrabold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1 group-hover:text-primary-600 transition-colors">
                       {event.name}
                     </h3>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 truncate">
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1 truncate font-medium">
                       <MapPin size={11} className="text-red-500 flex-shrink-0" />
                       <span className="truncate">{event.venue}</span>
                     </p>
@@ -125,14 +128,14 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect }) 
 
             {/* Details */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 dark:text-gray-500 mb-1">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-400 dark:text-gray-500 mb-1">
                 <Calendar size={11} className="text-primary-500" />
                 <span>{formatShortDate(event.date)}</span>
               </div>
               <h3 className="text-sm font-extrabold text-gray-900 dark:text-white line-clamp-2 mb-1 group-hover:text-primary-600 transition-colors leading-snug">
                 {event.name}
               </h3>
-              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
+              <div className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 font-medium">
                 <MapPin size={11} className="flex-shrink-0 text-red-500" />
                 <span className="truncate">{event.venue}</span>
               </div>

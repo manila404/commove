@@ -194,23 +194,22 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
             .bindPopup(popupContent);
         }
 
-        if (userLocation.accuracy) {
-            if (accuracyCircleRef.current) {
-                accuracyCircleRef.current.setLatLng([userLocation.lat, userLocation.lng]);
-                accuracyCircleRef.current.setRadius(userLocation.accuracy);
-                if (!map.hasLayer(accuracyCircleRef.current)) {
-                    accuracyCircleRef.current.addTo(map);
-                }
-            } else {
-                accuracyCircleRef.current = L.circle([userLocation.lat, userLocation.lng], {
-                    radius: userLocation.accuracy,
-                    color: '#3b82f6',
-                    fillColor: '#3b82f6',
-                    fillOpacity: 0.25, 
-                    weight: 2,
-                    dashArray: '5, 5' 
-                }).addTo(map);
+        // 5KM Proximity Basis Circle
+        if (accuracyCircleRef.current) {
+            accuracyCircleRef.current.setLatLng([userLocation.lat, userLocation.lng]);
+            accuracyCircleRef.current.setRadius(5000); // Fixed 5KM Radius
+            if (!map.hasLayer(accuracyCircleRef.current)) {
+                accuracyCircleRef.current.addTo(map);
             }
+        } else {
+            accuracyCircleRef.current = L.circle([userLocation.lat, userLocation.lng], {
+                radius: 5000, // Fixed 5KM Radius
+                color: '#7c3aed', // Primary Purple
+                fillColor: '#7c3aed',
+                fillOpacity: 0.1, 
+                weight: 1.5,
+                dashArray: '10, 10' 
+            }).addTo(map);
         }
     } else {
         // Safe removal logic
@@ -310,14 +309,23 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
           } catch { return event.date; }
         })();
 
-        // Format time: "09:00" → "9:00 AM" / "13:30" → "1:30 PM"
+        // Format time range: "09:00" → "9:00 AM" / "09:00 — 17:00" → "9:00 AM — 5:00 PM"
         const formattedTime = (() => {
-          try {
-            const [h, min] = event.startTime.split(':').map(Number);
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const hour12 = h % 12 || 12;
-            return `${hour12}:${String(min).padStart(2, '0')} ${ampm}`;
-          } catch { return event.startTime; }
+          const formatSingleTime = (timeStr: string) => {
+            try {
+              const [h, min] = timeStr.split(':').map(Number);
+              const ampm = h >= 12 ? 'PM' : 'AM';
+              const hour12 = h % 12 || 12;
+              return `${hour12}:${String(min).padStart(2, '0')} ${ampm}`;
+            } catch { return timeStr; }
+          };
+
+          const start = formatSingleTime(event.startTime);
+          if (event.endTime) {
+            const end = formatSingleTime(event.endTime);
+            return `${start} — ${end}`;
+          }
+          return start;
         })();
 
         const popupContent = `
