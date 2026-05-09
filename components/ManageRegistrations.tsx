@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeftIcon, UserIcon } from '../constants';
+import { ChevronLeftIcon, UserIcon, formatDisplayDate } from '../constants';
 import { Mail, Phone, CheckCircle, XCircle, Clock, Users, Lock, Calendar, RefreshCw } from 'lucide-react';
 import type { EventType, Registration } from '../types';
 import { fetchRegistrationsForEvent, updateRegistrationStatus, syncEventApprovedCount } from '../services/eventService';
@@ -145,7 +145,7 @@ const ManageRegistrations: React.FC<ManageRegistrationsProps> = ({ event, onBack
               <h2 className="font-black text-gray-900 dark:text-white truncate">{event.name}</h2>
               <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400 font-medium">
                 <Calendar className="w-3 h-3" />
-                <span>{event.date} · {event.startTime} – {event.endTime}</span>
+                <span>{formatDisplayDate(event.date)} · {event.startTime} – {event.endTime}</span>
               </div>
             </div>
           </div>

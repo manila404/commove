@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { AppNotification, EventType } from '../types';
-import { ShieldCheckIcon } from '../constants';
+import { ShieldCheckIcon, formatDisplayDate } from '../constants';
 import { BellIcon, CalendarIcon, MoreVerticalIcon, SlidersHorizontal, CheckCheck, Trash2, ChevronDown, ChevronUp, ExternalLink, Eye, CheckCircle, XCircle, Clock, Star, Zap } from 'lucide-react';
 import {
     subscribeToNotifications,
@@ -141,7 +141,7 @@ const NotificationActionPanel: React.FC<{
                     )}
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{event.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{event.date} · {event.startTime}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{formatDisplayDate(event.date)} · {event.startTime}</p>
                         <span className={`inline-block mt-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${statusBg} ${statusColor}`}>
                             {event.status || 'published'}
                         </span>

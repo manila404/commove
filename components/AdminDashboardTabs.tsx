@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { EventType, User } from '../types';
-import { XMarkIcon } from '../constants';
+import { XMarkIcon, formatDisplayDate, MoreVerticalIcon } from '../constants';
 import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon } from 'lucide-react';
 import AdminReports from './AdminReports';
 import { getHighlights, setHighlights } from '../services/eventService';
@@ -62,6 +62,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [eventSortOrder, setEventSortOrder] = useState<'asc' | 'desc'>('asc');
     const [showSortMenu, setShowSortMenu] = useState(false);
     const [eventVisibilityFilter, setEventVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
+    const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
 
     const [allFeedback, setAllFeedback] = useState<EventFeedback[]>([]);
     const [viewingFeedbackEvent, setViewingFeedbackEvent] = useState<EventType | null>(null);
@@ -75,6 +76,21 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+
+    // Close dropdowns when clicking outside
+    useEffect(() => {
+        if (!activeActionMenu) return;
+
+        const handleClickOutside = (event: globalThis.MouseEvent) => {
+            const target = event.target as Element;
+            if (target && target.closest && !target.closest('.action-menu-container')) {
+                setActiveActionMenu(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [activeActionMenu]);
 
     // Respond to external tab navigation requests (e.g. from notification buttons)
     React.useEffect(() => {
@@ -277,7 +293,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     )}
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{event.name}</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{event.date} · {event.venue || event.city}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{formatDisplayDate(event.date)} · {event.venue || event.city}</p>
                                     </div>
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
@@ -366,7 +382,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                                         <div className="flex-1 min-w-0">
                                             <p className={`text-sm font-bold truncate ${ isSelected ? 'text-purple-900 dark:text-purple-200' : 'text-gray-900 dark:text-white'}`}>{event.name}</p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{event.date} · {event.venue || event.city}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{formatDisplayDate(event.date)} · {event.venue || event.city}</p>
                                             {Array.isArray(event.category) && event.category.length > 0 && (
                                                 <div className="flex gap-1 mt-1 flex-wrap">
                                                     {event.category.slice(0, 3).map(cat => (
@@ -571,9 +587,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const renderAnalytics = () => (
         <div className="flex flex-col gap-6 mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
+                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                     <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Monthly Trends</h3>
-                    <div className="h-64 min-h-[256px] w-full">
+                    <div className="h-64 min-h-[260px] w-full relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={realMonthlyTrends} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
                                 <defs>
@@ -596,9 +612,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </ResponsiveContainer>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
+                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                     <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Events by Category</h3>
-                    <div className="h-64 min-h-[256px] w-full flex items-center justify-center">
+                    <div className="h-64 min-h-[260px] w-full flex items-center justify-center relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie 
@@ -621,9 +637,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
             </div>
             
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
+            <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                 <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">New Users per Month</h3>
-                <div className="h-64 min-h-[256px] w-full">
+                <div className="h-64 min-h-[260px] w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={newUsersData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -642,9 +658,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         <div className="flex flex-col gap-6 mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Gender Distribution */}
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
+                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                     <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Gender Distribution</h3>
-                    <div className="h-64 flex items-center justify-center">
+                    <div className="h-64 min-h-[260px] flex items-center justify-center relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie 
@@ -668,9 +684,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
 
                 {/* Age Distribution */}
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
+                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                     <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Age Groups</h3>
-                    <div className="h-64">
+                    <div className="h-64 min-h-[260px] relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={realAgeData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
@@ -685,9 +701,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             </div>
 
             {/* Top Events */}
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
+            <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                 <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Top Events by Attendance</h3>
-                <div className="h-64">
+                <div className="h-64 min-h-[260px] relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={topEventsData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
@@ -769,7 +785,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{evt.name}</p>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{evt.date} · {evt.startTime}</span>
+                                                <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{formatDisplayDate(evt.date)} · {evt.startTime}</span>
                                                 {evt.maxParticipants != null && (
                                                     <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 flex items-center gap-0.5">
                                                         <UsersIcon className="w-2.5 h-2.5" />
@@ -808,7 +824,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             {event.priority === 'average' && <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Average</span>}
                                             {event.status === 'draft' && <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Draft</span>}
                                         </div>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{event.organizer || 'Unknown'} • {event.date}</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{event.organizer || 'Unknown'} • {formatDisplayDate(event.date)}</p>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 justify-end">
@@ -893,16 +909,16 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         )}
                     </div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto md:overflow-visible pb-16 md:pb-0">
                 <table className="w-full min-w-[600px] text-left">
                     <thead>
                         <tr className="border-b border-gray-100 dark:border-gray-800 text-sm text-gray-500 dark:text-gray-400">
-                            <th className="pb-3 font-medium">Event</th>
-                            <th className="pb-3 font-medium">Date</th>
-                            <th className="pb-3 font-medium">Location</th>
-                            <th className="pb-3 font-medium">Attendees</th>
-                            <th className="pb-3 font-medium">Feedback</th>
-                            <th className="pb-3 font-medium text-right pr-4">Status & Actions</th>
+                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Event</th>
+                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Location</th>
+                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Attendees</th>
+                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Feedback</th>
+                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right pr-4 min-w-[180px]">Status & Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -923,15 +939,17 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             const attendeesStr = event.maxParticipants ? `${attendeeCount}/${event.maxParticipants}` : `${attendeeCount} (No Limit)`;
                             return (
                                 <tr key={event.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                                    <td className="py-4 font-medium text-gray-900 dark:text-white">{event.name}</td>
-                                    <td className="py-4 text-gray-500 dark:text-gray-400">{event.date}</td>
-                                    <td className="py-4 text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                        {event.venue || event.city}
+                                    <td className="py-4 px-4 font-medium text-gray-900 dark:text-white">{event.name}</td>
+                                    <td className="py-4 px-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDisplayDate(event.date)}</td>
+                                    <td className="py-4 px-4 text-gray-500 dark:text-gray-400">
+                                        <div className="flex items-center gap-1.5 min-w-[120px]">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            <span className="truncate">{event.venue || event.city}</span>
+                                        </div>
                                     </td>
-                                    <td className="py-4 text-gray-500 dark:text-gray-400">
-                                        <div className="flex items-center gap-2">
-                                            <span>{attendeesStr}</span>
+                                    <td className="py-4 px-4 text-gray-500 dark:text-gray-400">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <span className="text-sm">{attendeesStr}</span>
                                             <button 
                                                 onClick={() => onViewParticipants(event)}
                                                 className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors group relative"
@@ -944,14 +962,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             </button>
                                         </div>
                                     </td>
-                                    <td className="py-4">
+                                    <td className="py-4 px-4">
                                         {(() => {
                                             const eventFeedback = allFeedback.filter(f => f.eventId === event.id);
                                             if (eventFeedback.length === 0) return <span className="text-xs text-gray-400 italic">No ratings</span>;
                                             
                                             const avgRating = eventFeedback.reduce((acc, f) => acc + f.rating, 0) / eventFeedback.length;
                                             return (
-                                                <div className="flex items-center gap-1.5 group cursor-pointer" onClick={() => setViewingFeedbackEvent(event)}>
+                                                <div className="flex items-center justify-center gap-1.5 group cursor-pointer" onClick={() => setViewingFeedbackEvent(event)}>
                                                     <div className="flex items-center text-yellow-500">
                                                         <Star className="w-3.5 h-3.5 fill-current" />
                                                         <span className="text-xs font-black ml-1">{avgRating.toFixed(1)}</span>
@@ -961,8 +979,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             );
                                         })()}
                                     </td>
-                                    <td className="py-4">
-                                        <div className="flex items-center justify-between gap-4">
+                                    <td className="py-4 px-4">
+                                        <div className="flex items-center justify-end gap-3 pr-4 whitespace-nowrap">
                                             <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
                                                 event.status === 'draft' ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 outline outline-1 outline-gray-200 dark:outline-gray-700' :
                                                 event.status === 'scheduled' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' :
@@ -979,64 +997,89 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 )}
                                                 {event.status || 'approved'}
                                             </span>
-                                            <div className="flex gap-2 pr-4">
+                                            <div className="relative action-menu-container">
                                                 <button 
-                                                    onClick={() => setViewingFeedbackEvent(event)}
-                                                    className="p-1.5 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
-                                                    title="View Feedback"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveActionMenu(activeActionMenu === event.id ? null : event.id);
+                                                    }}
+                                                    className={`p-1.5 rounded-lg transition-all ${activeActionMenu === event.id ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                                    title="Actions"
                                                 >
-                                                    <MessageSquare className="w-4 h-4" />
+                                                    <MoreVerticalIcon className="w-5 h-5" />
                                                 </button>
-                                                <button 
-                                                    onClick={() => onViewQRCode(event)}
-                                                    className="p-1.5 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
-                                                    title="View QR Code"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h3.5M12 12h.01M16 12h.01M12 16h.01M16 16h.01M7 8h2v2H7V8zm0 0V6a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V10a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V14a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V18a2 2 0 114 0v2H7zm0 0h4" /></svg>
-                                                </button>
-                                                {onPreviewEvent && (
-                                                    <button 
-                                                        onClick={() => onPreviewEvent(event)}
-                                                        className="p-1.5 text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                                                        title="Preview Event"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                                    </button>
+
+                                                {activeActionMenu === event.id && (
+                                                    <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+                                                        <div className="px-4 py-2 border-b border-gray-50 dark:border-gray-700/50 mb-1">
+                                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Event Actions</p>
+                                                        </div>
+                                                        
+                                                        <button 
+                                                            onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); }}
+                                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                                                        >
+                                                            <MessageSquare className="w-4 h-4" />
+                                                            View Feedback
+                                                        </button>
+
+                                                        <button 
+                                                            onClick={() => { onViewQRCode(event); setActiveActionMenu(null); }}
+                                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h3.5M12 12h.01M16 12h.01M12 16h.01M16 16h.01M7 8h2v2H7V8zm0 0V6a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V10a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V14a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V18a2 2 0 114 0v2H7zm0 0h4" /></svg>
+                                                            View QR Code
+                                                        </button>
+
+                                                        {onPreviewEvent && (
+                                                            <button 
+                                                                onClick={() => { onPreviewEvent(event); setActiveActionMenu(null); }}
+                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                                Preview Event
+                                                            </button>
+                                                        )}
+
+                                                        <button 
+                                                            onClick={() => { onEditEvent(event); setActiveActionMenu(null); }}
+                                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                            Edit Event
+                                                        </button>
+
+                                                        {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
+                                                            <button
+                                                                onClick={() => { onNotifyUpdate(event); setActiveActionMenu(null); }}
+                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                                                Notify Update
+                                                            </button>
+                                                        )}
+
+                                                        {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
+                                                            <button
+                                                                onClick={() => { onCancelEvent(event); setActiveActionMenu(null); }}
+                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                                                Cancel Event
+                                                            </button>
+                                                        )}
+
+                                                        <div className="border-t border-gray-50 dark:border-gray-700/50 mt-1">
+                                                            <button 
+                                                                onClick={() => { onDeleteEvent(event.id); setActiveActionMenu(null); }}
+                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                                Delete Event
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 )}
-                                                 <button 
-                                                    onClick={() => onEditEvent(event)}
-                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                                                    title="Edit Event"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                                </button>
-                                                {/* Notify Update — only for published events */}
-                                                {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
-                                                    <button
-                                                        onClick={() => onNotifyUpdate(event)}
-                                                        className="p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
-                                                        title="Notify Residents: Schedule Updated"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                                                    </button>
-                                                )}
-                                                {/* Cancel Event — only for published/scheduled events */}
-                                                {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
-                                                    <button
-                                                        onClick={() => onCancelEvent(event)}
-                                                        className="p-1.5 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
-                                                        title="Cancel Event"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                                    </button>
-                                                )}
-                                                <button 
-                                                    onClick={() => onDeleteEvent(event.id)}
-                                                    className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                                    title="Delete Event"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
                                             </div>
                                         </div>
                                     </td>

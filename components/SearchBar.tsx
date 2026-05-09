@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Clock, Trash2, MapPin, Calendar } from 'lucide-react';
 import type { EventType } from '../types';
+import { formatDisplayDate } from '../constants';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -164,7 +165,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
                           </div>
                           <div className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
                             <Calendar size={10} className="flex-shrink-0" />
-                            <span>{event.date}</span>
+                            <span>{formatDisplayDate(event.date)}</span>
                           </div>
                         </div>
                       </div>
