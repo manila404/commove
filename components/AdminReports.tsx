@@ -1,6 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { EventType, User } from '../types';
+
+const ALL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const ALL_QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
+const CURRENT_YEAR = new Date().getFullYear();
+const ALL_YEARS = Array.from({ length: 16 }, (_, i) => (CURRENT_YEAR - 6 + i).toString());
 
 interface AdminReportsProps {
     events: EventType[];
@@ -17,6 +23,8 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         'Senior': true
     });
     const [sexFilter, setSexFilter] = useState<'All' | 'Female' | 'Male' | 'Others'>('All');
+    const [selectedPart1, setSelectedPart1] = useState<string>('');
+    const [selectedPart2, setSelectedPart2] = useState<string>('');
 
     const calculateAge = (birthday?: string) => {
         if (!birthday) return null;
@@ -127,6 +135,24 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         return results;
     }, [events, users, period, ageGroups, sexFilter]);
 
+    React.useEffect(() => {
+        const today = new Date();
+        const month = today.toLocaleDateString('en-US', { month: 'long' });
+        const year = today.getFullYear().toString();
+        const quarter = `Q${Math.floor(today.getMonth() / 3) + 1}`;
+        
+        if (period === 'monthly' || period === 'this_month' || period === 'previous_month') {
+            setSelectedPart1(month);
+            setSelectedPart2(year);
+        } else if (period === 'quarterly') {
+            setSelectedPart1(quarter);
+            setSelectedPart2(year);
+        } else if (period === 'yearly') {
+            setSelectedPart1('');
+            setSelectedPart2(year);
+        }
+    }, [period]);
+
     const handleAgeGroupChange = (group: string) => {
         setAgeGroups(prev => ({ ...prev, [group]: !prev[group] }));
     };
@@ -141,7 +167,9 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                         Name: 'No Participants',
                         Email: '',
                         Age: null,
-                        Sex: ''
+                        Sex: '',
+                        'Contact Number': '',
+                        Address: ''
                     }];
                 }
                 return eventData.participants.map(p => ({
@@ -150,12 +178,30 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                     Name: p.name,
                     Email: p.email,
                     Age: calculateAge(p.birthday),
-                    Sex: p.sex
+                    Sex: p.sex,
+                    'Contact Number': p.contactNumber || '',
+                    Address: p.address || ''
                 }));
             })
         );
 
-        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+        const headerOptions = ["Period", "Event", "Name", "Email", "Age", "Sex", "Contact Number", "Address"];
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData, { header: headerOptions });
+
+        // Freeze top row
+        worksheet['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+        // Style the header row (Purple background, white text)
+        const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            const address = XLSX.utils.encode_cell({ r: 0, c: C });
+            if (!worksheet[address]) continue;
+            worksheet[address].s = {
+                fill: { patternType: 'solid', fgColor: { rgb: "6B21A8" } }, // Purple color
+                font: { color: { rgb: "FFFFFF" }, bold: true }
+            };
+        }
+
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
 
@@ -179,17 +225,37 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
             Name: 'No Participants',
             Email: '',
             Age: null,
-            Sex: ''
+            Sex: '',
+            'Contact Number': '',
+            Address: ''
         }] : eventData.participants.map((p: any) => ({
             Period: periodKey,
             Event: eventData.event.name,
             Name: p.name,
             Email: p.email,
             Age: calculateAge(p.birthday),
-            Sex: p.sex
+            Sex: p.sex,
+            'Contact Number': p.contactNumber || '',
+            Address: p.address || ''
         }));
 
-        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+        const headerOptions = ["Period", "Event", "Name", "Email", "Age", "Sex", "Contact Number", "Address"];
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData, { header: headerOptions });
+        
+        // Freeze top row
+        worksheet['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+        // Style the header row (Purple background, white text)
+        const eventRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
+        for (let C = eventRange.s.c; C <= eventRange.e.c; ++C) {
+            const address = XLSX.utils.encode_cell({ r: 0, c: C });
+            if (!worksheet[address]) continue;
+            worksheet[address].s = {
+                fill: { patternType: 'solid', fgColor: { rgb: "6B21A8" } }, // Purple color
+                font: { color: { rgb: "FFFFFF" }, bold: true }
+            };
+        }
+
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Event Report");
 
@@ -285,34 +351,71 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                 {reportData.length === 0 ? (
                     <p className="text-gray-500 dark:text-gray-400 text-sm">No data available for the selected filters.</p>
                 ) : (
-                    <div className="space-y-6">
-                        {reportData.map(data => (
-                            <div key={data.period} className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h4 className="font-bold text-gray-800 dark:text-gray-200 text-lg">{data.period}</h4>
-                                    <span className="bg-primary-100 text-primary-800 text-xs font-bold px-3 py-1 rounded-full">
-                                        {data.participantCount} Participants
-                                    </span>
-                                </div>
-                                
-                                
-                                <div className="space-y-3">
-                                    {data.events.map(eventData => (
-                                        <div key={eventData.event.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                                            <h5 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
-                                                {eventData.event.name} <span className="text-gray-500 font-normal text-xs ml-2">({eventData.participants.length} Participants)</span>
-                                            </h5>
-                                            <button 
-                                                onClick={() => handleEventDownload(eventData, data.period)}
-                                                className="text-xs bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400 dark:hover:bg-primary-900/50 px-3 py-1.5 rounded-lg font-medium transition-colors shrink-0"
-                                            >
-                                                Download Excel
-                                            </button>
-                                        </div>
+                    <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                        {/* Custom Dropdown Header */}
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border-b border-gray-100 dark:border-gray-700 gap-4 bg-white dark:bg-gray-800">
+                            <div className="flex items-center gap-2">
+                                {period !== 'yearly' && (
+                                    <select 
+                                        value={selectedPart1}
+                                        onChange={(e) => setSelectedPart1(e.target.value)}
+                                        className="bg-white border border-gray-300 text-gray-700 text-sm rounded focus:ring-primary-500 focus:border-primary-500 block py-1.5 px-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                                    >
+                                        {(period === 'quarterly' ? ALL_QUARTERS : ALL_MONTHS).map(p1 => (
+                                            <option key={p1} value={p1}>{p1}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <select 
+                                    value={selectedPart2}
+                                    onChange={(e) => setSelectedPart2(e.target.value)}
+                                    className="bg-white border border-gray-300 text-gray-700 text-sm rounded focus:ring-primary-500 focus:border-primary-500 block py-1.5 px-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                                >
+                                    {ALL_YEARS.map(p2 => (
+                                        <option key={p2} value={p2}>{p2}</option>
                                     ))}
-                                </div>
+                                </select>
                             </div>
-                        ))}
+                            
+                            {(() => {
+                                const activePeriodStr = selectedPart1 ? `${selectedPart1} ${selectedPart2}` : selectedPart2;
+                                const activeData = reportData.find(d => d.period === activePeriodStr);
+                                return (
+                                    <span className="bg-primary-100 text-primary-800 text-sm font-bold px-4 py-2 rounded-full shrink-0">
+                                        {activeData ? activeData.participantCount : 0} Participants
+                                    </span>
+                                );
+                            })()}
+                        </div>
+                        
+                        {/* Events List */}
+                        <div className="p-4 space-y-3">
+                            {(() => {
+                                const activePeriodStr = selectedPart1 ? `${selectedPart1} ${selectedPart2}` : selectedPart2;
+                                const activeData = reportData.find(d => d.period === activePeriodStr);
+                                
+                                if (!activeData || activeData.events.length === 0) {
+                                    return <p className="text-gray-500 dark:text-gray-400 text-sm italic">No events found for this selected combination.</p>;
+                                }
+
+                                return activeData.events.map(eventData => (
+                                    <div key={eventData.event.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                                        <h5 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                                            {eventData.event.name} <span className="text-gray-500 font-normal text-xs ml-2">({eventData.participants.length} Participants)</span>
+                                        </h5>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEventDownload(eventData, activeData.period);
+                                            }}
+                                            className="text-xs bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400 dark:hover:bg-primary-900/50 px-3 py-1.5 rounded-lg font-medium transition-colors shrink-0"
+                                        >
+                                            Download Excel
+                                        </button>
+                                    </div>
+                                ));
+                            })()}
+                        </div>
                     </div>
                 )}
             </div>

@@ -202,7 +202,10 @@ const App: React.FC = () => {
     const notifiedCustomReminders = useRef<Set<string>>(new Set());
     const notifiedFeedbackEvents = useRef<Set<string>>(new Set());
 
-
+    // Refresh interaction refs
+    const lastHomeTapRef = useRef<number>(0);
+    const touchStartYRef = useRef<number>(0);
+    const isAtTopRef = useRef<boolean>(true);
     const safeParseDate = (date: string, time: string) => {
         if (!date || !time) return new Date(0);
 
@@ -380,7 +383,12 @@ const App: React.FC = () => {
             startLocationWatch();
         } else if (permissions.location === 'prompt' && currentUser && !showPreferences && onboardingStep === 'completed') {
             // If location is prompt and user is logged in, show permission manager
-            setShowPermissionManager(true);
+            try {
+                const hasSeen = localStorage.getItem('hasSeenPermissionManager');
+                if (hasSeen !== 'true') {
+                    setShowPermissionManager(true);
+                }
+            } catch (e) {}
         }
     }, [currentUser, showPreferences, permissions.location, onboardingStep]);
 
@@ -755,6 +763,35 @@ const App: React.FC = () => {
         return () => window.removeEventListener('popstate', handlePopState);
     }, [events]);
 
+    // Pull-to-refresh interaction
+    useEffect(() => {
+        const handleTouchStart = (e: TouchEvent) => {
+            isAtTopRef.current = window.scrollY <= 0;
+            if (isAtTopRef.current) {
+                touchStartYRef.current = e.touches[0].clientY;
+            }
+        };
+
+        const handleTouchEnd = (e: TouchEvent) => {
+            if (isAtTopRef.current && touchStartYRef.current > 0) {
+                const endY = e.changedTouches[0].clientY;
+                // 150px downward swipe triggers reload
+                if (endY - touchStartYRef.current > 150) {
+                    window.location.reload();
+                }
+            }
+            touchStartYRef.current = 0;
+        };
+
+        window.addEventListener('touchstart', handleTouchStart, { passive: true });
+        window.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+        return () => {
+            window.removeEventListener('touchstart', handleTouchStart);
+            window.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, []);
+
     // --- Navigation Handlers ---
 
     const handleTabChange = useCallback((tab: 'feed' | 'calendar' | 'nearby' | 'notifications') => {
@@ -763,8 +800,15 @@ const App: React.FC = () => {
         if (activeTab === tab) {
             // Refresh logic: If user clicks "Feed" while on Feed, refresh events
             if (tab === 'feed') {
-                loadEvents();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                const now = Date.now();
+                if (now - lastHomeTapRef.current < 400) {
+                    // Double tap triggers full page reload
+                    window.location.reload();
+                } else {
+                    lastHomeTapRef.current = now;
+                    loadEvents();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
             }
             return;
         }
@@ -1738,7 +1782,7 @@ const App: React.FC = () => {
                     )}
 
                     {activeTab === 'calendar' && (
-                        <div className="px-4 md:px-8 pt-8 md:pt-10 animate-fade-in-up">
+                        <div className="px-4 md:px-8 pt-8 md:pt-10 pb-28 md:pb-12 animate-fade-in-up">
                             <CalendarView
                                 events={events.filter(e => {
                                     if (isStaff) {
@@ -1975,7 +2019,10 @@ const App: React.FC = () => {
 
             {/* Permission Manager */}
             {showPermissionManager && (
-                <PermissionManager onComplete={() => setShowPermissionManager(false)} />
+                <PermissionManager onComplete={() => {
+                    try { localStorage.setItem('hasSeenPermissionManager', 'true'); } catch (e) {}
+                    setShowPermissionManager(false);
+                }} />
             )}
 
             {/* Logout Confirmation Modal */}

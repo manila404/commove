@@ -1090,7 +1090,7 @@ const EventModal: React.FC<EventModalProps> = ({
           )}
           
           {/* Top Actions */}
-          <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent">
+          <div className="absolute top-0 left-0 right-0 p-4 pt-12 md:pt-4 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent">
             <button 
               onClick={onClose}
               className="w-10 h-10 bg-white/90 dark:bg-gray-800/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
