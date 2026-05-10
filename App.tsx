@@ -763,35 +763,6 @@ const App: React.FC = () => {
         return () => window.removeEventListener('popstate', handlePopState);
     }, [events]);
 
-    // Pull-to-refresh interaction
-    useEffect(() => {
-        const handleTouchStart = (e: TouchEvent) => {
-            isAtTopRef.current = window.scrollY <= 0;
-            if (isAtTopRef.current) {
-                touchStartYRef.current = e.touches[0].clientY;
-            }
-        };
-
-        const handleTouchEnd = (e: TouchEvent) => {
-            if (isAtTopRef.current && touchStartYRef.current > 0) {
-                const endY = e.changedTouches[0].clientY;
-                // 150px downward swipe triggers reload
-                if (endY - touchStartYRef.current > 150) {
-                    window.location.reload();
-                }
-            }
-            touchStartYRef.current = 0;
-        };
-
-        window.addEventListener('touchstart', handleTouchStart, { passive: true });
-        window.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-        return () => {
-            window.removeEventListener('touchstart', handleTouchStart);
-            window.removeEventListener('touchend', handleTouchEnd);
-        };
-    }, []);
-
     // --- Navigation Handlers ---
 
     const handleTabChange = useCallback((tab: 'feed' | 'calendar' | 'nearby' | 'notifications') => {
