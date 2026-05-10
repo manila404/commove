@@ -189,6 +189,17 @@ const EventModal: React.FC<EventModalProps> = ({
   };
 
   const isLive = checkIsLive(event.date, event.startTime, event.endTime);
+
+  // Determine if the event has fully ended
+  const checkIsEnded = () => {
+    const refDate = event.endDate || event.date;
+    const refTime = event.endTime || '23:59';
+    if (!refDate) return false;
+    const endMs = new Date(`${refDate}T${refTime}`).getTime();
+    if (isNaN(endMs)) return false;
+    return Date.now() > endMs;
+  };
+  const isEnded = checkIsEnded();
   
   const getExistingReminderLabel = () => {
     if (!reminder) return null;
@@ -225,7 +236,7 @@ const EventModal: React.FC<EventModalProps> = ({
         }
       `}</style>
       {/* Header Image Carousel */}
-      <div className="relative rounded-[10px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 aspect-video md:aspect-auto md:h-96 group">
+      <div className={`relative rounded-[10px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 aspect-video md:aspect-auto md:h-96 group ${isEnded ? 'grayscale' : ''}`}>
         <AnimatePresence mode="wait">
           <motion.img
             key={activePhotoIndex}
@@ -273,7 +284,19 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
         )}
         
-        {isLive && (
+        {/* Event Ended overlay banner */}
+        {isEnded && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+            <div className="bg-black/70 backdrop-blur-sm px-6 py-3 rounded-full flex items-center gap-2.5 border border-white/20 shadow-xl">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-white font-black tracking-wider text-sm uppercase">Event Ended</span>
+            </div>
+          </div>
+        )}
+
+        {isLive && !isEnded && (
           <div className="absolute bottom-0 left-0 w-full bg-red-600/90 text-white px-4 py-3 flex items-center justify-center animate-pulse backdrop-blur-sm z-10">
             <span className="w-2.5 h-2.5 bg-white rounded-full mr-2 shadow-[0_0_8px_white]"></span>
             <span className="font-black tracking-[0.2em] text-sm uppercase">Happening Now</span>
@@ -281,7 +304,7 @@ const EventModal: React.FC<EventModalProps> = ({
         )}
       </div>
 
-      <div className="px-6 pb-6 space-y-8">
+      <div className={`px-6 pb-6 space-y-8 ${isEnded ? 'opacity-75' : ''}`}>
         {/* Category & Title */}
         <div className="space-y-2">
           <div className="mb-4">
@@ -371,6 +394,18 @@ const EventModal: React.FC<EventModalProps> = ({
 
         {/* Participation Block */}
         <div className="space-y-4">
+          {isEnded ? (
+            <div className="p-6 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
+              <div className="w-12 h-12 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p className="text-base font-black text-gray-500 dark:text-gray-400">This event has already ended</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">Registration and participation are no longer available for past events.</p>
+            </div>
+          ) : (
+          <>
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">Participation</h3>
             <p className={`text-xs font-black uppercase tracking-widest ${event.isPrivate ? 'text-orange-500' : 'text-purple-600'}`}>
@@ -526,6 +561,8 @@ const EventModal: React.FC<EventModalProps> = ({
               </button>
             </div>
           )}
+          </>
+          )}
         </div>
 
         {/* Location at a Glance */}
@@ -569,6 +606,7 @@ const EventModal: React.FC<EventModalProps> = ({
             >
               {isSaved ? 'Unsave Event' : 'Save Event'}
             </button>
+            {!isEnded && (
             <button 
               onClick={handleOpenReminderModal}
               className={`flex-1 py-3.5 rounded-[10px] border-2 font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${
@@ -589,6 +627,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 </>
               )}
             </button>
+            )}
           </div>
         </div>
 
@@ -667,7 +706,7 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
           <div className="flex flex-col">
             <span className="text-[11px] md:text-xs text-gray-500 dark:text-gray-400 font-medium leading-tight mb-0.5">Date</span>
-            <span className="text-sm md:text-base font-semibold md:font-bold text-[#2A2A2A] dark:text-white leading-tight">{event.date}</span>
+            <span className="text-sm md:text-base font-semibold md:font-bold text-[#2A2A2A] dark:text-white leading-tight">{formatDisplayDate(event.date, event.endDate)}</span>
           </div>
         </div>
         <div className="flex items-center gap-3.5">
@@ -718,6 +757,18 @@ const EventModal: React.FC<EventModalProps> = ({
 
       {/* Participation Block */}
       <div className="space-y-3">
+        {isEnded ? (
+          <div className="p-5 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
+            <div className="w-10 h-10 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="font-black text-sm text-gray-500 dark:text-gray-400">This event has already ended</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Registration and participation are no longer available.</p>
+          </div>
+        ) : (
+        <>
         <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Participation</h3>
         <p className={`text-xs font-bold uppercase tracking-widest ${event.isPrivate ? 'text-orange-500' : 'text-purple-600'}`}>
           {event.isPrivate ? 'Private Event • Registration Required' : 'Public Event • Anyone Can Attend'}
@@ -843,6 +894,8 @@ const EventModal: React.FC<EventModalProps> = ({
             </button>
           </div>
         )}
+        </>
+        )}
       </div>
 
       {/* Location at a Glance */}
@@ -886,6 +939,7 @@ const EventModal: React.FC<EventModalProps> = ({
           >
             {isSaved ? 'Unsave Event' : 'Save Event'}
           </button>
+          {!isEnded && (
           <button 
             onClick={handleOpenReminderModal}
             className={`w-full py-2.5 md:py-3.5 rounded-2xl border-2 text-sm md:text-base font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${
@@ -906,6 +960,7 @@ const EventModal: React.FC<EventModalProps> = ({
               </>
             )}
           </button>
+          )}
         </div>
       </div>
 
@@ -1040,7 +1095,7 @@ const EventModal: React.FC<EventModalProps> = ({
         className="fixed inset-0 bg-white dark:bg-gray-900 z-[6000] overflow-y-auto flex flex-col"
       >
         {/* Header Image Section */}
-        <div className="relative w-full h-[45vh] flex-shrink-0 group">
+        <div className={`relative w-full h-[45vh] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
           <AnimatePresence mode="wait">
             <motion.img
               key={activePhotoIndex}
@@ -1121,7 +1176,19 @@ const EventModal: React.FC<EventModalProps> = ({
             </div>
           </div>
 
-          {isLive && (
+          {/* Event Ended overlay banner - mobile */}
+          {isEnded && (
+            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+              <div className="bg-black/70 backdrop-blur-sm px-6 py-3 rounded-full flex items-center gap-2.5 border border-white/20 shadow-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-white font-black tracking-wider text-sm uppercase">Event Ended</span>
+              </div>
+            </div>
+          )}
+
+          {isLive && !isEnded && (
             <div className="absolute bottom-12 left-0 w-full bg-red-600/90 text-white px-4 py-2 flex items-center justify-center animate-pulse backdrop-blur-sm z-10">
               <span className="w-2.5 h-2.5 bg-white rounded-full mr-2"></span>
               <span className="font-bold tracking-wider text-sm">HAPPENING NOW</span>

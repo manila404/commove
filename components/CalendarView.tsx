@@ -86,6 +86,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onDateSelect, curre
 
         const isCurrentMonth = cloneDay.getMonth() === currentMonth.getMonth();
         const isToday = dayString === today.toDateString();
+        // A day is "past" if it's strictly before today (not today itself)
+        const isPastDay = cloneDay < today && !isToday;
 
         days.push(
           <div
@@ -93,6 +95,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onDateSelect, curre
                 min-h-[80px] md:min-h-[120px] p-1 border-t border-l border-gray-100 dark:border-gray-800 relative transition-colors duration-200 flex flex-col gap-1 group
                 ${isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/40 text-gray-400 dark:text-gray-600'}
                 ${isCurrentMonth && 'hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer'}
+                ${isPastDay && isCurrentMonth ? 'opacity-60' : ''}
             `}
             key={day.toString()}
             onClick={() => onDateSelect(cloneDay)}
@@ -103,7 +106,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onDateSelect, curre
                     w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-medium
                     ${isToday 
                         ? 'bg-primary-600 text-white shadow-md' 
-                        : 'text-gray-700 dark:text-gray-300 group-hover:bg-gray-200 dark:group-hover:bg-gray-600'
+                        : isPastDay && isCurrentMonth
+                          ? 'text-gray-400 dark:text-gray-500'
+                          : 'text-gray-700 dark:text-gray-300 group-hover:bg-gray-200 dark:group-hover:bg-gray-600'
                     }
                     ${!isCurrentMonth ? 'opacity-50' : ''}
                 `}>
@@ -120,9 +125,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onDateSelect, curre
                         key={event.id}
                         className={`
                             text-[9px] md:text-xs px-1 md:px-1.5 py-0.5 rounded truncate font-medium
-                            ${categories.includes('Concerts') ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200' : ''}
-                            ${categories.includes('Cafe') ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200' : ''}
-                            ${!categories.includes('Concerts') && !categories.includes('Cafe') ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200' : ''}
+                            ${isPastDay
+                                ? 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
+                                : categories.includes('Concerts') ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200'
+                                : categories.includes('Cafe') ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
+                            }
                         `}
                         title={event.name}
                     >

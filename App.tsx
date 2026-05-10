@@ -1347,6 +1347,25 @@ const App: React.FC = () => {
         baseEvents = [..._nonRecurring, ...Array.from(_groupMap.values())];
         // --- End Deduplication ---
 
+        // --- Past Event Filter ---
+        // Remove events that have fully ended from the feed/suggestions.
+        // We still allow them when a selectedDateFilter is active so the calendar
+        // date-click popup (and feed date filter) can show past events for history.
+        if (!selectedDateFilter) {
+            const _nowMs = Date.now();
+            baseEvents = baseEvents.filter(event => {
+                // Use endDate if the event spans multiple days, otherwise use date
+                const refDate = event.endDate || event.date;
+                // Use endTime if available, otherwise treat end-of-day (23:59)
+                const refTime = event.endTime || '23:59';
+                const endMs = new Date(`${refDate}T${refTime}`).getTime();
+                // If parsing failed, keep the event
+                if (isNaN(endMs)) return true;
+                return endMs > _nowMs;
+            });
+        }
+        // --- End Past Event Filter ---
+
         // 2. Search Filter
         if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
