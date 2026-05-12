@@ -158,49 +158,141 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
     };
 
     const handleDownload = () => {
-        const worksheetData = reportData.flatMap(data => 
-            data.events.flatMap(eventData => {
-                if (eventData.participants.length === 0) {
-                    return [{
-                        Period: data.period,
-                        Event: eventData.event.name,
-                        Name: 'No Participants',
-                        Email: '',
-                        Age: null,
-                        Sex: '',
-                        'Contact Number': '',
-                        Address: ''
-                    }];
-                }
-                return eventData.participants.map(p => ({
-                    Period: data.period,
-                    Event: eventData.event.name,
-                    Name: p.name,
-                    Email: p.email,
-                    Age: calculateAge(p.birthday),
-                    Sex: p.sex,
-                    'Contact Number': p.contactNumber || '',
-                    Address: p.address || ''
-                }));
-            })
-        );
+        const activePeriodStr = selectedPart1 ? `${selectedPart1} ${selectedPart2}` : selectedPart2;
+        const activeData = reportData.find(d => d.period === activePeriodStr);
 
-        const headerOptions = ["Period", "Event", "Name", "Email", "Age", "Sex", "Contact Number", "Address"];
-        const worksheet = XLSX.utils.json_to_sheet(worksheetData, { header: headerOptions });
-
-        // Freeze top row
-        worksheet['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
-
-        // Style the header row (Purple background, white text)
-        const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-            const address = XLSX.utils.encode_cell({ r: 0, c: C });
-            if (!worksheet[address]) continue;
-            worksheet[address].s = {
-                fill: { patternType: 'solid', fgColor: { rgb: "6B21A8" } }, // Purple color
-                font: { color: { rgb: "FFFFFF" }, bold: true }
-            };
+        if (!activeData || activeData.events.length === 0) {
+            window.alert('No data to download for the selected period.');
+            return;
         }
+
+        const wsData: any[][] = [];
+        
+        // Report Header
+        wsData.push(["COMMOVE EVENT PARTICIPATION REPORT", "", "", "", "", "", "", ""]);
+        wsData.push([`Generated on: ${new Date().toLocaleString()}`, "", "", "", "", "", "", ""]);
+        wsData.push([]);
+        
+        // Parameters
+        wsData.push(["REPORT PARAMETERS", "", "", "", "", "", "", ""]);
+        wsData.push(["Time Period:", activePeriodStr, "", "", "", "", "", ""]);
+        
+        const selectedAges = Object.entries(ageGroups).filter(([_, v]) => v).map(([k]) => k).join(', ') || 'None';
+        wsData.push(["Age Groups:", selectedAges, "", "", "", "", "", ""]);
+        wsData.push(["Sex:", sexFilter, "", "", "", "", "", ""]);
+        
+        // Summary Metrics
+        const totalEvents = activeData.events.length;
+        const totalParticipants = activeData.participantCount;
+        wsData.push(["Total Events:", totalEvents, "", "", "", "", "", ""]);
+        wsData.push(["Total Participants:", totalParticipants, "", "", "", "", "", ""]);
+        wsData.push([]);
+        
+        // Data Header
+        wsData.push(["Period", "Event", "Name", "Email", "Age", "Sex", "Contact Number", "Address"]);
+
+        // Data Rows
+        activeData.events.forEach(eventData => {
+            if (eventData.participants.length === 0) {
+                wsData.push([
+                    activeData.period,
+                    eventData.event.name,
+                    'No Participants',
+                    '',
+                    '',
+                    '',
+                    '',
+                    ''
+                ]);
+            } else {
+                eventData.participants.forEach(p => {
+                    wsData.push([
+                        activeData.period,
+                        eventData.event.name,
+                        p.name,
+                        p.email,
+                        calculateAge(p.birthday),
+                        p.sex,
+                        p.contactNumber || '',
+                        p.address || ''
+                    ]);
+                });
+            }
+        });
+
+        // Create Worksheet
+        const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+
+        // Styling
+        worksheet['!cols'] = [
+            { wch: 15 }, // Period
+            { wch: 30 }, // Event
+            { wch: 25 }, // Name
+            { wch: 35 }, // Email
+            { wch: 10 }, // Age
+            { wch: 10 }, // Sex
+            { wch: 20 }, // Contact Number
+            { wch: 40 }  // Address
+        ];
+
+        worksheet['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Title
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }, // Generated on
+            { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }, // Parameters Title
+        ];
+
+        const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:H1');
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const address = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!worksheet[address]) {
+                    worksheet[address] = { t: 's', v: '' };
+                }
+                
+                worksheet[address].s = {
+                    font: { name: 'Arial', sz: 10, color: { rgb: "333333" } },
+                    alignment: { vertical: "center", horizontal: "left" }
+                };
+
+                if (R === 0) {
+                    worksheet[address].s = {
+                        font: { name: 'Arial', sz: 16, bold: true, color: { rgb: "FFFFFF" } },
+                        fill: { patternType: "solid", fgColor: { rgb: "6B21A8" } },
+                        alignment: { horizontal: "center", vertical: "center" }
+                    };
+                } else if (R === 1) {
+                    worksheet[address].s.font = { name: 'Arial', sz: 10, italic: true, color: { rgb: "666666" } };
+                    worksheet[address].s.alignment = { horizontal: "center" };
+                } else if (R >= 3 && R <= 8 && C === 0) {
+                    if (R === 3) {
+                         worksheet[address].s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: "6B21A8" } };
+                    } else {
+                         worksheet[address].s.font = { name: 'Arial', sz: 10, bold: true, color: { rgb: "333333" } };
+                    }
+                } else if (R >= 4 && R <= 8 && C === 1) {
+                     worksheet[address].s.font = { name: 'Arial', sz: 10, bold: true, color: { rgb: "111827" } };
+                } else if (R === 10) {
+                    worksheet[address].s = {
+                        fill: { patternType: 'solid', fgColor: { rgb: "F3E8FF" } },
+                        font: { name: 'Arial', sz: 10, bold: true, color: { rgb: "6B21A8" } },
+                        alignment: { vertical: "center", horizontal: "center" },
+                        border: {
+                            top: { style: 'thin', color: { rgb: "E9D5FF" } },
+                            bottom: { style: 'thin', color: { rgb: "E9D5FF" } }
+                        }
+                    };
+                } else if (R > 10) {
+                    worksheet[address].s.border = {
+                        bottom: { style: 'thin', color: { rgb: "F3F4F6" } }
+                    };
+                    if (C === 4 || C === 5) {
+                        worksheet[address].s.alignment = { horizontal: "center" };
+                    }
+                }
+            }
+        }
+
+        worksheet['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 11 }];
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
@@ -210,8 +302,8 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         const url = window.URL.createObjectURL(data);
         const link = document.createElement('a');
         link.href = url;
-        const cleanName = period.charAt(0).toUpperCase() + period.slice(1);
-        link.setAttribute('download', `Commove_${cleanName}_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+        const cleanName = activePeriodStr.replace(/[^a-zA-Z0-9]/g, '_');
+        link.setAttribute('download', `Commove_Report_${cleanName}_${new Date().toISOString().split('T')[0]}.xlsx`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -219,42 +311,127 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
     };
 
     const handleEventDownload = (eventData: any, periodKey: string) => {
-        const worksheetData = eventData.participants.length === 0 ? [{
-            Period: periodKey,
-            Event: eventData.event.name,
-            Name: 'No Participants',
-            Email: '',
-            Age: null,
-            Sex: '',
-            'Contact Number': '',
-            Address: ''
-        }] : eventData.participants.map((p: any) => ({
-            Period: periodKey,
-            Event: eventData.event.name,
-            Name: p.name,
-            Email: p.email,
-            Age: calculateAge(p.birthday),
-            Sex: p.sex,
-            'Contact Number': p.contactNumber || '',
-            Address: p.address || ''
-        }));
-
-        const headerOptions = ["Period", "Event", "Name", "Email", "Age", "Sex", "Contact Number", "Address"];
-        const worksheet = XLSX.utils.json_to_sheet(worksheetData, { header: headerOptions });
+        const wsData: any[][] = [];
         
-        // Freeze top row
-        worksheet['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+        // Report Header
+        wsData.push(["COMMOVE EVENT PARTICIPATION REPORT", "", "", "", "", "", "", ""]);
+        wsData.push([`Generated on: ${new Date().toLocaleString()}`, "", "", "", "", "", "", ""]);
+        wsData.push([]);
+        
+        // Parameters
+        wsData.push(["EVENT DETAILS", "", "", "", "", "", "", ""]);
+        wsData.push(["Event Name:", eventData.event.name, "", "", "", "", "", ""]);
+        wsData.push(["Time Period:", periodKey, "", "", "", "", "", ""]);
+        
+        const selectedAges = Object.entries(ageGroups).filter(([_, v]) => v).map(([k]) => k).join(', ') || 'None';
+        wsData.push(["Age Groups:", selectedAges, "", "", "", "", "", ""]);
+        wsData.push(["Sex:", sexFilter, "", "", "", "", "", ""]);
+        wsData.push(["Total Participants:", eventData.participants.length, "", "", "", "", "", ""]);
+        wsData.push([]);
+        
+        // Data Header
+        wsData.push(["Period", "Event", "Name", "Email", "Age", "Sex", "Contact Number", "Address"]);
 
-        // Style the header row (Purple background, white text)
-        const eventRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
-        for (let C = eventRange.s.c; C <= eventRange.e.c; ++C) {
-            const address = XLSX.utils.encode_cell({ r: 0, c: C });
-            if (!worksheet[address]) continue;
-            worksheet[address].s = {
-                fill: { patternType: 'solid', fgColor: { rgb: "6B21A8" } }, // Purple color
-                font: { color: { rgb: "FFFFFF" }, bold: true }
-            };
+        // Data Rows
+        if (eventData.participants.length === 0) {
+            wsData.push([
+                periodKey,
+                eventData.event.name,
+                'No Participants',
+                '',
+                '',
+                '',
+                '',
+                ''
+            ]);
+        } else {
+            eventData.participants.forEach((p: any) => {
+                wsData.push([
+                    periodKey,
+                    eventData.event.name,
+                    p.name,
+                    p.email,
+                    calculateAge(p.birthday),
+                    p.sex,
+                    p.contactNumber || '',
+                    p.address || ''
+                ]);
+            });
         }
+
+        // Create Worksheet
+        const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+
+        // Styling
+        worksheet['!cols'] = [
+            { wch: 15 }, // Period
+            { wch: 30 }, // Event
+            { wch: 25 }, // Name
+            { wch: 35 }, // Email
+            { wch: 10 }, // Age
+            { wch: 10 }, // Sex
+            { wch: 20 }, // Contact Number
+            { wch: 40 }  // Address
+        ];
+
+        worksheet['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Title
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }, // Generated on
+            { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }, // Parameters Title
+        ];
+
+        const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:H1');
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const address = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!worksheet[address]) {
+                    worksheet[address] = { t: 's', v: '' };
+                }
+                
+                worksheet[address].s = {
+                    font: { name: 'Arial', sz: 10, color: { rgb: "333333" } },
+                    alignment: { vertical: "center", horizontal: "left" }
+                };
+
+                if (R === 0) {
+                    worksheet[address].s = {
+                        font: { name: 'Arial', sz: 16, bold: true, color: { rgb: "FFFFFF" } },
+                        fill: { patternType: "solid", fgColor: { rgb: "6B21A8" } },
+                        alignment: { horizontal: "center", vertical: "center" }
+                    };
+                } else if (R === 1) {
+                    worksheet[address].s.font = { name: 'Arial', sz: 10, italic: true, color: { rgb: "666666" } };
+                    worksheet[address].s.alignment = { horizontal: "center" };
+                } else if (R >= 3 && R <= 8 && C === 0) {
+                    if (R === 3) {
+                         worksheet[address].s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: "6B21A8" } };
+                    } else {
+                         worksheet[address].s.font = { name: 'Arial', sz: 10, bold: true, color: { rgb: "333333" } };
+                    }
+                } else if (R >= 4 && R <= 8 && C === 1) {
+                     worksheet[address].s.font = { name: 'Arial', sz: 10, bold: true, color: { rgb: "111827" } };
+                } else if (R === 10) {
+                    worksheet[address].s = {
+                        fill: { patternType: 'solid', fgColor: { rgb: "F3E8FF" } },
+                        font: { name: 'Arial', sz: 10, bold: true, color: { rgb: "6B21A8" } },
+                        alignment: { vertical: "center", horizontal: "center" },
+                        border: {
+                            top: { style: 'thin', color: { rgb: "E9D5FF" } },
+                            bottom: { style: 'thin', color: { rgb: "E9D5FF" } }
+                        }
+                    };
+                } else if (R > 10) {
+                    worksheet[address].s.border = {
+                        bottom: { style: 'thin', color: { rgb: "F3F4F6" } }
+                    };
+                    if (C === 4 || C === 5) {
+                        worksheet[address].s.alignment = { horizontal: "center" };
+                    }
+                }
+            }
+        }
+
+        worksheet['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 11 }];
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Event Report");
