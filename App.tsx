@@ -202,6 +202,11 @@ const App: React.FC = () => {
     const notifiedCustomReminders = useRef<Set<string>>(new Set());
     const notifiedFeedbackEvents = useRef<Set<string>>(new Set());
 
+    // Stable ranking snapshot: used by KNN so that save/like/interest
+    // actions do NOT cause a re-rank / re-sort of the feed mid-session.
+    // Updated only on meaningful context changes (login, events load, etc.).
+    const rankingUserRef = useRef<typeof currentUser>(null);
+
     // Refresh interaction refs
     const lastHomeTapRef = useRef<number>(0);
     const touchStartYRef = useRef<number>(0);
@@ -368,12 +373,28 @@ const App: React.FC = () => {
     // 2b. Real-time user profile subscription
     // Keeps currentUser in sync with Firestore so fields like registrationStatuses
     // update immediately when written by submitRegistration or updateRegistrationStatus.
+    //
+    // IMPORTANT: We intentionally do NOT let the snapshot overwrite the interaction
+    // arrays (savedEventIds, likedEventIds, interestedEventIds, checkedInEventIds)
+    // that are managed optimistically by handleToggleSaveEvent, handleToggleLikeEvent,
+    // and handleToggleParticipation. Letting Firestore echo those back would cause a
+    // second setCurrentUser call immediately after every save/like/interest click,
+    // triggering a visible UI re-render that the user perceives as a "page refresh".
     useEffect(() => {
         if (!currentUser?.uid) return;
         const unsubscribe = subscribeToUserProfile(currentUser.uid, (updatedUser) => {
-            if (updatedUser) {
-                setCurrentUser(prev => prev ? { ...prev, ...updatedUser } : updatedUser);
-            }
+            if (!updatedUser) return;
+            // Fields managed by optimistic local writes — ignore Firestore echo-backs
+            // for these so we don't cause a spurious re-render after each interaction.
+            const {
+                savedEventIds: _s,
+                likedEventIds: _l,
+                interestedEventIds: _i,
+                checkedInEventIds: _c,
+                viewedEventIds: _v,
+                ...serverFields
+            } = updatedUser;
+            setCurrentUser(prev => prev ? { ...prev, ...serverFields } : updatedUser);
         });
         return () => unsubscribe();
     }, [currentUser?.uid]);
@@ -390,7 +411,7 @@ const App: React.FC = () => {
                 }
             } catch (e) { }
         }
-    }, [currentUser, showPreferences, permissions.location, onboardingStep]);
+    }, [currentUser?.uid, showPreferences, permissions.location, onboardingStep]);
 
     // Fetch pending facilitators if Admin
     useEffect(() => {
@@ -410,12 +431,12 @@ const App: React.FC = () => {
 
     // 3.5 Global Notification Subscription
     useEffect(() => {
-        if (!currentUser) return;
+        if (!currentUser?.uid) return;
         const unsub = subscribeToNotifications(currentUser.uid, (notifs) => {
             setUnreadNotificationCount(notifs.filter(n => !n.isRead).length);
         });
         return () => unsub();
-    }, [currentUser]);
+    }, [currentUser?.uid]);
 
     // 3b. Listen for custom categories added from CreateEventForm
     useEffect(() => {
@@ -444,10 +465,27 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (currentUser || isGuest) {
+        if (currentUser?.uid || isGuest) {
             loadEvents();
         }
-    }, [currentUser, isGuest, loadEvents]);
+        // Only re-fetch events when the user's identity changes (login/logout)
+        // or guest mode is toggled — NOT when savedEventIds, likedEventIds, etc. change.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUser?.uid, isGuest]);
+
+    // Keep the ranking snapshot up-to-date whenever the USER IDENTITY changes
+    // (login / logout / role change) or events are first loaded.
+    // Critically, this does NOT run on save/like/interest because those update
+    // only sub-fields of currentUser (savedEventIds, likedEventIds, etc.) but
+    // the uid stays the same — we gate on uid + events.length.
+    useEffect(() => {
+        if (currentUser) {
+            rankingUserRef.current = currentUser;
+        } else {
+            rankingUserRef.current = null;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUser?.uid, events.length, searchQuery, selectedCategory, selectedDateFilter, userLocation.lat, userLocation.lng]);
 
     // 5. Notifications & Reminders Loop
     useEffect(() => {
@@ -1428,8 +1466,11 @@ const App: React.FC = () => {
             });
         } else {
             // "All" Category selected: Apply KNN Ranking
-            if (currentUser) {
-                return getKNNRankedEvents(currentUser, processedEvents, userLocation);
+            // Use the STABLE rankingUserRef snapshot so that save/like/interest
+            // actions do NOT trigger a re-rank and re-order of the visible feed.
+            const rankingUser = rankingUserRef.current;
+            if (rankingUser) {
+                return getKNNRankedEvents(rankingUser, processedEvents, userLocation);
             }
 
             return processedEvents.sort((a, b) => {
@@ -1440,7 +1481,10 @@ const App: React.FC = () => {
                 return new Date(a.date).getTime() - new Date(b.date).getTime();
             });
         }
-    }, [events, searchQuery, currentUser, userLocation, selectedCategory, selectedDateFilter, currentTime]);
+        // NOTE: currentUser is intentionally excluded from deps here.
+        // isSaved/isPreferred below still react to currentUser via the events map,
+        // so card icons update instantly. Only the KNN RANK is snapshot-stabilised.
+    }, [events, searchQuery, userLocation, selectedCategory, selectedDateFilter, currentTime]);
 
     // 7. Stable Order Management: Pin the sort order only when necessary
     useEffect(() => {
@@ -1452,8 +1496,17 @@ const App: React.FC = () => {
     }, [getDisplayEvents.length, searchQuery, selectedCategory, selectedDateFilter]);
 
     // 8. Final Display: Map reactive events to the pinned order
+    // Also re-stamp isSaved / isPreferred from live currentUser so that save/like
+    // icon states update instantly without re-sorting the list.
     const finalDisplayEvents = useMemo(() => {
-        if (!pinnedEventIds.length) return getDisplayEvents;
+        const stamped = (e: DisplayEventType): DisplayEventType => ({
+            ...e,
+            isSaved: currentUser?.savedEventIds?.includes(e.id) ?? false,
+            isPreferred: (Array.isArray(e.category) ? e.category : [e.category])
+                .some(cat => currentUser?.preferences?.includes(cat)) ?? false,
+        });
+
+        if (!pinnedEventIds.length) return getDisplayEvents.map(stamped);
 
         const eventMap = new Map(getDisplayEvents.map(e => [e.id, e]));
         const ordered = pinnedEventIds
@@ -1463,8 +1516,8 @@ const App: React.FC = () => {
         const pinnedSet = new Set(pinnedEventIds);
         const newEvents = getDisplayEvents.filter(e => !pinnedSet.has(e.id));
 
-        return [...ordered, ...newEvents];
-    }, [pinnedEventIds, getDisplayEvents]);
+        return [...ordered, ...newEvents].map(stamped);
+    }, [pinnedEventIds, getDisplayEvents, currentUser?.savedEventIds, currentUser?.preferences]);
 
     // Derived lists for the MyEventsView
     const savedEvents = useMemo(() => {
@@ -1794,18 +1847,55 @@ const App: React.FC = () => {
                             {showCalendarEventsPopup && calendarPopupDate && (
                                 <DateEventsModal
                                     date={calendarPopupDate}
-                                    events={events.filter(e => {
-                                        let isVisible = false;
-                                        if (isStaff) {
-                                            if (currentUser?.role === 'admin') isVisible = true;
-                                            else if (currentUser?.role === 'facilitator') isVisible = e.createdBy === currentUser.uid;
-                                        } else {
+                                    events={(() => {
+                                        // Build a deduplicated, span-aware list for the clicked date
+                                        const clickedYMD = calendarPopupDate.toISOString().slice(0, 10);
+                                        const clickedMs = calendarPopupDate.getTime();
+
+                                        // Visibility filter (same logic as calendar)
+                                        const visible = events.filter(e => {
+                                            if (isStaff) {
+                                                if (currentUser?.role === 'admin') return true;
+                                                if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
+                                            }
                                             const isPublished = e.status === 'published';
                                             const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
-                                            isVisible = isPublished || isScheduled;
+                                            return isPublished || isScheduled;
+                                        });
+
+                                        // Check whether an event covers the clicked date
+                                        const coversDate = (e: typeof events[0]) => {
+                                            const startMs = new Date(e.date + 'T00:00:00').getTime();
+                                            const endMs = e.endDate
+                                                ? new Date(e.endDate + 'T00:00:00').getTime()
+                                                : startMs;
+                                            return startMs <= clickedMs && clickedMs <= endMs;
+                                        };
+
+                                        const matching = visible.filter(coversDate);
+
+                                        // Deduplicate recurring groups: keep only the occurrence
+                                        // whose date is closest to (≤) the clicked date
+                                        const seenGroups = new Map<string, typeof events[0]>();
+                                        const result: typeof events[0][] = [];
+                                        for (const ev of matching) {
+                                            if (!ev.recurrenceGroupId) {
+                                                result.push(ev);
+                                            } else {
+                                                const existing = seenGroups.get(ev.recurrenceGroupId);
+                                                if (!existing) {
+                                                    seenGroups.set(ev.recurrenceGroupId, ev);
+                                                } else {
+                                                    // prefer the occurrence whose date == clickedYMD
+                                                    if (ev.date === clickedYMD) {
+                                                        seenGroups.set(ev.recurrenceGroupId, ev);
+                                                    }
+                                                }
+                                            }
                                         }
-                                        return isVisible && new Date(e.date).toDateString() === calendarPopupDate.toDateString();
-                                    })}
+                                        seenGroups.forEach(ev => result.push(ev));
+                                        return result;
+                                    })()}
                                     onClose={handleCloseAllModals}
                                     onEventClick={(event) => {
                                         setShowCalendarEventsPopup(false);
