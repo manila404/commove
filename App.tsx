@@ -327,7 +327,7 @@ const App: React.FC = () => {
                         // Ensure name, email and avatar are present even if missing in DB
                         if (!profile.name) profile.name = firebaseUser.displayName || 'User';
                         if (!profile.email) profile.email = firebaseUser.email || '';
-                        
+
                         // Priority: Prefer Firebase Auth photoURL if it exists (instant sync)
                         if (firebaseUser.photoURL) {
                             profile.avatarUrl = firebaseUser.photoURL;
@@ -388,7 +388,7 @@ const App: React.FC = () => {
                 if (hasSeen !== 'true') {
                     setShowPermissionManager(true);
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
     }, [currentUser, showPreferences, permissions.location, onboardingStep]);
 
@@ -694,7 +694,7 @@ const App: React.FC = () => {
                             `We noticed the event just ended. Would you like to leave a quick rating?`,
                             event.id
                         );
-                        toast.info(`Rate "${event.name}"`, { 
+                        toast.info(`Rate "${event.name}"`, {
                             description: "Tell us about your experience!",
                             action: {
                                 label: "Rate Now",
@@ -736,7 +736,7 @@ const App: React.FC = () => {
             }
 
             const view = state.view;
-            
+
             // Derive all overlay states directly from the history view
             setSelectedEvent(null); // Modals are usually closed on back
             setShowPermitDashboard(view === 'permit');
@@ -889,7 +889,7 @@ const App: React.FC = () => {
         const wasInMyEvents = showMyEvents;
         const wasInPermit = showPermitDashboard;
         const wasInPopular = showViewAllPopular;
-        
+
         setSelectedEvent(null);
         try {
             if (window.history.state?.view === 'event-details') {
@@ -898,7 +898,7 @@ const App: React.FC = () => {
                 // If we aren't in a pushed state, just reset URL
                 window.history.replaceState({ view: 'feed' }, '', '/');
             }
-        } catch (e) {}
+        } catch (e) { }
 
         // Immediate state restoration to prevent flickering or accidental feed redirect
         if (wasInMyEvents) setShowMyEvents(true);
@@ -1490,7 +1490,7 @@ const App: React.FC = () => {
         const interestedIds = currentUser.interestedEventIds || [];
         const checkedInIds = currentUser.checkedInEventIds || [];
         const registeredIds = Object.keys(currentUser.registrationStatuses || {});
-        
+
         const participatedIds = new Set([
             ...interestedIds,
             ...checkedInIds,
@@ -1535,12 +1535,12 @@ const App: React.FC = () => {
 
 
     const activeOverlay = showPermitDashboard ? 'Permit Dashboard' :
-                          managingEventRegistrations ? 'Manage Registrations' :
-                          showMyEvents ? 'My Events' :
-                          showNotificationSettings ? 'Notification Settings' :
-                          showHelpSupport ? 'Help & Support' :
-                          showTermsAndConditions ? 'Terms & Conditions' :
-                          showViewAllPopular ? 'Popular Events' : null;
+        managingEventRegistrations ? 'Manage Registrations' :
+            showMyEvents ? 'My Events' :
+                showNotificationSettings ? 'Notification Settings' :
+                    showHelpSupport ? 'Help & Support' :
+                        showTermsAndConditions ? 'Terms & Conditions' :
+                            showViewAllPopular ? 'Popular Events' : null;
 
     return (
         <div className={`h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300 font-sans ${activeTab === 'nearby' || activeOverlay ? 'overflow-hidden' : 'min-h-screen overflow-x-hidden'}`}>
@@ -1581,337 +1581,337 @@ const App: React.FC = () => {
                 </main>
             ) : (
                 <>
-                <div className={`flex flex-1 ${activeTab === 'nearby' ? 'overflow-hidden' : ''}`}>
-                <Sidebar
-                    activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
-                    onTabChange={handleTabChange}
-                    onOpenScanner={handleOpenScanner}
-                    pendingFacilitatorCount={pendingFacilitatorCount}
-                    unreadNotificationCount={unreadNotificationCount}
-                />
-                <main className={`flex-1 transition-all duration-300 ${activeTab === 'nearby'
-                    ? 'h-full overflow-hidden'
-                    : 'w-full px-0'
-                    } ${activeTab === 'feed' ? 'pb-24' : ''} overflow-x-hidden`}>
-                    {activeTab === 'feed' && !isStaff && (
-                        <div className="space-y-4 animate-fade-in-up pt-8 md:pt-10">
-                            {currentUser?.facilitatorRequestStatus === 'rejected' && (
-                                <div className="mx-4 md:mx-8 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm">
-                                    <div className="flex justify-between items-start">
-                                        <div className="space-y-1">
-                                            <h3 className="text-red-800 dark:text-red-400 font-bold text-sm">Facilitator Request Rejected</h3>
-                                            <p className="text-red-600 dark:text-red-300 text-xs">{currentUser.facilitatorRejectionReason || "Your ID may have been blurry or invalid."}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                setFacilitatorAuthInitialStep('request');
-                                                setShowFacilitatorAuth(true);
-                                            }}
-                                            className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition-colors border-none"
-                                        >
-                                            Resubmit ID
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                            <div className="px-4 md:px-8 space-y-4">
-                                <div className="space-y-1 mb-5 animate-fade-in-up">
-                                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Discover Events</h1>
-                                    <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm md:max-w-none leading-relaxed">
-                                        Explore popular events near you, browse by category, or check out some of the great community calendars.
-                                    </p>
-                                </div>
-
-
-                                <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
-
-                                {/* Quick Filters (All & Happening Now) */}
-                                <div className="flex gap-2.5 animate-fade-in-up">
-                                    <button
-                                        onClick={() => setSelectedCategory('All')}
-                                        className={`px-4 md:px-6 py-1.5 md:py-2.5 rounded-full text-sm font-bold transition-all shadow-sm ${selectedCategory === 'All' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
-                                    >
-                                        All
-                                    </button>
-                                    <button
-                                        onClick={() => setSelectedCategory('Happening Now')}
-                                        className={`px-4 md:px-6 py-1.5 md:py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
-                                    >
-                                        <span className={`w-2 h-2 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse`}></span>
-                                        Happening Now
-                                    </button>
-                                </div>
-
-                                {/* 3. Popular Events Section */}
-                                {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && (
-                                    <PopularEvents 
-                                        events={getDisplayEvents} 
-                                        onEventSelect={handleOpenEvent}
-                                        onViewAll={handleOpenViewAllPopular}
-                                    />
-                                )}
-
-                                {/* 2. Active Date Filter Indicator */}
-                                {selectedDateFilter && (
-                                    <div className="flex items-center justify-between bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 p-3 rounded-xl animate-fade-in-up">
-                                        <div className="flex items-center gap-2">
-                                            <div className="p-1.5 bg-primary-100 dark:bg-primary-800 rounded-lg text-primary-600">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                            </div>
-                                            <span className="text-sm font-semibold text-primary-800 dark:text-primary-200">
-                                                Events on {formatDisplayDate(selectedDateFilter)}
-                                            </span>
-                                        </div>
-                                        <button
-                                            onClick={clearDateFilter}
-                                            className="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-wide px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                        >
-                                            Clear
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* 3. Category Cards */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Categories</h2>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => scrollCategories('left')}
-                                                className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                                aria-label="Scroll left"
-                                            >
-                                                <ChevronLeft size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => scrollCategories('right')}
-                                                className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                                aria-label="Scroll right"
-                                            >
-                                                <ChevronRight size={18} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div
-                                        ref={categoryScrollRef}
-                                        className="flex gap-4 overflow-x-auto pb-2 no-scrollbar snap-x"
-                                    >
-                                        {CATEGORIES.map((cat, idx) => {
-                                            const predefined = CATEGORY_DATA[cat];
-                                            const customGradient = CUSTOM_CATEGORY_GRADIENTS[Math.max(0, idx - CATEGORIES.length) % CUSTOM_CATEGORY_GRADIENTS.length];
-                                            const data = predefined || { bg: customGradient, subtitle: 'Custom', icon: Tag };
-                                            const isSelected = selectedCategory === cat;
-                                            const Icon = data.icon;
-
-                                            return (
+                    <div className={`flex flex-1 ${activeTab === 'nearby' ? 'overflow-hidden' : ''}`}>
+                        <Sidebar
+                            activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
+                            onTabChange={handleTabChange}
+                            onOpenScanner={handleOpenScanner}
+                            pendingFacilitatorCount={pendingFacilitatorCount}
+                            unreadNotificationCount={unreadNotificationCount}
+                        />
+                        <main className={`flex-1 transition-all duration-300 ${activeTab === 'nearby'
+                            ? 'h-full overflow-hidden'
+                            : 'w-full px-0'
+                            } ${activeTab === 'feed' ? 'pb-24' : ''} overflow-x-hidden`}>
+                            {activeTab === 'feed' && !isStaff && (
+                                <div className="space-y-4 animate-fade-in-up pt-8 md:pt-10">
+                                    {currentUser?.facilitatorRequestStatus === 'rejected' && (
+                                        <div className="mx-4 md:mx-8 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm">
+                                            <div className="flex justify-between items-start">
+                                                <div className="space-y-1">
+                                                    <h3 className="text-red-800 dark:text-red-400 font-bold text-sm">Facilitator Request Rejected</h3>
+                                                    <p className="text-red-600 dark:text-red-300 text-xs">{currentUser.facilitatorRejectionReason || "Your ID may have been blurry or invalid."}</p>
+                                                </div>
                                                 <button
-                                                    key={cat}
-                                                    onClick={() => setSelectedCategory(cat)}
-                                                    className={`relative min-w-[150px] md:min-w-[220px] h-[68px] md:h-[75px] rounded-[15px] p-3 text-left overflow-hidden transition-all transform active:scale-95 shadow-sm snap-start ${isSelected ? 'shadow-md opacity-100' : 'opacity-90 hover:opacity-100'} bg-gradient-to-br ${data.bg}`}
+                                                    onClick={() => {
+                                                        setFacilitatorAuthInitialStep('request');
+                                                        setShowFacilitatorAuth(true);
+                                                    }}
+                                                    className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition-colors border-none"
                                                 >
-                                                    {/* Background Pattern */}
-                                                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                                                        <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10"></div>
-                                                        <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/10"></div>
-                                                    </div>
-
-                                                    <div className="relative z-10">
-                                                        <h3 className="text-[14px] font-bold text-white leading-tight flex items-center gap-1">
-                                                            {cat}
-                                                        </h3>
-                                                        <p className="text-[10px] text-white/80 mt-0.5 font-medium">{data.subtitle}</p>
-                                                    </div>
-
-                                                    <div className="absolute bottom-1.5 right-1.5 text-white z-10 drop-shadow-lg">
-                                                        <Icon size={32} strokeWidth={2} />
-                                                    </div>
+                                                    Resubmit ID
                                                 </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* 4. Trending Heading */}
-                                <div className="space-y-4">
-                                    {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && highlightedDisplayEvents.length > 0 && (
-                                        <div className="mb-2">
-                                            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Highlights</h2>
-                                            <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
+                                            </div>
                                         </div>
                                     )}
-                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-1">
-                                        {selectedDateFilter ? `Events on ${formatDisplayDate(selectedDateFilter)}` :
-                                            selectedCategory === 'All' ? 'Recommended for You' : selectedCategory}
-                                    </h2>
+                                    <div className="px-4 md:px-8 space-y-4">
+                                        <div className="space-y-1 mb-5 animate-fade-in-up">
+                                            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Discover Events</h1>
+                                            <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm md:max-w-none leading-relaxed">
+                                                Explore popular events near you, browse by category, or check out some of the great community calendars.
+                                            </p>
+                                        </div>
 
-                                    {/* 5. Event List */}
-                                    {areEventsLoading ? (
-                                        <div className="flex justify-center py-10"><Spinner size="lg" /></div>
-                                    ) : (
-                                        <EventList events={finalDisplayEvents} onEventSelect={handleOpenEvent} onToggleSave={handleToggleSaveEvent} />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
-                    {activeTab === 'feed' && isStaff && (
-                        <div className="animate-fade-in-up h-full flex flex-col pt-4 md:pt-6 px-2 md:px-6">
-                            <AdminPanel
-                                currentUser={currentUser!}
-                                events={events}
-                                onEventCreated={handleEventCreated}
-                                onEventUpdated={handleEventUpdated}
-                                onEventDeleted={handleEventDeleted}
-                                onClose={handleCloseAllModals}
-                                onManageRegistrations={handleManageRegistrations}
-                            />
-                        </div>
-                    )}
+                                        <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
 
-                    {activeTab === 'calendar' && (
-                        <div className="px-4 md:px-8 pt-8 md:pt-10 pb-28 md:pb-12 animate-fade-in-up">
-                            <CalendarView
-                                events={events.filter(e => {
-                                    if (isStaff) {
-                                        if (currentUser?.role === 'admin') return true;
-                                        if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
-                                    }
-                                    const isPublished = e.status === 'published';
-                                    const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
-                                    return isPublished || isScheduled;
-                                })}
-                                currentMonth={currentMonth}
-                                setCurrentMonth={setCurrentMonth}
-                                onDateSelect={handleDateSelect}
-                            />
-                        </div>
-                    )}
+                                        {/* Quick Filters (All & Happening Now) */}
+                                        <div className="flex gap-2.5 animate-fade-in-up">
+                                            <button
+                                                onClick={() => setSelectedCategory('All')}
+                                                className={`px-4 md:px-6 py-1.5 md:py-2.5 rounded-full text-sm font-bold transition-all shadow-sm ${selectedCategory === 'All' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
+                                            >
+                                                All
+                                            </button>
+                                            <button
+                                                onClick={() => setSelectedCategory('Happening Now')}
+                                                className={`px-4 md:px-6 py-1.5 md:py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
+                                            >
+                                                <span className={`w-2 h-2 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse`}></span>
+                                                Happening Now
+                                            </button>
+                                        </div>
 
-                    {/* Calendar Events Popup */}
-                    {showCalendarEventsPopup && calendarPopupDate && (
-                        <DateEventsModal
-                            date={calendarPopupDate}
-                            events={events.filter(e => {
-                                let isVisible = false;
-                                if (isStaff) {
-                                    if (currentUser?.role === 'admin') isVisible = true;
-                                    else if (currentUser?.role === 'facilitator') isVisible = e.createdBy === currentUser.uid;
-                                } else {
-                                    const isPublished = e.status === 'published';
-                                    const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
-                                    isVisible = isPublished || isScheduled;
-                                }
-                                return isVisible && new Date(e.date).toDateString() === calendarPopupDate.toDateString();
-                            })}
-                            onClose={handleCloseAllModals}
-                            onEventClick={(event) => {
-                                setShowCalendarEventsPopup(false);
-                                handleOpenEvent(event);
-                            }}
-                            onToggleSave={handleToggleSaveEvent}
-                            savedEventIds={currentUser?.savedEventIds || []}
-                        />
-                    )}
+                                        {/* 3. Popular Events Section */}
+                                        {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && (
+                                            <PopularEvents
+                                                events={getDisplayEvents}
+                                                onEventSelect={handleOpenEvent}
+                                                onViewAll={handleOpenViewAllPopular}
+                                            />
+                                        )}
 
-                    {activeTab === 'notifications' && (
-                        <div className="px-4 md:px-8 pt-8 md:pt-10 animate-fade-in-up">
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Notifications</h2>
-                            {currentUser ? (
-                                <NotificationList
-                                    userId={currentUser.uid}
-                                    events={events}
-                                    isStaff={currentUser.role === 'admin' || currentUser.role === 'facilitator'}
-                                    isAdmin={currentUser.role === 'admin'}
-                                    onEventSelect={(event, notifType) => handleOpenEvent(event, notifType)}
-                                    onEventUpdated={handleEventUpdated}
-                                    onNavigateToAdmin={(event, tab, targetId) => {
-                                        setActiveTab('feed');
-                                        setTimeout(() => {
-                                            window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { event, tab, targetId } }));
-                                        }, 300);
-                                    }}
-                                    onManageRegistrations={handleManageRegistrations}
-                                    savedEventIds={currentUser.savedEventIds || []}
-                                    interestedEventIds={currentUser.interestedEventIds || []}
-                                />
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-64 text-center px-4">
-                                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                        {/* 2. Active Date Filter Indicator */}
+                                        {selectedDateFilter && (
+                                            <div className="flex items-center justify-between bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 p-3 rounded-xl animate-fade-in-up">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="p-1.5 bg-primary-100 dark:bg-primary-800 rounded-lg text-primary-600">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        </svg>
+                                                    </div>
+                                                    <span className="text-sm font-semibold text-primary-800 dark:text-primary-200">
+                                                        Events on {formatDisplayDate(selectedDateFilter)}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={clearDateFilter}
+                                                    className="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-wide px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                                >
+                                                    Clear
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* 3. Category Cards */}
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Categories</h2>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => scrollCategories('left')}
+                                                        className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                                        aria-label="Scroll left"
+                                                    >
+                                                        <ChevronLeft size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => scrollCategories('right')}
+                                                        className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                                        aria-label="Scroll right"
+                                                    >
+                                                        <ChevronRight size={18} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div
+                                                ref={categoryScrollRef}
+                                                className="flex gap-4 overflow-x-auto pb-2 no-scrollbar snap-x"
+                                            >
+                                                {CATEGORIES.map((cat, idx) => {
+                                                    const predefined = CATEGORY_DATA[cat];
+                                                    const customGradient = CUSTOM_CATEGORY_GRADIENTS[Math.max(0, idx - CATEGORIES.length) % CUSTOM_CATEGORY_GRADIENTS.length];
+                                                    const data = predefined || { bg: customGradient, subtitle: 'Custom', icon: Tag };
+                                                    const isSelected = selectedCategory === cat;
+                                                    const Icon = data.icon;
+
+                                                    return (
+                                                        <button
+                                                            key={cat}
+                                                            onClick={() => setSelectedCategory(cat)}
+                                                            className={`relative min-w-[150px] md:min-w-[220px] h-[68px] md:h-[75px] rounded-[15px] p-3 text-left overflow-hidden transition-all transform active:scale-95 shadow-sm snap-start ${isSelected ? 'shadow-md opacity-100' : 'opacity-90 hover:opacity-100'} bg-gradient-to-br ${data.bg}`}
+                                                        >
+                                                            {/* Background Pattern */}
+                                                            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                                                                <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10"></div>
+                                                                <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/10"></div>
+                                                            </div>
+
+                                                            <div className="relative z-10">
+                                                                <h3 className="text-[14px] font-bold text-white leading-tight flex items-center gap-1">
+                                                                    {cat}
+                                                                </h3>
+                                                                <p className="text-[10px] text-white/80 mt-0.5 font-medium">{data.subtitle}</p>
+                                                            </div>
+
+                                                            <div className="absolute bottom-1.5 right-1.5 text-white z-10 drop-shadow-lg">
+                                                                <Icon size={32} strokeWidth={2} />
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* 4. Trending Heading */}
+                                        <div className="space-y-4">
+                                            {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && highlightedDisplayEvents.length > 0 && (
+                                                <div className="-mx-4 md:-mx-8 mb-6">
+                                                    <h2 className="px-4 md:px-8 text-xl font-bold text-gray-900 dark:text-white mb-4">Highlights</h2>
+                                                    <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
+                                                </div>
+                                            )}
+                                            <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-1">
+                                                {selectedDateFilter ? `Events on ${formatDisplayDate(selectedDateFilter)}` :
+                                                    selectedCategory === 'All' ? 'Recommended for You' : selectedCategory}
+                                            </h2>
+
+                                            {/* 5. Event List */}
+                                            {areEventsLoading ? (
+                                                <div className="flex justify-center py-10"><Spinner size="lg" /></div>
+                                            ) : (
+                                                <EventList events={finalDisplayEvents} onEventSelect={handleOpenEvent} onToggleSave={handleToggleSaveEvent} />
+                                            )}
+                                        </div>
                                     </div>
-                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Sign In Required</h3>
-                                    <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xs mb-4">
-                                        Sign in to receive notifications and set reminders for your favourite events.
-                                    </p>
-                                    <button
-                                        onClick={() => setIsGuest(false)}
-                                        className="px-6 py-2.5 bg-primary-600 text-white font-bold rounded-full text-sm hover:bg-primary-700 transition-colors"
-                                    >
-                                        Sign In
-                                    </button>
                                 </div>
                             )}
-                        </div>
-                    )}
 
-                    {activeTab === 'nearby' && (
-                        <NearbyView
-                            userLocation={userLocation}
-                            isLocationLive={isLocationLive}
-                            events={finalDisplayEvents}
-                            onEventSelect={handleOpenEvent}
-                            onToggleSave={handleToggleSaveEvent}
-                            savedEventIds={currentUser?.savedEventIds || []}
-                            onOpenScanner={() => setShowQRScanner(true)}
-                        />
-                    )}
+                            {activeTab === 'feed' && isStaff && (
+                                <div className="animate-fade-in-up h-full flex flex-col pt-4 md:pt-6 px-2 md:px-6">
+                                    <AdminPanel
+                                        currentUser={currentUser!}
+                                        events={events}
+                                        onEventCreated={handleEventCreated}
+                                        onEventUpdated={handleEventUpdated}
+                                        onEventDeleted={handleEventDeleted}
+                                        onClose={handleCloseAllModals}
+                                        onManageRegistrations={handleManageRegistrations}
+                                    />
+                                </div>
+                            )}
 
-                    {/* Removed activeTab === 'profile' rendering */}
-                </main>
-            </div>
+                            {activeTab === 'calendar' && (
+                                <div className="px-4 md:px-8 pt-8 md:pt-10 pb-28 md:pb-12 animate-fade-in-up">
+                                    <CalendarView
+                                        events={events.filter(e => {
+                                            if (isStaff) {
+                                                if (currentUser?.role === 'admin') return true;
+                                                if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
+                                            }
+                                            const isPublished = e.status === 'published';
+                                            const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
+                                            return isPublished || isScheduled;
+                                        })}
+                                        currentMonth={currentMonth}
+                                        setCurrentMonth={setCurrentMonth}
+                                        onDateSelect={handleDateSelect}
+                                    />
+                                </div>
+                            )}
 
-            {/* Profile Panel */}
-            {showProfilePanel && (
-                <>
-                    <div
-                        className="hidden md:block fixed inset-0 z-[5005]"
-                        onClick={() => setShowProfilePanel(false)}
-                    />
-                    <div className="fixed inset-0 pt-nav-safe pb-16 bg-white dark:bg-gray-900 z-[35] md:z-[5010] md:!pt-5 md:pb-0 md:top-[60px] md:right-4 md:bottom-auto md:left-auto md:w-80 md:max-h-[calc(100vh-140px)] md:shadow-2xl md:bg-white md:dark:bg-gray-900 md:rounded-2xl md:border border-gray-200 dark:border-gray-700 overflow-y-auto">
-                        <ProfileView
-                            user={currentUser}
-                            onLogout={handleLogout}
-                            onLogin={() => setIsGuest(false)}
-                            onShowMyEvents={handleOpenMyEvents}
-                            onEditPreferences={handleOpenPreferences}
-                            onShowPermitDashboard={handleOpenPermitDashboard}
-                            onShowNotificationSettings={handleOpenNotificationSettings}
-                            onShowHelpSupport={handleOpenHelpSupport}
-                            onShowTermsAndConditions={handleOpenTermsAndConditions}
-                            onFacilitatorLogin={() => setShowFacilitatorAuth(true)}
-                            theme={theme}
-                            toggleTheme={toggleTheme}
-                            onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
-                            onProfileCardClick={() => {
-                                setShowProfilePanel(false);
-                                setShowEditProfileModal(true);
-                            }}
-                        />
+                            {/* Calendar Events Popup */}
+                            {showCalendarEventsPopup && calendarPopupDate && (
+                                <DateEventsModal
+                                    date={calendarPopupDate}
+                                    events={events.filter(e => {
+                                        let isVisible = false;
+                                        if (isStaff) {
+                                            if (currentUser?.role === 'admin') isVisible = true;
+                                            else if (currentUser?.role === 'facilitator') isVisible = e.createdBy === currentUser.uid;
+                                        } else {
+                                            const isPublished = e.status === 'published';
+                                            const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
+                                            isVisible = isPublished || isScheduled;
+                                        }
+                                        return isVisible && new Date(e.date).toDateString() === calendarPopupDate.toDateString();
+                                    })}
+                                    onClose={handleCloseAllModals}
+                                    onEventClick={(event) => {
+                                        setShowCalendarEventsPopup(false);
+                                        handleOpenEvent(event);
+                                    }}
+                                    onToggleSave={handleToggleSaveEvent}
+                                    savedEventIds={currentUser?.savedEventIds || []}
+                                />
+                            )}
+
+                            {activeTab === 'notifications' && (
+                                <div className="px-4 md:px-8 pt-8 md:pt-10 animate-fade-in-up">
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Notifications</h2>
+                                    {currentUser ? (
+                                        <NotificationList
+                                            userId={currentUser.uid}
+                                            events={events}
+                                            isStaff={currentUser.role === 'admin' || currentUser.role === 'facilitator'}
+                                            isAdmin={currentUser.role === 'admin'}
+                                            onEventSelect={(event, notifType) => handleOpenEvent(event, notifType)}
+                                            onEventUpdated={handleEventUpdated}
+                                            onNavigateToAdmin={(event, tab, targetId) => {
+                                                setActiveTab('feed');
+                                                setTimeout(() => {
+                                                    window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { event, tab, targetId } }));
+                                                }, 300);
+                                            }}
+                                            onManageRegistrations={handleManageRegistrations}
+                                            savedEventIds={currentUser.savedEventIds || []}
+                                            interestedEventIds={currentUser.interestedEventIds || []}
+                                        />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+                                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                            </div>
+                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Sign In Required</h3>
+                                            <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xs mb-4">
+                                                Sign in to receive notifications and set reminders for your favourite events.
+                                            </p>
+                                            <button
+                                                onClick={() => setIsGuest(false)}
+                                                className="px-6 py-2.5 bg-primary-600 text-white font-bold rounded-full text-sm hover:bg-primary-700 transition-colors"
+                                            >
+                                                Sign In
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'nearby' && (
+                                <NearbyView
+                                    userLocation={userLocation}
+                                    isLocationLive={isLocationLive}
+                                    events={finalDisplayEvents}
+                                    onEventSelect={handleOpenEvent}
+                                    onToggleSave={handleToggleSaveEvent}
+                                    savedEventIds={currentUser?.savedEventIds || []}
+                                    onOpenScanner={() => setShowQRScanner(true)}
+                                />
+                            )}
+
+                            {/* Removed activeTab === 'profile' rendering */}
+                        </main>
                     </div>
-                </>
-            )}
 
-            {showEditProfileModal && (
-                <EditProfileModal
-                    user={currentUser}
-                    onClose={() => setShowEditProfileModal(false)}
-                    onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
-                />
-            )}
-            </>
+                    {/* Profile Panel */}
+                    {showProfilePanel && (
+                        <>
+                            <div
+                                className="hidden md:block fixed inset-0 z-[5005]"
+                                onClick={() => setShowProfilePanel(false)}
+                            />
+                            <div className="fixed inset-0 pt-nav-safe pb-16 bg-white dark:bg-gray-900 z-[35] md:z-[5010] md:!pt-5 md:pb-0 md:top-[60px] md:right-4 md:bottom-auto md:left-auto md:w-80 md:max-h-[calc(100vh-140px)] md:shadow-2xl md:bg-white md:dark:bg-gray-900 md:rounded-2xl md:border border-gray-200 dark:border-gray-700 overflow-y-auto">
+                                <ProfileView
+                                    user={currentUser}
+                                    onLogout={handleLogout}
+                                    onLogin={() => setIsGuest(false)}
+                                    onShowMyEvents={handleOpenMyEvents}
+                                    onEditPreferences={handleOpenPreferences}
+                                    onShowPermitDashboard={handleOpenPermitDashboard}
+                                    onShowNotificationSettings={handleOpenNotificationSettings}
+                                    onShowHelpSupport={handleOpenHelpSupport}
+                                    onShowTermsAndConditions={handleOpenTermsAndConditions}
+                                    onFacilitatorLogin={() => setShowFacilitatorAuth(true)}
+                                    theme={theme}
+                                    toggleTheme={toggleTheme}
+                                    onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
+                                    onProfileCardClick={() => {
+                                        setShowProfilePanel(false);
+                                        setShowEditProfileModal(true);
+                                    }}
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    {showEditProfileModal && (
+                        <EditProfileModal
+                            user={currentUser}
+                            onClose={() => setShowEditProfileModal(false)}
+                            onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
+                        />
+                    )}
+                </>
             )}
 
             {!activeOverlay && (
@@ -2010,7 +2010,7 @@ const App: React.FC = () => {
             {/* Permission Manager */}
             {showPermissionManager && (
                 <PermissionManager onComplete={() => {
-                    try { localStorage.setItem('hasSeenPermissionManager', 'true'); } catch (e) {}
+                    try { localStorage.setItem('hasSeenPermissionManager', 'true'); } catch (e) { }
                     setShowPermissionManager(false);
                 }} />
             )}
