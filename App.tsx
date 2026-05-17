@@ -9,7 +9,7 @@ import { getKNNRankedEvents } from './services/recommendationService'; // Import
 import { CATEGORIES, formatDisplayDate } from './constants';
 import { Tag } from 'lucide-react';
 import type { User, EventType, DisplayEventType, Reminder, AppNotification } from './types';
-import { createNotification, subscribeToNotifications } from './services/notificationService';
+import { createNotification, subscribeToNotifications, hasNotification } from './services/notificationService';
 import { useAlert } from './contexts/AlertContext';
 import { usePermissions } from './contexts/PermissionContext';
 import { toast } from 'sonner';
@@ -121,6 +121,7 @@ const App: React.FC = () => {
         }
     };
 
+    const isInitialAuthRef = useRef(true);
     // Auth & User State
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [authLoading, setAuthLoading] = useState(true);
@@ -153,7 +154,17 @@ const App: React.FC = () => {
     }, []);
 
     // UI State - Managed via History
-    const [activeTab, setActiveTab] = useState<'feed' | 'calendar' | 'nearby' | 'notifications'>('feed');
+    const [activeTab, setActiveTab] = useState<'feed' | 'calendar' | 'nearby' | 'notifications'>(() => {
+        try {
+            if (typeof window !== 'undefined' && window.history.state?.view) {
+                const view = window.history.state.view;
+                if (['feed', 'calendar', 'nearby', 'notifications', 'profile'].includes(view)) {
+                    return view as any;
+                }
+            }
+        } catch (e) {}
+        return 'feed';
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
 
@@ -161,8 +172,10 @@ const App: React.FC = () => {
     const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
     const [pendingFacilitatorCount, setPendingFacilitatorCount] = useState(0);
 
-    // Overlay Views
-    const [showPermitDashboard, setShowPermitDashboard] = useState(false);
+    // Overlay Views initialized from history
+    const [showPermitDashboard, setShowPermitDashboard] = useState(() => {
+        try { return window.history.state?.view === 'permit'; } catch { return false; }
+    });
     const [pinnedEventIds, setPinnedEventIds] = useState<string[]>([]);
 
     const [showProfilePanel, setShowProfilePanel] = useState(false);
@@ -170,20 +183,32 @@ const App: React.FC = () => {
     const [showCalendarEventsPopup, setShowCalendarEventsPopup] = useState(false);
     const [calendarPopupDate, setCalendarPopupDate] = useState<Date | null>(null);
 
-    // New Profile Views
-    const [showMyEvents, setShowMyEvents] = useState(false);
-    const [showNotificationSettings, setShowNotificationSettings] = useState(false);
-    const [showHelpSupport, setShowHelpSupport] = useState(false);
-    const [showTermsAndConditions, setShowTermsAndConditions] = useState(false);
+    // New Profile Views initialized from history
+    const [showMyEvents, setShowMyEvents] = useState(() => {
+        try { return window.history.state?.view === 'my-events'; } catch { return false; }
+    });
+    const [showNotificationSettings, setShowNotificationSettings] = useState(() => {
+        try { return window.history.state?.view === 'notification-settings'; } catch { return false; }
+    });
+    const [showHelpSupport, setShowHelpSupport] = useState(() => {
+        try { return window.history.state?.view === 'help'; } catch { return false; }
+    });
+    const [showTermsAndConditions, setShowTermsAndConditions] = useState(() => {
+        try { return window.history.state?.view === 'terms'; } catch { return false; }
+    });
     const [showFacilitatorAuth, setShowFacilitatorAuth] = useState(false);
     const [facilitatorAuthInitialStep, setFacilitatorAuthInitialStep] = useState<'question' | 'request'>('question');
     const [managingEventRegistrations, setManagingEventRegistrations] = useState<EventType | null>(null);
-    const [showQRScanner, setShowQRScanner] = useState(false);
+    const [showQRScanner, setShowQRScanner] = useState(() => {
+        try { return window.history.state?.view === 'scanner'; } catch { return false; }
+    });
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
     const [showPermissionManager, setShowPermissionManager] = useState(false);
     const [showFeedbackModal, setShowFeedbackModal] = useState<EventType | null>(null);
-    const [showViewAllPopular, setShowViewAllPopular] = useState(false);
+    const [showViewAllPopular, setShowViewAllPopular] = useState(() => {
+        try { return window.history.state?.view === 'popular-events'; } catch { return false; }
+    });
 
     // Location State
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy?: number }>({
@@ -299,14 +324,16 @@ const App: React.FC = () => {
             if (firebaseUser) {
                 try {
 
-                    // Reset Navigation on Login
-                    setActiveTab('feed');
-                    setShowPermitDashboard(false);
-                    setShowMyEvents(false);
-                    setShowNotificationSettings(false);
-                    setShowHelpSupport(false);
-                    setManagingEventRegistrations(null);
-                    setSelectedEvent(null);
+                    // Reset Navigation on Login ONLY for explicit manual logins
+                    if (!isInitialAuthRef.current) {
+                        setActiveTab('feed');
+                        setShowPermitDashboard(false);
+                        setShowMyEvents(false);
+                        setShowNotificationSettings(false);
+                        setShowHelpSupport(false);
+                        setManagingEventRegistrations(null);
+                        setSelectedEvent(null);
+                    }
 
                     let profile = await getUserProfile(firebaseUser.uid);
 
@@ -351,7 +378,9 @@ const App: React.FC = () => {
                     }
 
                     if (profile.role === 'admin' || profile.role === 'facilitator') {
-                        setActiveTab('feed');
+                        if (!isInitialAuthRef.current) {
+                            setActiveTab('feed');
+                        }
                     }
 
                     setCurrentUser(profile);
@@ -365,6 +394,7 @@ const App: React.FC = () => {
             } else {
                 setCurrentUser(null);
             }
+            isInitialAuthRef.current = false;
             setAuthLoading(false);
         });
         return () => unsubscribe();
@@ -472,6 +502,23 @@ const App: React.FC = () => {
         // or guest mode is toggled — NOT when savedEventIds, likedEventIds, etc. change.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser?.uid, isGuest]);
+
+    // Restore event-dependent state after events load
+    useEffect(() => {
+        if (events.length > 0 && typeof window !== 'undefined' && window.history.state) {
+            const state = window.history.state;
+            const view = state.view;
+            
+            if (view === 'event-details' && state.eventId && !selectedEvent) {
+                const event = events.find(e => e.id === state.eventId);
+                if (event) setSelectedEvent(event);
+            } else if (view === 'manageRegistrations' && state.eventId && !managingEventRegistrations) {
+                const event = events.find(e => e.id === state.eventId);
+                if (event) setManagingEventRegistrations(event);
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [events.length]);
 
     // Keep the ranking snapshot up-to-date whenever the USER IDENTITY changes
     // (login / logout / role change) or events are first loaded.
@@ -595,28 +642,32 @@ const App: React.FC = () => {
                         const event = events.find(e => e.id === reminder.eventId);
                         if (event) {
                             notifiedCustomReminders.current.add(reminder.eventId);
-                            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                                try {
-                                    new Notification(`Reminder: ${event.name}`, {
-                                        body: `Starting soon at ${event.venue}`,
-                                        icon: '/logo192.png',
-                                        vibrate: (settings as any).vibrationEnabled ? [200, 100, 200] : undefined
-                                    } as any);
-                                } catch (e) {
-                                    console.warn("Notification error:", e);
+                            hasNotification(currentUser.uid, 'reminder', event.id, `Reminder: ${event.name}`).then(exists => {
+                                if (exists) return;
+
+                                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                                    try {
+                                        new Notification(`Reminder: ${event.name}`, {
+                                            body: `Starting soon at ${event.venue}`,
+                                            icon: '/logo192.png',
+                                            vibrate: (settings as any).vibrationEnabled ? [200, 100, 200] : undefined
+                                        } as any);
+                                    } catch (e) {
+                                        console.warn("Notification error:", e);
+                                    }
                                 }
-                            }
 
-                            // 2. Create actual record in Firestore collection
-                            createNotification(
-                                currentUser.uid,
-                                'reminder',
-                                `Reminder: ${event.name}`,
-                                `The event is starting soon at ${event.venue}.`,
-                                event.id
-                            );
+                                // 2. Create actual record in Firestore collection
+                                createNotification(
+                                    currentUser.uid,
+                                    'reminder',
+                                    `Reminder: ${event.name}`,
+                                    `The event is starting soon at ${event.venue}.`,
+                                    event.id
+                                );
 
-                            toast.info(`Reminder: ${event.name}`, { description: `Starting soon at ${event.venue}` });
+                                toast.info(`Reminder: ${event.name}`, { description: `Starting soon at ${event.venue}` });
+                            });
                         }
                     }
                 });
@@ -640,40 +691,48 @@ const App: React.FC = () => {
 
                     // 1 Hour Before
                     if (timeDiff > 0 && timeDiff <= 60 * 60 * 1000 && !notifiedUpcomingEvents.current.has(event.id)) {
-                        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                            try {
-                                new Notification(`Upcoming Event: ${event.name}`, {
-                                    body: `Starts in 1 hour at ${event.venue}`,
-                                    icon: '/logo192.png',
-                                    vibrate: (settings as any).vibrationEnabled ? [200, 100, 200] : undefined
-                                } as any);
-                            } catch (e) { console.warn("Notification error", e); }
-                        }
-
-                        // Create actual record in Firestore collection
-                        createNotification(
-                            currentUser.uid,
-                            'event_upcoming',
-                            `Upcoming Event: ${event.name}`,
-                            `Your interacted event starts in only 1 hour at ${event.venue}.`,
-                            event.id
-                        );
-
-                        toast.info(`Upcoming Event: ${event.name}`, { description: `Starts in 1 hour at ${event.venue}` });
                         notifiedUpcomingEvents.current.add(event.id);
+                        hasNotification(currentUser.uid, 'event_upcoming', event.id).then(exists => {
+                            if (exists) return;
+
+                            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                                try {
+                                    new Notification(`Upcoming Event: ${event.name}`, {
+                                        body: `Starts in 1 hour at ${event.venue}`,
+                                        icon: '/logo192.png',
+                                        vibrate: (settings as any).vibrationEnabled ? [200, 100, 200] : undefined
+                                    } as any);
+                                } catch (e) { console.warn("Notification error", e); }
+                            }
+
+                            // Create actual record in Firestore collection
+                            createNotification(
+                                currentUser.uid,
+                                'event_upcoming',
+                                `Upcoming Event: ${event.name}`,
+                                `Your interacted event starts in only 1 hour at ${event.venue}.`,
+                                event.id
+                            );
+
+                            toast.info(`Upcoming Event: ${event.name}`, { description: `Starts in 1 hour at ${event.venue}` });
+                        });
                     }
 
                     // Just Started / Ongoing (Notifications within first 5 mins of start)
                     if (timeDiff <= 0 && timeDiff >= -5 * 60 * 1000 && !notifiedStartedEvents.current.has(event.id)) {
-                        createNotification(
-                            currentUser.uid,
-                            'reminder',
-                            `Event Ongoing: ${event.name}`,
-                            `${event.name} is now ongoing at ${event.venue}! Join the event.`,
-                            event.id
-                        );
-                        toast.info(`Ongoing Now: ${event.name}`, { description: `Event is currently ongoing at ${event.venue}` });
                         notifiedStartedEvents.current.add(event.id);
+                        hasNotification(currentUser.uid, 'reminder', event.id, `Event Ongoing: ${event.name}`).then(exists => {
+                            if (exists) return;
+
+                            createNotification(
+                                currentUser.uid,
+                                'reminder',
+                                `Event Ongoing: ${event.name}`,
+                                `${event.name} is now ongoing at ${event.venue}! Join the event.`,
+                                event.id
+                            );
+                            toast.info(`Ongoing Now: ${event.name}`, { description: `Event is currently ongoing at ${event.venue}` });
+                        });
                     }
 
                     // Tomorrow
@@ -682,27 +741,31 @@ const App: React.FC = () => {
                     const isTomorrow = new Date(event.date).toDateString() === tomorrow.toDateString();
 
                     if (isTomorrow && !notifiedTomorrowEvents.current.has(event.id)) {
-                        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                            try {
-                                new Notification(`Happening Tomorrow: ${event.name}`, {
-                                    body: `Don't forget! ${event.name} is tomorrow.`,
-                                    icon: '/logo192.png',
-                                    vibrate: (settings as any).vibrationEnabled ? [200, 100, 200] : undefined
-                                } as any);
-                            } catch (e) { console.warn("Notification error", e); }
-                        }
-
-                        // Create actual record in Firestore collection
-                        createNotification(
-                            currentUser.uid,
-                            'event_tomorrow',
-                            `Happening Tomorrow: ${event.name}`,
-                            `${event.name} is occurring tomorrow. Be sure to check the details!`,
-                            event.id
-                        );
-
-                        toast.info(`Happening Tomorrow: ${event.name}`, { description: `Don't forget! ${event.name} is tomorrow.` });
                         notifiedTomorrowEvents.current.add(event.id);
+                        hasNotification(currentUser.uid, 'event_tomorrow', event.id).then(exists => {
+                            if (exists) return;
+
+                            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                                try {
+                                    new Notification(`Happening Tomorrow: ${event.name}`, {
+                                        body: `Don't forget! ${event.name} is tomorrow.`,
+                                        icon: '/logo192.png',
+                                        vibrate: (settings as any).vibrationEnabled ? [200, 100, 200] : undefined
+                                    } as any);
+                                } catch (e) { console.warn("Notification error", e); }
+                            }
+
+                            // Create actual record in Firestore collection
+                            createNotification(
+                                currentUser.uid,
+                                'event_tomorrow',
+                                `Happening Tomorrow: ${event.name}`,
+                                `${event.name} is occurring tomorrow. Be sure to check the details!`,
+                                event.id
+                            );
+
+                            toast.info(`Happening Tomorrow: ${event.name}`, { description: `Don't forget! ${event.name} is tomorrow.` });
+                        });
                     }
                 });
             }
@@ -723,6 +786,9 @@ const App: React.FC = () => {
                         try {
                             const existing = await fetchUserFeedbackForEvent(currentUser.uid, event.id);
                             if (existing) return; // Already rated — do nothing
+                            
+                            const alreadyNotified = await hasNotification(currentUser.uid, 'event_feedback', event.id);
+                            if (alreadyNotified) return;
                         } catch { /* network error — fall through and allow notification */ }
 
                         createNotification(
@@ -753,8 +819,10 @@ const App: React.FC = () => {
     // 6. History Management (Back Button Support)
     useEffect(() => {
         try {
-            // Initial state
-            window.history.replaceState({ view: 'feed' }, '');
+            // Initial state - only push if not already managed by browser
+            if (!window.history.state || !window.history.state.view) {
+                window.history.replaceState({ view: 'feed' }, '');
+            }
         } catch (e) { console.warn("History replaceState failed", e); }
 
         const handlePopState = (event: PopStateEvent) => {

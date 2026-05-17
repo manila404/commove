@@ -153,6 +153,36 @@ export const createNotification = async (
     }
 };
 
+/**
+ * Check if a notification already exists for a user and event to prevent duplicates.
+ * (Cache buster comment)
+ */
+export const hasNotification = async (
+    userId: string,
+    type: NotificationType,
+    eventId: string,
+    title?: string
+): Promise<boolean> => {
+    try {
+        const q = query(
+            notificationsRef,
+            where('userId', '==', userId),
+            where('type', '==', type),
+            where('eventId', '==', eventId)
+        );
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) return false;
+        
+        if (title) {
+             return snapshot.docs.some(doc => doc.data().title === title);
+        }
+        return true;
+    } catch (error) {
+        console.error('Error checking for existing notification:', error);
+        return false;
+    }
+};
+
 // ─────────────────────────────────────────────────────────────────
 // Read (one-time fetch)
 // ─────────────────────────────────────────────────────────────────

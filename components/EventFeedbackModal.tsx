@@ -15,6 +15,7 @@ interface EventFeedbackModalProps {
 const EventFeedbackModal: React.FC<EventFeedbackModalProps> = ({ event, user, onClose }) => {
     const [rating, setRating] = useState(0);
     const [hoveredRating, setHoveredRating] = useState(0);
+    const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const { showAlert } = useAlert();
@@ -33,6 +34,7 @@ const EventFeedbackModal: React.FC<EventFeedbackModalProps> = ({ event, user, on
                 userName: user.name || 'Anonymous',
                 userAvatar: user.avatarUrl || null,
                 rating,
+                comment: comment.trim() || undefined,
                 createdAt: Date.now()
             });
             setIsSubmitted(true);
@@ -98,7 +100,14 @@ const EventFeedbackModal: React.FC<EventFeedbackModalProps> = ({ event, user, on
                                     ))}
                                 </div>
 
-
+                                <div className="mt-4">
+                                    <textarea
+                                        value={comment}
+                                        onChange={(e) => setComment(e.target.value)}
+                                        placeholder="Care to share more? (Optional)"
+                                        className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl p-4 text-sm text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-purple-500 resize-none h-24"
+                                    />
+                                </div>
 
                                 <button 
                                     onClick={handleSubmit}
