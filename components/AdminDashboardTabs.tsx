@@ -8,6 +8,7 @@ import AdminReports from './AdminReports';
 import { getHighlights, setHighlights } from '../services/eventService';
 import { fetchAllFeedback } from '../services/feedbackService';
 import type { EventFeedback } from '../types';
+import ConfirmationDialog from './ConfirmationDialog';
 
 interface AdminDashboardTabsProps {
     events: EventType[];
@@ -59,13 +60,17 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [isMobile, setIsMobile] = React.useState(false);
 
     const [eventFilter, setEventFilter] = useState<'all' | 'pending' | 'scheduled' | 'published'>('all');
-    const [eventSortOrder, setEventSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [eventSortOrder, setEventSortOrder] = useState<'asc' | 'desc' | 'newest' | 'oldest'>('newest');
     const [showSortMenu, setShowSortMenu] = useState(false);
     const [eventVisibilityFilter, setEventVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
     const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
 
     const [allFeedback, setAllFeedback] = useState<EventFeedback[]>([]);
     const [viewingFeedbackEvent, setViewingFeedbackEvent] = useState<EventType | null>(null);
+
+    // Confirmation dialog state
+    type ConfirmAction = { type: 'publish' | 'cancel' | 'notify'; event: EventType } | null;
+    const [pendingConfirm, setPendingConfirm] = useState<ConfirmAction>(null);
 
     // Image Modal State
     const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
@@ -833,7 +838,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         </button>
                                     )}
-                                    <button onClick={() => onApprove(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-green-200 dark:border-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" title="Approve & Publish Now">
+                                    <button onClick={() => setPendingConfirm({ type: 'publish', event })} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-green-200 dark:border-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" title="Approve & Publish Now">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                                     </button>
                                     <button onClick={() => onSchedule(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Schedule Publication">
@@ -890,6 +895,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     </div>
                                 </div>
                                 <div className="border-t border-gray-100 dark:border-gray-800 p-2 space-y-1">
+                                    <p className="px-3 pt-1 pb-0.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">By Name</p>
                                     <button 
                                         onClick={() => { setEventSortOrder('asc'); setShowSortMenu(false); }}
                                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'asc' ? 'border-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
@@ -903,6 +909,22 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${eventSortOrder === 'desc' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m0 0l-7-7m7-7l7-7" /></svg>
                                         Descending (Z-A)
+                                    </button>
+
+                                    <p className="px-3 pt-2 pb-0.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">By Created Date</p>
+                                    <button
+                                        onClick={() => { setEventSortOrder('newest'); setShowSortMenu(false); }}
+                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'newest' ? 'border-2 border-violet-500 bg-violet-50/50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${eventSortOrder === 'newest' ? 'text-violet-600 dark:text-violet-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Newest Created
+                                    </button>
+                                    <button
+                                        onClick={() => { setEventSortOrder('oldest'); setShowSortMenu(false); }}
+                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'oldest' ? 'border-2 border-violet-500 bg-violet-50/50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${eventSortOrder === 'oldest' ? 'text-violet-600 dark:text-violet-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Oldest Created
                                     </button>
                                 </div>
                             </div>
@@ -925,6 +947,15 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 {visibilityFilteredEvents
                                     .filter(event => eventFilter === 'all' ? true : event.status === eventFilter)
                                     .sort((a, b) => {
+                                        if (eventSortOrder === 'newest' || eventSortOrder === 'oldest') {
+                                            // Sort by creation timestamp (createdAt field, falling back to 0)
+                                            const tsA = (a as any).createdAt ?? 0;
+                                            const tsB = (b as any).createdAt ?? 0;
+                                            // Normalize: Firestore Timestamps have .toMillis(), numbers are already ms
+                                            const msA = typeof tsA === 'object' && tsA?.toMillis ? tsA.toMillis() : Number(tsA);
+                                            const msB = typeof tsB === 'object' && tsB?.toMillis ? tsB.toMillis() : Number(tsB);
+                                            return eventSortOrder === 'newest' ? msB - msA : msA - msB;
+                                        }
                                         const nameA = a.name.toLowerCase();
                                         const nameB = b.name.toLowerCase();
                                         if (eventSortOrder === 'asc') {
@@ -1051,7 +1082,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                                                         {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
                                                             <button
-                                                                onClick={() => { onNotifyUpdate(event); setActiveActionMenu(null); }}
+                                                                onClick={() => { setPendingConfirm({ type: 'notify', event }); setActiveActionMenu(null); }}
                                                                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
                                                             >
                                                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
@@ -1061,7 +1092,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                                                         {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
                                                             <button
-                                                                onClick={() => { onCancelEvent(event); setActiveActionMenu(null); }}
+                                                                onClick={() => { setPendingConfirm({ type: 'cancel', event }); setActiveActionMenu(null); }}
                                                                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
                                                             >
                                                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
@@ -1707,6 +1738,34 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </div>
                 </div>
             )}
+            {/* ── Confirmation Dialogs ── */}
+            <ConfirmationDialog
+                open={pendingConfirm?.type === 'publish'}
+                variant="publish"
+                title="Publish Event"
+                message="This event will be published and visible to users. Do you want to proceed?"
+                confirmLabel="Yes, Publish"
+                onConfirm={() => { if (pendingConfirm) { onApprove(pendingConfirm.event); setPendingConfirm(null); } }}
+                onCancel={() => setPendingConfirm(null)}
+            />
+            <ConfirmationDialog
+                open={pendingConfirm?.type === 'cancel'}
+                variant="cancel"
+                title="Cancel Event"
+                message="This event will be cancelled. Affected residents will be notified. Do you want to proceed?"
+                confirmLabel="Yes, Cancel Event"
+                onConfirm={() => { if (pendingConfirm && onCancelEvent) { onCancelEvent(pendingConfirm.event); setPendingConfirm(null); } }}
+                onCancel={() => setPendingConfirm(null)}
+            />
+            <ConfirmationDialog
+                open={pendingConfirm?.type === 'notify'}
+                variant="update"
+                title="Notify Residents"
+                message="This event will be updated. Residents who saved, checked in, or showed interest in this event may be notified. Do you want to proceed?"
+                confirmLabel="Yes, Notify"
+                onConfirm={() => { if (pendingConfirm && onNotifyUpdate) { onNotifyUpdate(pendingConfirm.event); setPendingConfirm(null); } }}
+                onCancel={() => setPendingConfirm(null)}
+            />
         </div>
     );
 };

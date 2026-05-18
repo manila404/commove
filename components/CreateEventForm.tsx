@@ -19,6 +19,7 @@ import RecurrenceSelector from './RecurrenceSelector';
 import { generateRecurringDates, type RecurrenceRule } from '../services/recurrenceUtils';
 import EventCard from './EventCard';
 import { motion, AnimatePresence } from 'framer-motion';
+import ConfirmationDialog from './ConfirmationDialog';
 
 interface CreateEventFormProps {
   onSuccess: (event: EventType) => void;
@@ -155,6 +156,9 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
 
+  // Confirmation dialog
+  const [confirmPending, setConfirmPending] = useState<'draft' | 'publish' | null>(null);
+
   const isAdmin = currentUser.role === 'admin';
 
   // Populate form when editing
@@ -281,6 +285,22 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
     }
   };
 
+  // Called when the user clicks Publish / Schedule / Save Changes — shows confirm dialog first
+  const handleSubmitClick = (mode: 'draft' | 'publish') => {
+    if (mode === 'publish') {
+      // Quick client-side pre-check: mark all touched so errors show immediately
+      const allTouched = new Set(Object.keys(initialFormData));
+      setTouched(allTouched);
+      const errors = validateForm(formData);
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
+        document.getElementById('event-form-top')?.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+    }
+    setConfirmPending(mode);
+  };
+
   const submitAction = async (mode: 'draft' | 'publish') => {
     const allTouched = new Set(Object.keys(initialFormData));
     setTouched(allTouched);
@@ -358,9 +378,13 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
           } catch (e) { console.error(e); }
         } else if (isAdmin && mode === 'publish') {
            try {
-             await createNotification(currentUser.uid, 'event_created', 'Event Published', 'You have published an event.', eventToEdit.id);
+             const notifTitle = payload.status === 'scheduled' ? 'Event Scheduled' : 'Event Updated';
+             const notifMsg = payload.status === 'scheduled'
+               ? 'Your event has been scheduled successfully.'
+               : 'Your event has been updated successfully.';
+             await createNotification(currentUser.uid, 'event_created', notifTitle, notifMsg, eventToEdit.id);
            } catch (e) { console.error(e); }
-        }
+         }
       } else {
         const dates = recurrenceRule ? generateRecurringDates(formData.date, recurrenceRule) : undefined;
         const newEvent = await addEvent(payload, dates);
@@ -374,9 +398,13 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
           } catch (e) { console.error(e); }
         } else if (isAdmin && mode === 'publish') {
            try {
-             await createNotification(currentUser.uid, 'event_created', 'Event Published', 'You have published an event.', newEvent.id);
+             const notifTitle = payload.status === 'scheduled' ? 'Event Scheduled' : 'Event Published';
+             const notifMsg = payload.status === 'scheduled'
+               ? 'Your event has been scheduled successfully.'
+               : 'Your event has been published and is now visible to users.';
+             await createNotification(currentUser.uid, 'event_created', notifTitle, notifMsg, newEvent.id);
            } catch (e) { console.error(e); }
-        }
+         }
       }
 
       setSuccessData({ type: mode === 'draft' ? 'draft' : recurrenceRule && !eventToEdit ? 'recurring' : 'one-time' });
@@ -845,7 +873,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
               <Eye className="w-4 h-4" />
               <span className="hidden sm:inline">Preview</span>
             </button>
-            <button type="button" onClick={() => submitAction('publish')} disabled={isLoading}
+            <button type="button" onClick={() => handleSubmitClick('publish')} disabled={isLoading}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-xl transition-all
                 ${hasErrors
                   ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed shadow-none'
@@ -975,6 +1003,35 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Confirmation Dialogs ── */}
+      <ConfirmationDialog
+        open={confirmPending === 'publish' && !isScheduled && !eventToEdit}
+        variant="publish"
+        title="Publish Event"
+        message="This event will be published and visible to users. Do you want to proceed?"
+        confirmLabel="Yes, Publish"
+        onConfirm={() => { setConfirmPending(null); submitAction('publish'); }}
+        onCancel={() => setConfirmPending(null)}
+      />
+      <ConfirmationDialog
+        open={confirmPending === 'publish' && !isScheduled && !!eventToEdit}
+        variant="update"
+        title="Update Event"
+        message="This event will be updated. Residents who saved, checked in, or showed interest in this event may be notified. Do you want to proceed?"
+        confirmLabel="Yes, Update"
+        onConfirm={() => { setConfirmPending(null); submitAction('publish'); }}
+        onCancel={() => setConfirmPending(null)}
+      />
+      <ConfirmationDialog
+        open={confirmPending === 'publish' && isScheduled}
+        variant="schedule"
+        title="Schedule Event"
+        message="This event will be scheduled and published on the selected date and time. Do you want to proceed?"
+        confirmLabel="Yes, Schedule"
+        onConfirm={() => { setConfirmPending(null); submitAction('publish'); }}
+        onCancel={() => setConfirmPending(null)}
+      />
 
       <style>{`.scrollbar-hide::-webkit-scrollbar{display:none}.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}`}</style>
     </>
