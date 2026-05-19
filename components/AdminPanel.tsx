@@ -455,7 +455,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         if (editingEvent) {
             onEventUpdated(event);
             setEditingEvent(null);
-            switchTab(editSource);
+            // Navigate back to the dashboard's Events tab (where Pending Approvals lives)
+            // instead of 'list'/'requests' which have no standalone render and cause a blank page.
+            setRequestedDashboardTab('events');
+            setActiveTab('dashboard');
+            try { window.history.pushState({ view: 'admin', tab: 'dashboard' }, ''); } catch {}
+            // Show success feedback
+            showAlert(
+                'Event Updated',
+                currentUser.role === 'facilitator'
+                    ? 'Your event has been updated and remains pending admin approval.'
+                    : 'The event has been updated successfully.',
+                'success'
+            );
         } else {
             onEventCreated(event);
             // Facilitators get a one-time QR download modal after creating an event.
@@ -476,20 +488,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     };
 
     const handleCancelEdit = () => {
-        if (editingEvent) {
-            switchTab(editSource);
-        } else {
-            switchTab('dashboard');
-        }
         setEditingEvent(null);
+        // Always go back to the dashboard (events tab lives there).
+        setRequestedDashboardTab('events');
+        setActiveTab('dashboard');
+        try { window.history.pushState({ view: 'admin', tab: 'dashboard' }, ''); } catch {}
     };
 
     const handleDeleteEvent = async (eventId: string) => {
         showConfirm('Delete Event?', 'This action cannot be undone.', async () => {
             const success = await onEventDeleted(eventId);
             if (success && editingEvent?.id === eventId) {
-                switchTab(editSource);
                 setEditingEvent(null);
+                setRequestedDashboardTab('events');
+                setActiveTab('dashboard');
+                try { window.history.pushState({ view: 'admin', tab: 'dashboard' }, ''); } catch {}
             }
         }, 'error');
     };

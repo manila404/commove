@@ -160,6 +160,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
   const [confirmPending, setConfirmPending] = useState<'draft' | 'publish' | null>(null);
 
   const isAdmin = currentUser.role === 'admin';
+  const isFacilitator = currentUser.role === 'facilitator';
 
   // Populate form when editing
   useEffect(() => {
@@ -865,7 +866,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
           <div className="flex items-center gap-2.5">
             {hasErrors && (
               <span className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-red-500">
-                <AlertCircle className="w-3.5 h-3.5" />Fill required fields to publish
+                <AlertCircle className="w-3.5 h-3.5" />{isFacilitator ? 'Fill required fields to submit' : 'Fill required fields to publish'}
               </span>
             )}
             <button type="button" onClick={() => setShowPreview(true)}
@@ -880,7 +881,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                   : 'bg-violet-600 hover:bg-violet-700 shadow-violet-600/25 hover:-translate-y-0.5 active:scale-95'}`}
             >
               {isLoading ? (<Spinner size="sm" />) : (isScheduled ? <Clock className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />)}
-              {isLoading ? 'Processing…' : (isScheduled ? 'Schedule Event' : (eventToEdit ? 'Save Changes' : 'Publish Event'))}
+              {isLoading ? 'Processing…' : (isScheduled ? 'Schedule Event' : (eventToEdit ? 'Save Changes' : (isFacilitator ? 'Submit Event' : 'Publish Event')))}
             </button>
           </div>
         </div>
@@ -970,16 +971,16 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                 <CheckCircle2 className="w-8 h-8 text-green-500" />
               </motion.div>
               <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">
-                {successData.type === 'draft' ? 'Draft Saved!' : successData.type === 'recurring' ? 'Series Published!' : 'Event Published!'}
+                {successData.type === 'draft' ? 'Draft Saved!' : successData.type === 'recurring' ? (isFacilitator ? 'Series Submitted!' : 'Series Published!') : (isFacilitator ? 'Event Submitted for Review!' : 'Event Published!')}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-7">
                 {successData.type === 'draft'
                   ? 'Your progress is saved. Resume editing anytime from your events list.'
                   : successData.type === 'recurring'
-                    ? 'Your recurring event series is live. All upcoming sessions are now visible to attendees.'
-                    : 'Your event is live and visible to attendees.'}
+                    ? (isFacilitator ? 'Your recurring event series has been submitted for admin review. Each session will go live once approved.' : 'Your recurring event series is live. All upcoming sessions are now visible to attendees.')
+                    : (isFacilitator ? 'Your event has been submitted and is pending admin approval. It will become visible to residents once approved.' : 'Your event is live and visible to attendees.')}
               </p>
-              {successData.type !== 'draft' && (
+              {successData.type !== 'draft' && !isFacilitator && (
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <button className="flex items-center justify-center gap-2 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-bold text-gray-700 dark:text-gray-200 transition-colors">
                     <LinkIcon className="w-4 h-4" /> Copy Link
@@ -991,7 +992,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
               )}
               <button onClick={() => { setSuccessData(null); onCancelEdit?.(); }}
                 className="w-full py-3.5 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-gray-900/15">
-                <ExternalLink className="w-4 h-4" /> View Dashboard
+                <ExternalLink className="w-4 h-4" /> {isFacilitator ? 'View My Submissions' : 'View Dashboard'}
               </button>
               {successData.type === 'draft' && (
                 <button onClick={() => setSuccessData(null)}
@@ -1006,11 +1007,21 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
       {/* ── Confirmation Dialogs ── */}
       <ConfirmationDialog
-        open={confirmPending === 'publish' && !isScheduled && !eventToEdit}
+        open={confirmPending === 'publish' && !isScheduled && !eventToEdit && !isFacilitator}
         variant="publish"
         title="Publish Event"
         message="This event will be published and visible to users. Do you want to proceed?"
         confirmLabel="Yes, Publish"
+        onConfirm={() => { setConfirmPending(null); submitAction('publish'); }}
+        onCancel={() => setConfirmPending(null)}
+      />
+      {/* Facilitator submit-for-review confirmation */}
+      <ConfirmationDialog
+        open={confirmPending === 'publish' && !isScheduled && !eventToEdit && isFacilitator}
+        variant="publish"
+        title="Submit for Admin Review"
+        message="Your event will be submitted to the Admin for review. It will not be visible to residents until the Admin approves and publishes it."
+        confirmLabel="Yes, Submit Event"
         onConfirm={() => { setConfirmPending(null); submitAction('publish'); }}
         onCancel={() => setConfirmPending(null)}
       />

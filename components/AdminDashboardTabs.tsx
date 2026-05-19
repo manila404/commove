@@ -833,9 +833,39 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 );
             })()}
             <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
-                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Pending Approvals</h3>
+                {/* Section header — contextual to role */}
+                <div className="flex items-start justify-between mb-4 gap-3">
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                            {currentUser?.role === 'facilitator' ? 'My Submitted Events' : 'Pending Approvals'}
+                        </h3>
+                        {currentUser?.role === 'facilitator' && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                Events awaiting admin review. You can edit or cancel a submission while it's pending.
+                            </p>
+                        )}
+                    </div>
+                    {currentUser?.role === 'facilitator' && visibilityFilteredPending.filter(e => e.status === 'pending').length > 0 && (
+                        <span className="shrink-0 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                            {visibilityFilteredPending.filter(e => e.status === 'pending').length} Awaiting Review
+                        </span>
+                    )}
+                </div>
+
+                {/* Facilitator info banner */}
+                {currentUser?.role === 'facilitator' && (
+                    <div className="mb-4 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-xl">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <p className="text-xs text-blue-700 dark:text-blue-300 font-medium leading-relaxed">
+                            Only the Admin can approve and publish events. Your submitted events will appear here until reviewed.
+                        </p>
+                    </div>
+                )}
+
                 {visibilityFilteredPending.length === 0 ? (
-                    <p className="text-gray-500 dark:text-gray-400">No pending approvals.</p>
+                    <p className="text-gray-500 dark:text-gray-400">
+                        {currentUser?.role === 'facilitator' ? 'No submitted events awaiting review.' : 'No pending approvals.'}
+                    </p>
                 ) : (
                     <div className="space-y-4">
                         {visibilityFilteredPending.map(event => (
@@ -848,25 +878,52 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             {event.priority === 'urgent' && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Urgent</span>}
                                             {event.priority === 'average' && <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Average</span>}
                                             {event.status === 'draft' && <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Draft</span>}
+                                            {event.status === 'pending' && <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Pending Approval</span>}
+                                            {event.status === 'rejected' && <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Rejected</span>}
                                         </div>
                                         <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{event.organizer || 'Unknown'} • {formatDisplayDate(event.date)}</p>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 justify-end">
+                                    {/* Preview — shown to everyone */}
                                     {onPreviewEvent && (
                                         <button onClick={() => onPreviewEvent(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" title="Preview Event">
                                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         </button>
                                     )}
-                                    <button onClick={() => setPendingConfirm({ type: 'publish', event })} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-green-200 dark:border-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" title="Approve & Publish Now">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                    </button>
-                                    <button onClick={() => onSchedule(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Schedule Publication">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    </button>
-                                    <button onClick={() => onReject(event.id)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Disapprove">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
+
+                                    {currentUser?.role === 'facilitator' ? (
+                                        /* Facilitator: Edit + Cancel only — no approve/publish */
+                                        <>
+                                            <button
+                                                onClick={() => onEditEvent(event)}
+                                                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-violet-200 dark:border-violet-900/50 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+                                                title="Edit Submission"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                            </button>
+                                            <button
+                                                onClick={() => onDeleteEvent(event.id)}
+                                                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                                title="Cancel Submission"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </>
+                                    ) : (
+                                        /* Admin: Approve + Schedule + Reject */
+                                        <>
+                                            <button onClick={() => setPendingConfirm({ type: 'publish', event })} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-green-200 dark:border-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" title="Approve & Publish Now">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                            </button>
+                                            <button onClick={() => onSchedule(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Schedule Publication">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            </button>
+                                            <button onClick={() => onReject(event.id)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Disapprove">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         ))}
