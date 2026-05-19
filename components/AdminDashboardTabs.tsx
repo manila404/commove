@@ -63,6 +63,15 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [eventSortOrder, setEventSortOrder] = useState<'asc' | 'desc' | 'newest' | 'oldest'>('newest');
     const [showSortMenu, setShowSortMenu] = useState(false);
     const [eventVisibilityFilter, setEventVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
+
+    // User management extra state
+    const [userSortOrder, setUserSortOrder] = useState<'newest' | 'oldest'>('newest');
+    const [userPage, setUserPage] = useState(1);
+    const [showPendingFacilitatorFilter, setShowPendingFacilitatorFilter] = useState(false);
+    const USERS_PER_PAGE = 10;
+
+    // Role change confirmation state
+    const [pendingRoleChange, setPendingRoleChange] = useState<{ user: User; newRole: 'facilitator' | 'user' } | null>(null);
     const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
 
     const [allFeedback, setAllFeedback] = useState<EventFeedback[]>([]);
@@ -104,6 +113,17 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             onInitialTabConsumed?.();
         }
     }, [initialTab]);
+
+    // Listen for a custom event to auto-show pending facilitator filter
+    React.useEffect(() => {
+        const handler = () => {
+            setActiveTab('users');
+            setShowPendingFacilitatorFilter(true);
+            setUserPage(1);
+        };
+        window.addEventListener('admin-show-pending-facilitators', handler);
+        return () => window.removeEventListener('admin-show-pending-facilitators', handler);
+    }, []);
 
     // Handle highlighting and scrolling to a specific user
     React.useEffect(() => {
@@ -1140,10 +1160,27 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
     const renderUsers = () => {
         // Filter logic: Include those explicitly pending OR those with an ID URL but no role yet (fallback for sync issues)
-        const pendingFacilitators = users.filter(u => 
-            u.facilitatorRequestStatus === 'pending' || 
+        const pendingFacilitators = users.filter(u =>
+            u.facilitatorRequestStatus === 'pending' ||
             (u.role === 'user' && (u.idUrl || u.faceUrl || (u as any).facilitatorIdUrl) && u.facilitatorRequestStatus !== 'approved' && u.facilitatorRequestStatus !== 'rejected')
         );
+
+        // Apply active filter: pending facilitator shortcut overrides userFilter
+        const activeFilteredUsers = showPendingFacilitatorFilter
+            ? pendingFacilitators
+            : filteredUsers;
+
+        // Sort
+        const sortedUsers = [...activeFilteredUsers].sort((a, b) => {
+            const aTime = (a as any).createdAt ?? 0;
+            const bTime = (b as any).createdAt ?? 0;
+            return userSortOrder === 'newest' ? bTime - aTime : aTime - bTime;
+        });
+
+        // Paginate
+        const totalPages = Math.max(1, Math.ceil(sortedUsers.length / USERS_PER_PAGE));
+        const safePage = Math.min(userPage, totalPages);
+        const pagedUsers = sortedUsers.slice((safePage - 1) * USERS_PER_PAGE, safePage * USERS_PER_PAGE);
 
         return (
             <div className="mt-6 space-y-6">
@@ -1261,26 +1298,47 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             {canManageUsers && (
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
                     <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Manage Users</h3>
-                    <div className="mb-6 relative">
-                         <div className="absolute inset-y-0 left-0 pl-3 md:pl-4 flex items-center pointer-events-none">
+
+                    {/* Search */}
+                    <div className="mb-4 relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 md:pl-4 flex items-center pointer-events-none">
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
                         <input
                             type="text"
                             placeholder="Search users by name or email..."
                             value={userSearchQuery}
-                            onChange={(e) => setUserSearchQuery(e.target.value)}
+                            onChange={(e) => { setUserSearchQuery(e.target.value); setUserPage(1); }}
                             className="w-full pl-9 md:pl-11 pr-4 py-2.5 md:py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[15px] md:rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs md:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                         />
                     </div>
-                    
-                    <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar">
+
+                    {/* Role Filters + Sort */}
+                    <div className="flex flex-wrap gap-2 mb-4 items-center">
+                        {/* Pending Facilitator shortcut */}
+                        <button
+                            onClick={() => { setShowPendingFacilitatorFilter(true); setUserPage(1); }}
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1.5 ${
+                                showPendingFacilitatorFilter
+                                ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20'
+                                : 'bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                            }`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            Pending Requests
+                            {pendingFacilitators.length > 0 && (
+                                <span className="ml-0.5 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{pendingFacilitators.length}</span>
+                            )}
+                        </button>
+
+                        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+
                         {['all', 'admins', 'facilitators', 'users'].map((filter) => (
-                             <button 
+                            <button
                                 key={filter}
-                                onClick={() => setUserFilter(filter as any)}
+                                onClick={() => { setShowPendingFacilitatorFilter(false); setUserFilter(filter as any); setUserPage(1); }}
                                 className={`px-4 py-1.5 rounded-full text-xs font-bold capitalize whitespace-nowrap border transition-all ${
-                                    userFilter === filter
+                                    !showPendingFacilitatorFilter && userFilter === filter
                                     ? 'bg-blue-600 dark:bg-blue-500 text-white border-blue-600 dark:border-blue-500 shadow-lg shadow-blue-500/20'
                                     : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                                 }`}
@@ -1288,7 +1346,41 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 {filter}
                             </button>
                         ))}
+
+                        {/* Sort */}
+                        <div className="ml-auto flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full p-0.5">
+                            <button
+                                onClick={() => { setUserSortOrder('newest'); setUserPage(1); }}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                                    userSortOrder === 'newest'
+                                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                }`}
+                            >
+                                Newest
+                            </button>
+                            <button
+                                onClick={() => { setUserSortOrder('oldest'); setUserPage(1); }}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                                    userSortOrder === 'oldest'
+                                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                }`}
+                            >
+                                Oldest
+                            </button>
+                        </div>
                     </div>
+
+                    {/* Active filter label */}
+                    {showPendingFacilitatorFilter && (
+                        <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            Showing {pendingFacilitators.length} Pending Facilitator Request{pendingFacilitators.length !== 1 ? 's' : ''}
+                            <button onClick={() => { setShowPendingFacilitatorFilter(false); setUserPage(1); }} className="ml-auto text-amber-500 hover:text-amber-700 transition-colors">✕ Clear</button>
+                        </div>
+                    )}
+
 
                     {isLoadingUsers ? (
                         <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
@@ -1296,7 +1388,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                          <div className="text-center text-red-500 py-8">{userError} <button onClick={fetchUsers} className="underline ml-2">Retry</button></div>
                     ) : (
                         <div className="space-y-4">
-                            {filteredUsers.map(user => (
+                            {pagedUsers.map(user => (
                                 <div 
                                     key={user.uid} 
                                     id={`user-${user.uid}`}
@@ -1358,16 +1450,28 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             </div>
                                         )}
                                         <div className="flex gap-2 items-center ml-auto">
-                                            <select 
-                                                value={user.role || 'user'}
-                                                onChange={(e) => handleRoleUpdate(user.uid, e.target.value as 'admin' | 'facilitator' | 'user')}
-                                                disabled={user.email === 'admin@commove.com'} 
-                                                className="text-xs md:text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
-                                            >
-                                                <option value="user">User</option>
-                                                <option value="facilitator">Facilitator</option>
-                                                <option value="admin">Admin</option>
-                                            </select>
+                                            {/* Role control: admins are locked; others get a User/Facilitator dropdown */}
+                                            {user.role === 'admin' || user.email === 'admin@commove.com' ? (
+                                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/40 rounded-lg">
+                                                    <Lock className="w-3 h-3 text-purple-500 dark:text-purple-400 shrink-0" />
+                                                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400">Admin</span>
+                                                </div>
+                                            ) : (
+                                                <select
+                                                    value={user.role || 'user'}
+                                                    onChange={(e) => {
+                                                        const newRole = e.target.value as 'facilitator' | 'user';
+                                                        if (newRole === (user.role || 'user')) return;
+                                                        setPendingRoleChange({ user, newRole });
+                                                        // Reset select visually to current value until confirmed
+                                                        e.target.value = user.role || 'user';
+                                                    }}
+                                                    className="text-xs md:text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+                                                >
+                                                    <option value="user">User</option>
+                                                    <option value="facilitator">Facilitator</option>
+                                                </select>
+                                            )}
                                             <button
                                                 onClick={() => onDeleteUser(user.uid)}
                                                 disabled={user.email === 'admin@commove.com'}
@@ -1382,7 +1486,35 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     </div>
                                 </div>
                             ))}
-                            {filteredUsers.length === 0 && <p className="text-center text-gray-500 mt-8">No users found.</p>}
+                            {sortedUsers.length === 0 && <p className="text-center text-gray-500 mt-8">No users found.</p>}
+                        </div>
+                    )}
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                Showing {((safePage - 1) * USERS_PER_PAGE) + 1}–{Math.min(safePage * USERS_PER_PAGE, sortedUsers.length)} of {sortedUsers.length} users
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                                    disabled={safePage === 1}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    ← Previous
+                                </button>
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 px-2">
+                                    {safePage} / {totalPages}
+                                </span>
+                                <button
+                                    onClick={() => setUserPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={safePage === totalPages}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    Next →
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -1766,7 +1898,83 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 onConfirm={() => { if (pendingConfirm && onNotifyUpdate) { onNotifyUpdate(pendingConfirm.event); setPendingConfirm(null); } }}
                 onCancel={() => setPendingConfirm(null)}
             />
+            {pendingRoleChange && typeof document !== 'undefined' && createPortal(
+                <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+                    onClick={() => setPendingRoleChange(null)}
+                >
+                    <div
+                        style={{ width: '100%', maxWidth: '26rem', borderRadius: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', overflow: 'hidden' }}
+                        className="bg-white dark:bg-[#111827] animate-in zoom-in-95 fade-in duration-200"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-start gap-3">
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${pendingRoleChange.newRole === 'facilitator' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${pendingRoleChange.newRole === 'facilitator' ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                </svg>
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-base font-black text-gray-900 dark:text-white">Confirm Role Change</h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                                    {pendingRoleChange.newRole === 'facilitator'
+                                        ? `Are you sure you want to change this user's role to Facilitator?`
+                                        : `Are you sure you want to change this facilitator's role back to User?`}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* User preview */}
+                        <div className="px-6 py-4">
+                            <div className={`flex items-center gap-3 p-3 rounded-2xl border ${pendingRoleChange.newRole === 'facilitator' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/40' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/40'}`}>
+                                <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0">
+                                    {pendingRoleChange.user.avatarUrl
+                                        ? <img src={pendingRoleChange.user.avatarUrl} alt={pendingRoleChange.user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                        : <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                    }
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{pendingRoleChange.user.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{pendingRoleChange.user.email}</p>
+                                </div>
+                                {/* Role change arrow */}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                                        {pendingRoleChange.user.role || 'User'}
+                                    </span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${pendingRoleChange.newRole === 'facilitator' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
+                                        {pendingRoleChange.newRole === 'facilitator' ? 'Facilitator' : 'User'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="px-6 pb-6 flex gap-3">
+                            <button
+                                onClick={() => setPendingRoleChange(null)}
+                                className="flex-1 py-2.5 px-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-2xl transition-colors text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handleRoleUpdate(pendingRoleChange.user.uid, pendingRoleChange.newRole);
+                                    setPendingRoleChange(null);
+                                }}
+                                className={`flex-1 py-2.5 px-4 text-white font-bold rounded-2xl transition-colors text-sm shadow-lg ${pendingRoleChange.newRole === 'facilitator' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20' : 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'}`}
+                            >
+                                Yes, Change Role
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
+
     );
 };
 

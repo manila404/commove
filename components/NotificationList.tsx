@@ -201,11 +201,15 @@ const NotificationActionPanel: React.FC<{
                         <button
                             onClick={() => {
                                 onGoToAdmin('users', notif.eventId);
+                                // After navigating, fire event to auto-show the Pending Facilitator Requests filter
+                                setTimeout(() => {
+                                    window.dispatchEvent(new CustomEvent('admin-show-pending-facilitators'));
+                                }, 400);
                             }} 
-                            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors"
                         >
                             <ShieldCheckIcon className="w-3.5 h-3.5" />
-                            Manage Users
+                            View Pending Requests
                         </button>
                     </div>
                 </div>

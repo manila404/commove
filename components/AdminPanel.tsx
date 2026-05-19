@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { EventType, User, UserRole } from '../types';
 import { UserIcon, ShieldCheckIcon, ChevronLeftIcon, CalendarIcon, EnvelopeOpenIcon, ClockIcon } from '../constants';
 import CreateEventForm from './CreateEventForm';
@@ -140,6 +141,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const [updateChangeNote, setUpdateChangeNote] = useState('');
     const [isSendingUpdateNotif, setIsSendingUpdateNotif] = useState(false);
 
+    // ── Facilitator Approve / Reject Modal State ──────────────────
+    const [pendingApproveUserId, setPendingApproveUserId] = useState<string | null>(null);
+    const [pendingRejectUserId, setPendingRejectUserId] = useState<string | null>(null);
+    const [facilitatorRejectReason, setFacilitatorRejectReason] = useState('');
+    const [isSubmittingFacilitatorAction, setIsSubmittingFacilitatorAction] = useState(false);
+
+    // Lock body scroll when any facilitator modal is open
+    useEffect(() => {
+        const isOpen = !!(pendingApproveUserId || pendingRejectUserId);
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [pendingApproveUserId, pendingRejectUserId]);
+
     useEffect(() => {
         const handleNavigate = (e: any) => {
             const { event, tab, targetId } = e.detail as { event: EventType; tab?: 'requests' | 'list' | 'users'; targetId?: string };
@@ -153,6 +171,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                 setActiveTab('dashboard');
                 setRequestedDashboardTab('users');
                 setTargetId(targetId);
+                // If this came from a facilitator_request notification, auto-show the pending filter
+                if (targetId) {
+                    setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('admin-show-pending-facilitators'));
+                    }, 500);
+                }
             } else {
                 // Navigate to dashboard and open the Events sub-tab (requests panel is inside Events)
                 setActiveTab('dashboard');
@@ -344,36 +368,53 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         }
     };
 
-    const handleApproveFacilitator = async (userId: string) => {
-        await handleRoleUpdate(userId, 'facilitator');
-        const user = users.find(u => u.uid === userId);
-        if (user) {
+    const handleApproveFacilitator = (userId: string) => {
+        // Show confirmation modal instead of acting immediately
+        setPendingApproveUserId(userId);
+    };
+
+    const handleConfirmApproveFacilitator = async () => {
+        if (!pendingApproveUserId) return;
+        setIsSubmittingFacilitatorAction(true);
+        try {
+            await handleRoleUpdate(pendingApproveUserId, 'facilitator');
             await createNotification(
-                userId,
+                pendingApproveUserId,
                 'system',
                 'Facilitator Access Approved',
                 'Congratulations! Your request for facilitator access has been approved. You can now access the LGU Dashboard.',
                 undefined
             ).catch(console.error);
+            showAlert('Approved', "User is now a facilitator.", 'success');
+            setPendingApproveUserId(null);
+        } catch (e) {
+            showAlert('Error', 'Failed to approve facilitator request.', 'error');
+        } finally {
+            setIsSubmittingFacilitatorAction(false);
         }
-        showAlert('Approved', "User is now a facilitator.", 'success');
     };
 
-    const handleRejectFacilitator = async (userId: string) => {
-        const reason = window.prompt("Enter rejection reason (e.g. Blurry ID, Invalid Document):");
-        if (reason === null) return; // User cancelled
+    const handleRejectFacilitator = (userId: string) => {
+        // Show reject modal instead of window.prompt
+        setFacilitatorRejectReason('');
+        setPendingRejectUserId(userId);
+    };
 
+    const handleConfirmRejectFacilitator = async () => {
+        if (!pendingRejectUserId || !facilitatorRejectReason.trim()) return;
+        setIsSubmittingFacilitatorAction(true);
+        const reason = facilitatorRejectReason.trim();
         const originalUsers = [...users];
         const updatedUsers = users.map(u =>
-            u.uid === userId ? { ...u, facilitatorRequestStatus: 'rejected' as const, facilitatorRejectionReason: reason } : u
+            u.uid === pendingRejectUserId ? { ...u, facilitatorRequestStatus: 'rejected' as const, facilitatorRejectionReason: reason } : u
         );
         setUsers(updatedUsers);
         try {
-            await rejectFacilitatorRequest(userId, reason);
-            const user = users.find(u => u.uid === userId);
+            await rejectFacilitatorRequest(pendingRejectUserId, reason);
+            const user = users.find(u => u.uid === pendingRejectUserId);
             if (user) {
                 await createNotification(
-                    userId,
+                    pendingRejectUserId,
                     'event_rejected',
                     'Facilitator Access Rejected',
                     `Your request for facilitator access was not approved at this time. Reason: ${reason}`,
@@ -381,9 +422,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                 ).catch(console.error);
             }
             showAlert('Rejected', "Facilitator request rejected.", 'info');
+            setPendingRejectUserId(null);
+            setFacilitatorRejectReason('');
         } catch (error) {
             setUsers(originalUsers);
             showAlert('Error', "Failed to reject request.", 'error');
+        } finally {
+            setIsSubmittingFacilitatorAction(false);
         }
     };
 
@@ -817,10 +862,189 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         </div>
     );
 
+    // ── Portal-rendered facilitator modals (always viewport-centered) ──
+    const approveModal = pendingApproveUserId ? (() => {
+        const user = users.find(u => u.uid === pendingApproveUserId);
+        return createPortal(
+            <div
+                style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+                onClick={() => { if (!isSubmittingFacilitatorAction) setPendingApproveUserId(null); }}
+            >
+                <div
+                    style={{ backgroundColor: 'var(--modal-bg, white)', width: '100%', maxWidth: '28rem', borderRadius: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', overflow: 'hidden' }}
+                    className="bg-white dark:bg-[#111827] animate-in zoom-in-95 fade-in duration-200"
+                    onClick={e => e.stopPropagation()}
+                >
+                    {/* Header */}
+                    <div className="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-start gap-4">
+                        <div className="w-11 h-11 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-black text-gray-900 dark:text-white">Approve Facilitator?</h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">This will grant facilitator access to this user.</p>
+                        </div>
+                    </div>
+                    {/* User info */}
+                    {user && (
+                        <div className="px-6 py-4">
+                            <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-2xl border border-green-100 dark:border-green-800/40">
+                                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center overflow-hidden shrink-0">
+                                    {user.avatarUrl
+                                        ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                        : <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                    }
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{user.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                                </div>
+                                <span className="ml-auto shrink-0 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400">Pending</span>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
+                                The user will receive a notification and gain access to the Facilitator Dashboard to create and manage events.
+                            </p>
+                        </div>
+                    )}
+                    {/* Actions */}
+                    <div className="px-6 pb-6 flex gap-3">
+                        <button
+                            onClick={() => setPendingApproveUserId(null)}
+                            disabled={isSubmittingFacilitatorAction}
+                            className="flex-1 py-3 px-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-2xl transition-colors disabled:opacity-50 text-sm"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmApproveFacilitator}
+                            disabled={isSubmittingFacilitatorAction}
+                            className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-2xl transition-colors disabled:opacity-50 shadow-lg shadow-green-600/20 text-sm flex items-center justify-center gap-2"
+                        >
+                            {isSubmittingFacilitatorAction ? (
+                                <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Approving...</>
+                            ) : (
+                                <><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Yes, Approve</>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        );
+    })() : null;
+
+    const rejectModal = pendingRejectUserId ? (() => {
+        const user = users.find(u => u.uid === pendingRejectUserId);
+        const canSubmit = facilitatorRejectReason.trim().length > 0;
+        return createPortal(
+            <div
+                style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+                onClick={() => { if (!isSubmittingFacilitatorAction) { setPendingRejectUserId(null); setFacilitatorRejectReason(''); } }}
+            >
+                <div
+                    style={{ width: '100%', maxWidth: '28rem', borderRadius: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', overflow: 'hidden' }}
+                    className="bg-white dark:bg-[#111827] animate-in zoom-in-95 fade-in duration-200"
+                    onClick={e => e.stopPropagation()}
+                >
+                    {/* Header */}
+                    <div className="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-start gap-4">
+                        <div className="w-11 h-11 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </div>
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-black text-gray-900 dark:text-white">Reject Facilitator Request</h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">A reason is required before rejecting.</p>
+                        </div>
+                        <button
+                            onClick={() => { setPendingRejectUserId(null); setFacilitatorRejectReason(''); }}
+                            disabled={isSubmittingFacilitatorAction}
+                            className="ml-auto shrink-0 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                        >
+                            <XMarkIcon className="w-5 h-5" />
+                        </button>
+                    </div>
+                    {/* User info */}
+                    {user && (
+                        <div className="px-6 pt-4">
+                            <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-800/40">
+                                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center overflow-hidden shrink-0">
+                                    {user.avatarUrl
+                                        ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                        : <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                    }
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{user.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {/* Rejection reason */}
+                    <div className="px-6 py-4 space-y-3">
+                        <label className="block text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                            Rejection Reason <span className="text-red-500">*</span>
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {['Blurry ID', 'Invalid Document', 'Incomplete Submission', 'Duplicate Request'].map(preset => (
+                                <button
+                                    key={preset}
+                                    type="button"
+                                    onClick={() => setFacilitatorRejectReason(preset)}
+                                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-left ${
+                                        facilitatorRejectReason === preset
+                                        ? 'bg-red-100 dark:bg-red-900/30 border-red-400 dark:border-red-600 text-red-700 dark:text-red-300'
+                                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/10'
+                                    }`}
+                                >
+                                    {preset}
+                                </button>
+                            ))}
+                        </div>
+                        <textarea
+                            rows={3}
+                            placeholder="Or type a custom reason..."
+                            value={facilitatorRejectReason}
+                            onChange={e => setFacilitatorRejectReason(e.target.value)}
+                            disabled={isSubmittingFacilitatorAction}
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none transition-colors disabled:opacity-50"
+                        />
+                        {!canSubmit && (
+                            <p className="text-xs text-red-500 font-medium">Please provide a rejection reason before submitting.</p>
+                        )}
+                    </div>
+                    {/* Actions */}
+                    <div className="px-6 pb-6 flex gap-3">
+                        <button
+                            onClick={() => { setPendingRejectUserId(null); setFacilitatorRejectReason(''); }}
+                            disabled={isSubmittingFacilitatorAction}
+                            className="flex-1 py-3 px-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-2xl transition-colors disabled:opacity-50 text-sm"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmRejectFacilitator}
+                            disabled={!canSubmit || isSubmittingFacilitatorAction}
+                            className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-600/20 text-sm flex items-center justify-center gap-2"
+                        >
+                            {isSubmittingFacilitatorAction ? (
+                                <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Rejecting...</>
+                            ) : (
+                                <><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>Reject Request</>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        );
+    })() : null;
+
     return (
-        <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-300 flex flex-col">
-            <main className="flex-1 w-full relative">
-                {activeTab === 'dashboard' && renderDashboard()}
+        <>
+            <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-300 flex flex-col">
+                <main className="flex-1 w-full relative">
+                    {activeTab === 'dashboard' && renderDashboard()}
 
                 <div className={`transition-all duration-300 h-full ${activeTab === 'dashboard' ? 'hidden' : 'block'}`}>
                     {activeTab === 'create' && (
@@ -1242,8 +1466,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                     </div>
                 )}
 
-            </main>
-        </div>
+                </main>
+            </div>
+            {approveModal}
+            {rejectModal}
+        </>
     );
 };
 
