@@ -2019,7 +2019,7 @@ const App: React.FC = () => {
                                 <NearbyView
                                     userLocation={userLocation}
                                     isLocationLive={isLocationLive}
-                                    events={finalDisplayEvents}
+                                    events={events}
                                     onEventSelect={handleOpenEvent}
                                     onToggleSave={handleToggleSaveEvent}
                                     savedEventIds={currentUser?.savedEventIds || []}

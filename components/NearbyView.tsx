@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface NearbyViewProps {
     userLocation: { lat: number; lng: number; accuracy?: number };
-    events: DisplayEventType[];
+    events: EventType[];
     isLocationLive: boolean;
     onOpenScanner: () => void;
     onEventSelect: (event: EventType) => void;
@@ -51,7 +51,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
             const searchRadius = 5000; // Fixed 5KM Basis
             return distance <= searchRadius;
         }
-        return true;
+        return false;
     }).map(e => ({ ...e, isNearby: true }));
 
     return (
