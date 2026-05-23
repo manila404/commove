@@ -467,7 +467,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
   return (
     <>
       {/* ── Page wrapper — actual max-width that fills the page ── */}
-      <div id="event-form-top" className="w-full max-w-[1200px] mx-auto px-4 lg:px-8 pt-6 pb-32 animate-in fade-in duration-300" style={{scrollbarWidth:'none'}}>
+      <div id="event-form-top" className="w-full max-w-[1200px] mx-auto px-4 lg:px-8 pt-6 pb-48 md:pb-32 animate-in fade-in duration-300" style={{scrollbarWidth:'none'}}>
 
         {/* ── Page title ── */}
         <div className="mb-8">
@@ -847,7 +847,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
       </div>
 
       {/* ── Sticky Footer Action Bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 shadow-[0_-8px_32px_rgba(0,0,0,0.06)]">
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-[5001] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 shadow-[0_-8px_32px_rgba(0,0,0,0.06)]">
         <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-3 flex items-center gap-3 justify-between">
           <div className="flex items-center gap-2.5">
             {onCancelEdit && (
@@ -891,11 +891,11 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
       <AnimatePresence>
         {locationOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 lg:p-8"
+            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 pb-20 lg:p-8 lg:pb-8"
             onClick={() => setLocationOpen(false)}
           >
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col"
+              className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-full"
               onClick={e => e.stopPropagation()}
             >
               <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
@@ -910,7 +910,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                 </button>
               </div>
               
-              <div className="w-full h-[50vh] min-h-[300px] bg-gray-100 dark:bg-gray-900 relative">
+              <div className="w-full h-[38vh] min-h-[220px] lg:h-[50vh] lg:min-h-[300px] bg-gray-100 dark:bg-gray-900 relative">
                 {isGeocodingPin && (
                     <div className="absolute top-4 right-4 z-[9999] bg-black/75 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 pointer-events-none">
                         <span className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />

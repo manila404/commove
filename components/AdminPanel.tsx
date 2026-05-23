@@ -1113,7 +1113,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
 
                 <div className={`transition-all duration-300 flex-1 overflow-y-auto ${activeTab === 'dashboard' ? 'hidden' : 'block'}`}>
                     {activeTab === 'create' && (
-                        <div className="w-full animate-fade-in-up">
+                        <div className="w-full">
                             <div ref={formTopRef} />
                             <CreateEventForm
                                 onSuccess={handleSuccess}
