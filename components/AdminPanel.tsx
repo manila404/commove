@@ -97,10 +97,13 @@ const DEFAULT_REQUIREMENTS = [
     { key: 'businessPermitUrl', label: 'Business Permit' },
 ];
 
+type DashboardTab = 'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights';
+
 const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCreated, onEventUpdated, onEventDeleted, onClose, onManageRegistrations }) => {
     const { showAlert, showConfirm } = useAlert();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'list' | 'create' | 'users' | 'requests'>('dashboard');
     const [requestedDashboardTab, setRequestedDashboardTab] = useState<'analytics' | 'events' | 'users' | undefined>(undefined);
+    const [dashboardActiveTab, setDashboardActiveTab] = useState<DashboardTab>('analytics');
     const [targetId, setTargetId] = useState<string | undefined>(undefined);
     const [users, setUsers] = useState<User[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -123,6 +126,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const [previewingEvent, setPreviewingEvent] = useState<EventType | null>(null);
     const [participants, setParticipants] = useState<{ user: User, type: 'interested' | 'registered' | 'checkedIn' }[]>([]);
     const [isLoadingParticipants, setIsLoadingParticipants] = useState(false);
+    const [participantSexFilter, setParticipantSexFilter] = useState<'All' | 'Female' | 'Male' | 'Others'>('All');
+    const [participantAgeGroups, setParticipantAgeGroups] = useState<string[]>(['Child', 'Teen', 'Adult', 'Middle Age', 'Senior']);
+    const [showAgeDropdown, setShowAgeDropdown] = useState(false);
+    const [showSexDropdown, setShowSexDropdown] = useState(false);
+    const [isParticipantsClosing, setIsParticipantsClosing] = useState(false);
 
     const formTopRef = useRef<HTMLDivElement>(null);
 
@@ -147,16 +155,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const [facilitatorRejectReason, setFacilitatorRejectReason] = useState('');
     const [isSubmittingFacilitatorAction, setIsSubmittingFacilitatorAction] = useState(false);
 
-    // Lock body scroll when any facilitator modal is open
+    // Lock body scroll when any modal is open
     useEffect(() => {
-        const isOpen = !!(pendingApproveUserId || pendingRejectUserId);
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
+        const isOpen = !!(pendingApproveUserId || pendingRejectUserId || viewingParticipantsEvent || verifyingEvent || schedulingEvent || viewingDocument || previewingEvent || rejectingEventId || cancellingEvent || updatingEventNotif || viewingQRCode || newEventQRCode);
+        document.body.style.overflow = isOpen ? 'hidden' : '';
         return () => { document.body.style.overflow = ''; };
-    }, [pendingApproveUserId, pendingRejectUserId]);
+    }, [pendingApproveUserId, pendingRejectUserId, viewingParticipantsEvent, verifyingEvent, schedulingEvent, viewingDocument, previewingEvent, rejectingEventId, cancellingEvent, updatingEventNotif, viewingQRCode, newEventQRCode]);
 
     useEffect(() => {
         const handleNavigate = (e: any) => {
@@ -204,6 +208,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const canManageUsers = currentUser.role === 'admin';
     const isFacilitator = currentUser.role === 'facilitator';
     const dashboardTitle = currentUser.role === 'admin' ? 'Admin Analytics' : 'Facilitator Dashboard';
+
+    useEffect(() => {
+        if (requestedDashboardTab) {
+            setDashboardActiveTab(requestedDashboardTab);
+            setRequestedDashboardTab(undefined);
+        }
+    }, [requestedDashboardTab]);
+
+    const dashboardAvailableTabs: DashboardTab[] = ['analytics', 'demographics', 'events', 'calendar', 'reports'];
+    if (canManageUsers) {
+        dashboardAvailableTabs.splice(3, 0, 'users');
+        dashboardAvailableTabs.push('highlights');
+    }
 
     // --- Recurring Event Deduplication (Admin Side) ---
     // For admin/facilitator views: collapse recurring series so each group
@@ -774,49 +791,82 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     }));
 
     const renderDashboard = () => (
-        <div className="p-4 md:p-8 w-full max-w-5xl mx-auto animate-fade-in-up pb-24">
-            <div className="mb-8 flex justify-between items-center gap-4">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-1 tracking-tight">
+        <div className="flex flex-col h-full min-h-0">
+            {/* Tab bar — always visible, never scrolls away */}
+            <div className="shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-2 flex items-center justify-between gap-4">
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar flex-1 md:flex-none md:w-fit">
+                    {dashboardAvailableTabs.map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setDashboardActiveTab(tab)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors whitespace-nowrap ${
+                                dashboardActiveTab === tab
+                                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                            }`}
+                        >
+                            {tab}
+                        </button>
+                    ))}
+                </div>
+                {/* Desktop-only action buttons aligned with tabs */}
+                <div className="hidden md:flex items-center gap-2 shrink-0">
+                    {(canManageUsers || isFacilitator) && (
+                        <button
+                            onClick={fetchUsers}
+                            disabled={isLoadingUsers}
+                            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2.5 rounded-xl text-gray-500 hover:text-primary-600 transition-all active:scale-95 disabled:opacity-50"
+                            title="Refresh Data"
+                        >
+                            {isLoadingUsers ? (
+                                <div className="animate-spin w-5 h-5 border-2 border-primary-600 border-t-transparent rounded-full"></div>
+                            ) : (
+                                <RefreshIcon className="w-5 h-5" />
+                            )}
+                        </button>
+                    )}
+                    <button
+                        onClick={() => { setEditingEvent(null); switchTab('create'); }}
+                        className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all transform active:scale-[0.98] shadow-sm text-sm font-bold"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Create Event
+                    </button>
+                </div>
+            </div>
+
+            {/* Scrollable content below tab bar */}
+            <div className="flex-1 min-h-0 overflow-y-auto animate-fade-in-up">
+            <div className="p-4 md:py-8 pb-24">
+            {/* Hero banner */}
+            <div className="relative overflow-hidden rounded-2xl mb-8" style={{ minHeight: '148px', background: 'linear-gradient(130deg, #eaedff 0%, #d8ccff 22%, #c9a5f5 45%, #e99af0 68%, #fbb5d5 100%)' }}>
+                {/* Frosted glass rectangles — left cluster */}
+                <div style={{ position: 'absolute', width: '200px', height: '165px', borderRadius: '28px', background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.28)', transform: 'rotate(-18deg)', top: '-35px', left: '1%' }} />
+                <div style={{ position: 'absolute', width: '165px', height: '135px', borderRadius: '24px', background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.20)', transform: 'rotate(-10deg)', top: '-12px', left: '7%' }} />
+                <div style={{ position: 'absolute', width: '135px', height: '108px', borderRadius: '20px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', transform: 'rotate(-4deg)', top: '12px', left: '13%' }} />
+
+                {/* Pink/magenta center blob */}
+                <div style={{ position: 'absolute', width: '150px', height: '125px', borderRadius: '50%', background: 'radial-gradient(circle at 38% 38%, #ff28a0 0%, #e040fb 55%, rgba(200,50,200,0) 100%)', filter: 'blur(14px)', top: '2%', left: '40%', opacity: 0.88 }} />
+
+                {/* Purple/violet stacked rectangles — right fan */}
+                <div style={{ position: 'absolute', width: '168px', height: '138px', borderRadius: '28px', background: 'linear-gradient(148deg, #b570ff 0%, #7c22d4 100%)', transform: 'rotate(28deg)', top: '-28px', right: '24%', opacity: 0.78 }} />
+                <div style={{ position: 'absolute', width: '158px', height: '128px', borderRadius: '26px', background: 'linear-gradient(148deg, #a050ef 0%, #6b18c4 100%)', transform: 'rotate(20deg)', top: '-16px', right: '16%', opacity: 0.80 }} />
+                <div style={{ position: 'absolute', width: '148px', height: '118px', borderRadius: '24px', background: 'linear-gradient(148deg, #8f3de2 0%, #5a10b0 100%)', transform: 'rotate(12deg)', top: '-4px', right: '9%', opacity: 0.86 }} />
+                <div style={{ position: 'absolute', width: '138px', height: '108px', borderRadius: '22px', background: 'linear-gradient(148deg, #7928cc 0%, #4a0090 100%)', transform: 'rotate(4deg)', top: '8px', right: '2%', opacity: 0.92 }} />
+
+                {/* Text */}
+                <div className="relative z-10 px-6 py-6 md:px-8 md:py-7">
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1.5 tracking-tight">
                         Hello, {currentUser.name.split(' ')[0]}
                     </h1>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <p className="text-sm font-medium text-gray-600 leading-snug">
                         Full overview of Commove analytics
                     </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="shrink-0 w-12 h-12 rounded-full border-2 border-purple-200 overflow-hidden bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-lg shadow-sm">
-                        {currentUser.avatarUrl ? (
-                            <img src={currentUser.avatarUrl || undefined} alt={currentUser.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                            <span>{currentUser.name.charAt(0)}</span>
-                        )}
-                    </div>
-                    <div className="hidden md:flex gap-2 w-auto items-center">
-                        {(canManageUsers || isFacilitator) && (
-                            <button
-                                onClick={fetchUsers}
-                                disabled={isLoadingUsers}
-                                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2.5 rounded-xl text-gray-500 hover:text-primary-600 transition-all active:scale-95 disabled:opacity-50"
-                                title="Refresh Data"
-                            >
-                                {isLoadingUsers ? (
-                                    <div className="animate-spin w-5 h-5 border-2 border-primary-600 border-t-transparent rounded-full"></div>
-                                ) : (
-                                    <RefreshIcon className="w-5 h-5" />
-                                )}
-                            </button>
-                        )}
-                        <button
-                            onClick={() => { setEditingEvent(null); switchTab('create'); }}
-                            className="w-auto justify-center bg-[#8b5cf6] hover:bg-[#7c3aed] text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all transform active:scale-[0.98] shadow-sm text-sm font-bold"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Create Event
-                        </button>
-                    </div>
+                    <p className="text-sm font-medium text-gray-500 leading-snug mt-0.5">
+                        Manage events, users, and insights all in one place.
+                    </p>
                 </div>
             </div>
             <div className="flex md:hidden gap-2 w-full items-center mb-6">
@@ -863,15 +913,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                     setScheduledDateTime(tomorrow.toISOString().slice(0, 16));
                 }}
                 onPreviewEvent={(e) => setPreviewingEvent(e)}
-                initialTab={requestedDashboardTab}
-                onInitialTabConsumed={() => setRequestedDashboardTab(undefined)}
                 highlightUserId={targetId}
                 onHighlightConsumed={() => setTargetId(undefined)}
                 onManageRegistrations={onManageRegistrations}
                 currentUser={currentUser}
+                activeTab={dashboardActiveTab}
+                setActiveTab={setDashboardActiveTab}
                 onCancelEvent={(e) => { setCancellingEvent(e); setCancelReason(''); }}
                 onNotifyUpdate={(e) => { setUpdatingEventNotif(e); setUpdateChangeNote(''); }}
             />
+            </div>{/* end p-4 padding wrapper */}
+            </div>{/* end overflow-y-auto scroll container */}
         </div>
     );
 
@@ -884,7 +936,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                 onClick={() => { if (!isSubmittingFacilitatorAction) setPendingApproveUserId(null); }}
             >
                 <div
-                    style={{ backgroundColor: 'var(--modal-bg, white)', width: '100%', maxWidth: '28rem', borderRadius: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', overflow: 'hidden' }}
+                    style={{ backgroundColor: 'var(--modal-bg, white)', width: '100%', maxWidth: '28rem', borderRadius: '15px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', overflow: 'hidden' }}
                     className="bg-white dark:bg-[#111827] animate-in zoom-in-95 fade-in duration-200"
                     onClick={e => e.stopPropagation()}
                 >
@@ -955,7 +1007,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                 onClick={() => { if (!isSubmittingFacilitatorAction) { setPendingRejectUserId(null); setFacilitatorRejectReason(''); } }}
             >
                 <div
-                    style={{ width: '100%', maxWidth: '28rem', borderRadius: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', overflow: 'hidden' }}
+                    style={{ width: '100%', maxWidth: '28rem', borderRadius: '15px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', overflow: 'hidden' }}
                     className="bg-white dark:bg-[#111827] animate-in zoom-in-95 fade-in duration-200"
                     onClick={e => e.stopPropagation()}
                 >
@@ -1055,13 +1107,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
 
     return (
         <>
-            <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-300 flex flex-col">
-                <main className="flex-1 w-full relative">
+            <div className="h-full min-h-0 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-300 flex flex-col">
+                <main className="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
                     {activeTab === 'dashboard' && renderDashboard()}
 
-                <div className={`transition-all duration-300 h-full ${activeTab === 'dashboard' ? 'hidden' : 'block'}`}>
+                <div className={`transition-all duration-300 flex-1 overflow-y-auto ${activeTab === 'dashboard' ? 'hidden' : 'block'}`}>
                     {activeTab === 'create' && (
-                        <div className="w-full h-full animate-fade-in-up">
+                        <div className="w-full animate-fade-in-up">
                             <div ref={formTopRef} />
                             <CreateEventForm
                                 onSuccess={handleSuccess}
@@ -1075,414 +1127,381 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                     )}
                 </div>
 
-                {/* Verification Checklist Modal */}
-                {verifyingEvent && (
-                    <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[85vh] animate-fade-in-up">
-                            <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-3xl">
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Verification Checklist</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{verifyingEvent.department}</p>
-                                </div>
-                                <button onClick={() => setVerifyingEvent(null)} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
-                                    <XMarkIcon className="w-6 h-6 text-gray-500" />
-                                </button>
-                            </div>
-
-                            <div className="p-5 overflow-y-auto">
-                                <div className="space-y-3">
-                                    {renderChecklist(verifyingEvent)}
-                                </div>
-                            </div>
-
-                            <div className="p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-3xl">
-                                <button onClick={() => setVerifyingEvent(null)} className="w-full py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-bold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                                    Close Checklist
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Scheduling Modal */}
-                {schedulingEvent && (
-                    <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl shadow-2xl flex flex-col animate-fade-in-up overflow-hidden">
-                            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Schedule Publication</h3>
-                                <button onClick={() => setSchedulingEvent(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-                                    <XMarkIcon className="w-5 h-5 text-gray-400" />
-                                </button>
-                            </div>
-
-                            <div className="p-6 space-y-4">
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    Select when "{schedulingEvent.name}" should become visible to all residents.
-                                </p>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-2 ml-1">Publish Date & Time</label>
-                                    <input
-                                        type="datetime-local"
-                                        value={scheduledDateTime}
-                                        onChange={(e) => setScheduledDateTime(e.target.value)}
-                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="p-6 bg-gray-50 dark:bg-gray-800/50 flex gap-3">
-                                <button
-                                    onClick={() => setSchedulingEvent(null)}
-                                    className="flex-1 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleConfirmSchedule}
-                                    disabled={!scheduledDateTime}
-                                    className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl shadow-lg shadow-primary-500/30 transition-all active:scale-95 disabled:opacity-50"
-                                >
-                                    Confirm
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Document Viewer Modal */}
-                {viewingDocument && (
-                    <div className="fixed inset-0 z-[6000] bg-black/95 flex flex-col items-center justify-center p-4 animate-fade-in" onClick={() => setViewingDocument(null)}>
-                        <button
-                            className="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors"
-                            onClick={() => setViewingDocument(null)}
-                        >
-                            <XMarkIcon className="w-8 h-8" />
-                        </button>
-
-                        <h3 className="text-white/90 font-bold text-lg mb-4 tracking-wide uppercase">{viewingDocument.label}</h3>
-
-                        <div
-                            className="relative max-w-full max-h-[85vh] overflow-auto flex items-center justify-center"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <img
-                                src={viewingDocument.url || undefined}
-                                alt={viewingDocument.label}
-                                className="max-w-full max-h-[80vh] object-contain rounded-md shadow-2xl"
-                            />
-                        </div>
-
-                        <p className="mt-4 text-white/50 text-xs">Tap anywhere outside to close</p>
-                    </div>
-                )}
-
-                {/* Preview Event Modal */}
-                {previewingEvent && (
-                    <div className="fixed inset-0 z-[6000] flex animate-fade-in">
-                        <EventModal
-                            event={previewingEvent}
-                            onClose={() => setPreviewingEvent(null)}
-                            isSaved={false}
-                            onToggleSave={() => { }}
-                            isLiked={false}
-                            onToggleLike={() => { }}
-                            reminder={undefined}
-                            onSetReminder={() => { }}
-                            onCancelReminder={() => { }}
-                            currentUserLocation={{ lat: previewingEvent.lat, lng: previewingEvent.lng }}
-                            currentUser={currentUser}
-                            isLocationLive={false}
-                            onToggleParticipation={() => { }}
-                        />
-                    </div>
-                )}
-
-                {/* Reject Event Modal */}
-                {rejectingEventId && (
-                    <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setRejectingEventId(null)}>
-                        <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl animate-fade-in-up">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Reject Event</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Please provide a reason for disapproval.</p>
-                            <textarea
-                                placeholder="e.g., Incomplete description..."
-                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm focus:outline-none focus:border-red-500 min-h-[100px] mb-4 text-gray-900 dark:text-white"
-                                value={rejectionReason}
-                                onChange={(e) => setRejectionReason(e.target.value)}
-                            />
-                            <div className="flex gap-3">
-                                <button onClick={() => setRejectingEventId(null)} className="flex-1 py-3 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">Cancel</button>
-                                <button onClick={handleConfirmReject} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 hover:bg-red-700 transition-colors">Reject Event</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Cancel Event Modal ──────────────────────────────────────── */}
-                {cancellingEvent && (
-                    <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => !isCancelling && setCancellingEvent(null)}>
-                        <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl animate-fade-in-up">
-                            {/* Header */}
-                            <div className="flex items-start gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-2xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cancel Event</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">"{cancellingEvent.name}"</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-2xl p-3 mb-4">
-                                <p className="text-xs text-orange-700 dark:text-orange-300 font-medium leading-relaxed">
-                                    ⚠️ Residents who <strong>saved</strong> or marked <strong>interest</strong> in this event will be notified of the cancellation.
-                                </p>
-                            </div>
-
-                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                                Cancellation Reason <span className="normal-case font-normal">(optional)</span>
-                            </label>
-                            <textarea
-                                placeholder="e.g., Venue unavailability, weather conditions..."
-                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm focus:outline-none focus:border-orange-500 min-h-[90px] mb-4 text-gray-900 dark:text-white resize-none"
-                                value={cancelReason}
-                                onChange={(e) => setCancelReason(e.target.value)}
-                                disabled={isCancelling}
-                            />
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setCancellingEvent(null)}
-                                    disabled={isCancelling}
-                                    className="flex-1 py-3 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50"
-                                >
-                                    Go Back
-                                </button>
-                                <button
-                                    onClick={handleConfirmCancelEvent}
-                                    disabled={isCancelling}
-                                    className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/20 hover:bg-orange-700 transition-colors active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
-                                >
-                                    {isCancelling ? (
-                                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Cancelling...</>
-                                    ) : 'Cancel Event'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Notify Update Modal ─────────────────────────────────────── */}
-                {updatingEventNotif && (
-                    <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => !isSendingUpdateNotif && setUpdatingEventNotif(null)}>
-                        <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl animate-fade-in-up">
-                            {/* Header */}
-                            <div className="flex items-start gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Notify Schedule Update</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">"{updatingEventNotif.name}"</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-3 mb-4">
-                                <p className="text-xs text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
-                                    📅 Residents who <strong>saved</strong> or <strong>checked-in</strong> to this event will receive a notification about the update.
-                                </p>
-                            </div>
-
-                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                                What Changed? <span className="normal-case font-normal">(optional)</span>
-                            </label>
-                            <textarea
-                                placeholder="e.g., New venue: Bacoor City Hall. New time: 3:00 PM..."
-                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm focus:outline-none focus:border-amber-500 min-h-[90px] mb-4 text-gray-900 dark:text-white resize-none"
-                                value={updateChangeNote}
-                                onChange={(e) => setUpdateChangeNote(e.target.value)}
-                                disabled={isSendingUpdateNotif}
-                            />
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setUpdatingEventNotif(null)}
-                                    disabled={isSendingUpdateNotif}
-                                    className="flex-1 py-3 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSendUpdateNotification}
-                                    disabled={isSendingUpdateNotif}
-                                    className="flex-1 py-3 bg-amber-500 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-colors active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
-                                >
-                                    {isSendingUpdateNotif ? (
-                                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending...</>
-                                    ) : 'Send Notification'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-
-                {/* QR Code Modal (Admin: view any event's QR from Events table) */}
-                {viewingQRCode && (
-                    <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setViewingQRCode(null)}>
-                        <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl shadow-2xl flex flex-col items-center p-8 animate-fade-in-up" onClick={e => e.stopPropagation()}>
-                            <button
-                                onClick={() => setViewingQRCode(null)}
-                                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                            >
-                                <XMarkIcon className="w-6 h-6" />
-                            </button>
-
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 text-center">{viewingQRCode.name}</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 text-center font-medium">Event QR Code</p>
-
-                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
-                                <QRCodeSVG
-                                    id="admin-event-qr-code"
-                                    value={`commove://event/${viewingQRCode.id}`}
-                                    size={200}
-                                    level="H"
-                                    includeMargin={true}
-                                />
-                            </div>
-
-                            <button
-                                onClick={() => downloadQRCode(viewingQRCode, 'admin-event-qr-code')}
-                                className="w-full bg-[#7c3aed] text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-500/30 hover:bg-[#6d28d9] transition-colors active:scale-95 flex items-center justify-center gap-2"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                Download QR Code
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* One-time QR Modal for Facilitators — shown immediately after creating an event */}
-                {newEventQRCode && (
-                    <div className="fixed inset-0 z-[7000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl shadow-2xl flex flex-col items-center p-8 animate-fade-in-up relative">
-                            {/* Close */}
-                            <button
-                                onClick={() => setNewEventQRCode(null)}
-                                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                            >
-                                <XMarkIcon className="w-6 h-6" />
-                            </button>
-
-                            {/* Success badge */}
-                            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                            </div>
-
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 text-center">{newEventQRCode.name}</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 text-center font-medium">Event Created Successfully!</p>
-                            <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-6 text-center leading-relaxed">Download your event's QR code now. You won't be able to access it from your dashboard.</p>
-
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-                                <QRCodeSVG
-                                    id="facilitator-new-event-qr-code"
-                                    value={`commove://event/${newEventQRCode.id}`}
-                                    size={200}
-                                    level="H"
-                                    includeMargin={true}
-                                />
-                            </div>
-
-                            <button
-                                onClick={() => downloadQRCode(newEventQRCode, 'facilitator-new-event-qr-code')}
-                                className="w-full bg-[#7c3aed] text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-500/30 hover:bg-[#6d28d9] transition-colors active:scale-95 flex items-center justify-center gap-2 mb-3"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                Download QR Code
-                            </button>
-                            <button
-                                onClick={() => setNewEventQRCode(null)}
-                                className="w-full py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                            >
-                                Close (QR will not be saved here)
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Participants Modal */}
-                {viewingParticipantsEvent && (
-                    <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[85vh] animate-fade-in-up">
-                            <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-3xl">
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Event Participants</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{viewingParticipantsEvent.name}</p>
-                                </div>
-                                <button onClick={() => setViewingParticipantsEvent(null)} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
-                                    <XMarkIcon className="w-6 h-6 text-gray-500" />
-                                </button>
-                            </div>
-
-                            <div className="p-5 overflow-y-auto flex-1">
-                                {isLoadingParticipants ? (
-                                    <div className="flex flex-col items-center justify-center py-12 gap-3">
-                                        <Spinner />
-                                        <p className="text-sm text-gray-500">Loading participants...</p>
-                                    </div>
-                                ) : participants.length === 0 ? (
-                                    <div className="text-center py-12">
-                                        <p className="text-gray-500">No participants yet.</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {participants.map((p, idx) => (
-                                            <div key={p.user.uid || idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl border border-gray-100 dark:border-gray-700">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden">
-                                                        {p.user.avatarUrl ? (
-                                                            <img src={p.user.avatarUrl || undefined} alt={p.user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                                        ) : (
-                                                            <UserIcon className="w-5 h-5" />
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-bold text-gray-900 dark:text-white">{p.user.name}</p>
-                                                        <p className="text-[10px] text-gray-500 dark:text-gray-400">{p.user.email}</p>
-                                                    </div>
-                                                </div>
-                                                <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-lg uppercase tracking-wider ${p.type === 'checkedIn' ? 'bg-emerald-100 text-emerald-600' :
-                                                        'bg-amber-100 text-amber-600'
-                                                    }`}>
-                                                    {p.type === 'checkedIn' ? 'Checked-In' : 'Interested'}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-3xl">
-                                <button onClick={() => setViewingParticipantsEvent(null)} className="w-full py-3 bg-[#7c3aed] text-white font-bold rounded-xl hover:bg-[#6d28d9] transition-colors shadow-lg shadow-purple-500/20">
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 </main>
             </div>
             {approveModal}
             {rejectModal}
+            {viewingParticipantsEvent && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', paddingTop: '20px', paddingBottom: '20px', paddingRight: '20px', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+                    <div className={`bg-white dark:bg-gray-800 w-full max-w-[480px] shadow-2xl flex flex-col ${isParticipantsClosing ? 'animate-slide-out-to-right' : 'animate-slide-in-from-right'}`} style={{ borderRadius: '15px', overflowY: 'auto' }}>
+                        <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-[15px]">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Event Participants</h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{viewingParticipantsEvent.name}</p>
+                            </div>
+                            <button onClick={() => { setIsParticipantsClosing(true); setTimeout(() => { setViewingParticipantsEvent(null); setIsParticipantsClosing(false); setParticipantSexFilter('All'); setParticipantAgeGroups(['Child','Teen','Adult','Middle Age','Senior']); setShowAgeDropdown(false); setShowSexDropdown(false); }, 440); }} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
+                                <XMarkIcon className="w-6 h-6 text-gray-500" />
+                            </button>
+                        </div>
+
+                        {/* Filter row */}
+                        <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3 relative">
+                            {/* Age Group dropdown */}
+                            <div className="flex-1 relative">
+                                <button
+                                    onClick={() => { setShowAgeDropdown(v => !v); setShowSexDropdown(false); }}
+                                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                    <span>{participantAgeGroups.length === 5 ? 'Age Group' : `${participantAgeGroups.length} selected`}</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                </button>
+                                {showAgeDropdown && (
+                                    <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[15px] shadow-lg z-10 p-3 space-y-2">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Age Group</p>
+                                        {['Child', 'Teen', 'Adult', 'Middle Age', 'Senior'].map(group => (
+                                            <label key={group} className="flex items-center gap-2.5 cursor-pointer group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={participantAgeGroups.includes(group)}
+                                                    onChange={() => setParticipantAgeGroups(prev => prev.includes(group) ? prev.filter(g => g !== group) : [...prev, group])}
+                                                    className="w-4 h-4 rounded accent-primary-600"
+                                                />
+                                                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">{group}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            {/* Sex dropdown */}
+                            <div className="flex-1 relative">
+                                <button
+                                    onClick={() => { setShowSexDropdown(v => !v); setShowAgeDropdown(false); }}
+                                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                    <span>{participantSexFilter === 'All' ? 'Sex' : participantSexFilter}</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                </button>
+                                {showSexDropdown && (
+                                    <div className="absolute top-full left-0 mt-1 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[15px] shadow-lg z-10 p-3 space-y-2">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Sex</p>
+                                        {['All', 'Female', 'Male', 'Others'].map(option => (
+                                            <label key={option} className="flex items-center gap-2.5 cursor-pointer group">
+                                                <input
+                                                    type="radio"
+                                                    name="participantSex"
+                                                    checked={participantSexFilter === option}
+                                                    onChange={() => { setParticipantSexFilter(option as any); setShowSexDropdown(false); }}
+                                                    className="w-4 h-4 accent-primary-600"
+                                                />
+                                                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">{option}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="p-5 flex-1">
+                            {isLoadingParticipants ? (
+                                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                                    <Spinner />
+                                    <p className="text-sm text-gray-500">Loading participants...</p>
+                                </div>
+                            ) : participants.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <p className="text-gray-500">No participants yet.</p>
+                                </div>
+                            ) : (() => {
+                                const getAge = (u: User) => {
+                                    if (u.age != null) return u.age;
+                                    if (u.birthday) {
+                                        const birth = new Date(u.birthday);
+                                        const now = new Date();
+                                        return now.getFullYear() - birth.getFullYear() - (now < new Date(now.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
+                                    }
+                                    return null;
+                                };
+                                const getAgeGroup = (age: number | null) => {
+                                    if (age === null) return null;
+                                    if (age <= 12) return 'Child';
+                                    if (age <= 17) return 'Teen';
+                                    if (age <= 35) return 'Adult';
+                                    if (age <= 59) return 'Middle Age';
+                                    return 'Senior';
+                                };
+                                const filtered = participants.filter(p => {
+                                    const sexVal = (p.user.sex || p.user.gender || '').trim();
+                                    const sexMatch = participantSexFilter === 'All' ? true
+                                        : participantSexFilter === 'Others' ? !['male','female'].includes(sexVal.toLowerCase()) && sexVal !== ''
+                                        : sexVal.toLowerCase() === participantSexFilter.toLowerCase();
+                                    const age = getAge(p.user);
+                                    const group = getAgeGroup(age);
+                                    const ageMatch = group === null ? true : participantAgeGroups.includes(group);
+                                    return sexMatch && ageMatch;
+                                });
+                                const sorted = filtered;
+                                if (sorted.length === 0) return (
+                                    <div className="text-center py-12">
+                                        <p className="text-gray-400 text-sm">No participants match the selected filters.</p>
+                                    </div>
+                                );
+                                return (
+                                    <div className="space-y-3">
+                                        {sorted.map((p, idx) => {
+                                            const age = getAge(p.user);
+                                            const sex = p.user.sex || p.user.gender;
+                                            return (
+                                                <div key={p.user.uid || idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-[15px] border border-gray-100 dark:border-gray-700">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden">
+                                                            {p.user.avatarUrl ? (
+                                                                <img src={p.user.avatarUrl || undefined} alt={p.user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                            ) : (
+                                                                <UserIcon className="w-5 h-5" />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-gray-900 dark:text-white">{p.user.name}</p>
+                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">{p.user.email}</p>
+                                                            {(age != null || sex) && (
+                                                                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                                                                    {[sex, age != null ? `${age} yrs` : null].filter(Boolean).join(' · ')}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-lg uppercase tracking-wider ${p.type === 'checkedIn' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                                                        {p.type === 'checkedIn' ? 'Checked-In' : 'Interested'}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        <div className="p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-[15px]">
+                            <button onClick={() => { setIsParticipantsClosing(true); setTimeout(() => { setViewingParticipantsEvent(null); setIsParticipantsClosing(false); setParticipantSexFilter('All'); setParticipantAgeGroups(['Child','Teen','Adult','Middle Age','Senior']); setShowAgeDropdown(false); setShowSexDropdown(false); }, 440); }} className="w-full py-3 bg-[#7c3aed] text-white font-bold rounded-xl hover:bg-[#6d28d9] transition-colors shadow-lg shadow-purple-500/20">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Verification Checklist Modal */}
+            {verifyingEvent && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[15px] shadow-2xl flex flex-col animate-in zoom-in-95 fade-in duration-200" style={{ maxHeight: '85vh' }}>
+                        <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-[15px]">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Verification Checklist</h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{verifyingEvent.department}</p>
+                            </div>
+                            <button onClick={() => setVerifyingEvent(null)} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
+                                <XMarkIcon className="w-6 h-6 text-gray-500" />
+                            </button>
+                        </div>
+                        <div className="p-5 overflow-y-auto">
+                            <div className="space-y-3">{renderChecklist(verifyingEvent)}</div>
+                        </div>
+                        <div className="p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-[15px]">
+                            <button onClick={() => setVerifyingEvent(null)} className="w-full py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-bold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                                Close Checklist
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Scheduling Modal */}
+            {schedulingEvent && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-[15px] shadow-2xl flex flex-col animate-in zoom-in-95 fade-in duration-200 overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Schedule Publication</h3>
+                            <button onClick={() => setSchedulingEvent(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+                                <XMarkIcon className="w-5 h-5 text-gray-400" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Select when "{schedulingEvent.name}" should become visible to all residents.</p>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase mb-2 ml-1">Publish Date & Time</label>
+                                <input type="datetime-local" value={scheduledDateTime} onChange={(e) => setScheduledDateTime(e.target.value)} className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all" />
+                            </div>
+                        </div>
+                        <div className="p-6 bg-gray-50 dark:bg-gray-800/50 flex gap-3">
+                            <button onClick={() => setSchedulingEvent(null)} className="flex-1 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Cancel</button>
+                            <button onClick={handleConfirmSchedule} disabled={!scheduledDateTime} className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl shadow-lg shadow-primary-500/30 transition-all active:scale-95 disabled:opacity-50">Confirm</button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Document Viewer Modal */}
+            {viewingDocument && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.95)' }} onClick={() => setViewingDocument(null)}>
+                    <button className="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors" onClick={() => setViewingDocument(null)}>
+                        <XMarkIcon className="w-8 h-8" />
+                    </button>
+                    <h3 className="text-white/90 font-bold text-lg mb-4 tracking-wide uppercase">{viewingDocument.label}</h3>
+                    <div className="relative max-w-full overflow-auto flex items-center justify-center" style={{ maxHeight: '85vh' }} onClick={e => e.stopPropagation()}>
+                        <img src={viewingDocument.url || undefined} alt={viewingDocument.label} className="max-w-full object-contain rounded-md shadow-2xl" style={{ maxHeight: '80vh' }} />
+                    </div>
+                    <p className="mt-4 text-white/50 text-xs">Tap anywhere outside to close</p>
+                </div>,
+                document.body
+            )}
+
+            {/* Preview Event Modal */}
+            {previewingEvent && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex' }}>
+                    <EventModal
+                        event={previewingEvent}
+                        onClose={() => setPreviewingEvent(null)}
+                        isSaved={false}
+                        onToggleSave={() => {}}
+                        isLiked={false}
+                        onToggleLike={() => {}}
+                        reminder={undefined}
+                        onSetReminder={() => {}}
+                        onCancelReminder={() => {}}
+                        currentUserLocation={{ lat: previewingEvent.lat, lng: previewingEvent.lng }}
+                        currentUser={currentUser}
+                        isLocationLive={false}
+                        onToggleParticipation={() => {}}
+                    />
+                </div>,
+                document.body
+            )}
+
+            {/* Reject Event Modal */}
+            {rejectingEventId && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={() => setRejectingEventId(null)}>
+                    <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-gray-800 p-6 rounded-[15px] w-full max-w-sm shadow-2xl animate-in zoom-in-95 fade-in duration-200">
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Reject Event</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Please provide a reason for disapproval.</p>
+                        <textarea placeholder="e.g., Incomplete description..." className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm focus:outline-none focus:border-red-500 min-h-[100px] mb-4 text-gray-900 dark:text-white" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
+                        <div className="flex gap-3">
+                            <button onClick={() => setRejectingEventId(null)} className="flex-1 py-3 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">Cancel</button>
+                            <button onClick={handleConfirmReject} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 hover:bg-red-700 transition-colors">Reject Event</button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Cancel Event Modal */}
+            {cancellingEvent && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={() => !isCancelling && setCancellingEvent(null)}>
+                    <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-gray-800 p-6 rounded-[15px] w-full max-w-sm shadow-2xl animate-in zoom-in-95 fade-in duration-200">
+                        <div className="flex items-start gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-2xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cancel Event</h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">"{cancellingEvent.name}"</p>
+                            </div>
+                        </div>
+                        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-2xl p-3 mb-4">
+                            <p className="text-xs text-orange-700 dark:text-orange-300 font-medium leading-relaxed">⚠️ Residents who <strong>saved</strong> or marked <strong>interest</strong> in this event will be notified of the cancellation.</p>
+                        </div>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Cancellation Reason <span className="normal-case font-normal">(optional)</span></label>
+                        <textarea placeholder="e.g., Venue unavailability, weather conditions..." className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm focus:outline-none focus:border-orange-500 min-h-[90px] mb-4 text-gray-900 dark:text-white resize-none" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} disabled={isCancelling} />
+                        <div className="flex gap-3">
+                            <button onClick={() => setCancellingEvent(null)} disabled={isCancelling} className="flex-1 py-3 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50">Go Back</button>
+                            <button onClick={handleConfirmCancelEvent} disabled={isCancelling} className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/20 hover:bg-orange-700 transition-colors active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2">
+                                {isCancelling ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Cancelling...</> : 'Cancel Event'}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Notify Update Modal */}
+            {updatingEventNotif && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={() => !isSendingUpdateNotif && setUpdatingEventNotif(null)}>
+                    <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-gray-800 p-6 rounded-[15px] w-full max-w-sm shadow-2xl animate-in zoom-in-95 fade-in duration-200">
+                        <div className="flex items-start gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Notify Schedule Update</h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">"{updatingEventNotif.name}"</p>
+                            </div>
+                        </div>
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-3 mb-4">
+                            <p className="text-xs text-amber-700 dark:text-amber-300 font-medium leading-relaxed">📅 Residents who <strong>saved</strong> or <strong>checked-in</strong> to this event will receive a notification about the update.</p>
+                        </div>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">What Changed? <span className="normal-case font-normal">(optional)</span></label>
+                        <textarea placeholder="e.g., New venue: Bacoor City Hall. New time: 3:00 PM..." className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm focus:outline-none focus:border-amber-500 min-h-[90px] mb-4 text-gray-900 dark:text-white resize-none" value={updateChangeNote} onChange={(e) => setUpdateChangeNote(e.target.value)} disabled={isSendingUpdateNotif} />
+                        <div className="flex gap-3">
+                            <button onClick={() => setUpdatingEventNotif(null)} disabled={isSendingUpdateNotif} className="flex-1 py-3 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50">Cancel</button>
+                            <button onClick={handleSendUpdateNotification} disabled={isSendingUpdateNotif} className="flex-1 py-3 bg-amber-500 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-colors active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2">
+                                {isSendingUpdateNotif ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending...</> : 'Send Notification'}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* QR Code Modal */}
+            {viewingQRCode && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={() => setViewingQRCode(null)}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-[15px] shadow-2xl flex flex-col items-center p-8 animate-in zoom-in-95 fade-in duration-200 relative" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setViewingQRCode(null)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                            <XMarkIcon className="w-6 h-6" />
+                        </button>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 text-center">{viewingQRCode.name}</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 text-center font-medium">Event QR Code</p>
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                            <QRCodeSVG id="admin-event-qr-code" value={`commove://event/${viewingQRCode.id}`} size={200} level="H" includeMargin={true} />
+                        </div>
+                        <button onClick={() => downloadQRCode(viewingQRCode, 'admin-event-qr-code')} className="w-full bg-[#7c3aed] text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-500/30 hover:bg-[#6d28d9] transition-colors active:scale-95 flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Download QR Code
+                        </button>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* New Event QR Modal (Facilitators) */}
+            {newEventQRCode && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-[15px] shadow-2xl flex flex-col items-center p-8 animate-in zoom-in-95 fade-in duration-200 relative">
+                        <button onClick={() => setNewEventQRCode(null)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                            <XMarkIcon className="w-6 h-6" />
+                        </button>
+                        <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 text-center">{newEventQRCode.name}</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 text-center font-medium">Event Created Successfully!</p>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-6 text-center leading-relaxed">Download your event's QR code now. You won't be able to access it from your dashboard.</p>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                            <QRCodeSVG id="facilitator-new-event-qr-code" value={`commove://event/${newEventQRCode.id}`} size={200} level="H" includeMargin={true} />
+                        </div>
+                        <button onClick={() => downloadQRCode(newEventQRCode, 'facilitator-new-event-qr-code')} className="w-full bg-[#7c3aed] text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-500/30 hover:bg-[#6d28d9] transition-colors active:scale-95 flex items-center justify-center gap-2 mb-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Download QR Code
+                        </button>
+                        <button onClick={() => setNewEventQRCode(null)} className="w-full py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+                            Close (QR will not be saved here)
+                        </button>
+                    </div>
+                </div>,
+                document.body
+            )}
         </>
     );
 };

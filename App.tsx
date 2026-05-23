@@ -1702,7 +1702,7 @@ const App: React.FC = () => {
                 </main>
             ) : (
                 <>
-                    <div className={`flex flex-1 ${activeTab === 'nearby' ? 'overflow-hidden' : ''}`}>
+                    <div className={`flex flex-1 min-h-0 ${activeTab === 'nearby' ? 'overflow-hidden' : ''}`}>
                         <Sidebar
                             activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
                             onTabChange={handleTabChange}
@@ -1710,10 +1710,10 @@ const App: React.FC = () => {
                             pendingFacilitatorCount={pendingFacilitatorCount}
                             unreadNotificationCount={unreadNotificationCount}
                         />
-                        <main className={`flex-1 transition-all duration-300 ${activeTab === 'nearby'
+                        <main className={`flex-1 min-h-0 transition-all duration-300 ${activeTab === 'nearby'
                             ? 'h-full overflow-hidden'
                             : 'w-full px-0'
-                            } ${activeTab === 'feed' ? 'pb-24' : ''} overflow-x-hidden`}>
+                            } ${activeTab === 'feed' && isStaff ? '' : activeTab === 'feed' ? 'pb-24' : ''} overflow-x-hidden`}>
                             {activeTab === 'feed' && !isStaff && (
                                 <div className="space-y-4 animate-fade-in-up pt-8 md:pt-10">
                                     {currentUser?.facilitatorRequestStatus === 'rejected' && (
@@ -1879,7 +1879,7 @@ const App: React.FC = () => {
                             )}
 
                             {activeTab === 'feed' && isStaff && (
-                                <div className="animate-fade-in-up h-full flex flex-col pt-4 md:pt-6 px-2 md:px-6">
+                                <div className="animate-fade-in-up h-full min-h-0 flex flex-col px-2 md:px-0">
                                     <AdminPanel
                                         currentUser={currentUser!}
                                         events={events}

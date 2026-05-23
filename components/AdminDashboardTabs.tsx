@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { EventType, User } from '../types';
 import { XMarkIcon, formatDisplayDate, MoreVerticalIcon } from '../constants';
+import { getEventAlerts } from '../utils/eventAlerts';
+import type { EventAlert } from '../utils/eventAlerts';
 import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon } from 'lucide-react';
 import AdminReports from './AdminReports';
 import { getHighlights, setHighlights } from '../services/eventService';
@@ -36,6 +38,8 @@ interface AdminDashboardTabsProps {
     onRejectFacilitator: (userId: string) => void;
     onDeleteUser: (userId: string) => void;
     canManageUsers: boolean;
+    activeTab: 'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights';
+    setActiveTab: (tab: 'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights') => void;
     initialTab?: 'analytics' | 'events' | 'users';
     onInitialTabConsumed?: () => void;
     highlightUserId?: string;
@@ -51,10 +55,32 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     onSchedule, onPreviewEvent,
     filteredUsers, userSearchQuery, setUserSearchQuery, userFilter, setUserFilter,
     isLoadingUsers, userError, fetchUsers, handleRoleUpdate, onApproveFacilitator, onRejectFacilitator, onDeleteUser, canManageUsers,
-    initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed, onManageRegistrations, currentUser,
+    activeTab, setActiveTab, initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed, onManageRegistrations, currentUser,
     onCancelEvent, onNotifyUpdate
 }) => {
-    const [activeTab, setActiveTab] = useState<'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights'>('analytics');
+    // ── Alert chip renderer ───────────────────────────────────────────────────
+    const AlertChip = ({ alert }: { alert: EventAlert }) => (
+        <span
+            title={alert.detail}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase flex-shrink-0 cursor-default select-none ${
+                alert.severity === 'error'
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+            }`}
+        >
+            {alert.severity === 'error' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+            )}
+            {alert.label}
+        </span>
+    );
+
     const [selectedDate, setSelectedDate] = useState<number>(new Date().getDate());
     const [viewingDate, setViewingDate] = useState<Date>(new Date());
     const [isMobile, setIsMobile] = React.useState(false);
@@ -63,6 +89,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [eventSortOrder, setEventSortOrder] = useState<'asc' | 'desc' | 'newest' | 'oldest'>('newest');
     const [showSortMenu, setShowSortMenu] = useState(false);
     const [eventVisibilityFilter, setEventVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
+    const [eventsPage, setEventsPage] = useState(1);
+    useEffect(() => { setEventsPage(1); }, [eventFilter, eventSortOrder, eventVisibilityFilter]);
 
     // User management extra state
     const [userSortOrder, setUserSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -155,6 +183,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [highlightsSaved, setHighlightsSaved] = useState(false);
     const [highlightsShowModal, setHighlightsShowModal] = useState(false);
     const [highlightSearch, setHighlightSearch] = useState('');
+    const [highlightVisFilter, setHighlightVisFilter] = useState<'all' | 'public' | 'private'>('all');
+    const [highlightPage, setHighlightPage] = useState(1);
+    const HIGHLIGHTS_PER_PAGE = 10;
+    useEffect(() => { setHighlightPage(1); }, [highlightSearch, highlightVisFilter]);
 
     // Load highlights ONCE on mount so saved selections always persist
     React.useEffect(() => {
@@ -206,10 +238,18 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
     const renderHighlights = () => {
         const publishedEvents = events.filter(e => e.status === 'published');
-        const filtered = publishedEvents.filter(e =>
-            e.name.toLowerCase().includes(highlightSearch.toLowerCase()) ||
-            (e.venue || e.city || '').toLowerCase().includes(highlightSearch.toLowerCase())
-        );
+        const filtered = publishedEvents.filter(e => {
+            const matchesSearch =
+                e.name.toLowerCase().includes(highlightSearch.toLowerCase()) ||
+                (e.venue || e.city || '').toLowerCase().includes(highlightSearch.toLowerCase());
+            const matchesVis =
+                highlightVisFilter === 'all' ? true :
+                highlightVisFilter === 'private' ? !!e.isPrivate :
+                !e.isPrivate;
+            return matchesSearch && matchesVis;
+        });
+        const highlightTotalPages = Math.max(1, Math.ceil(filtered.length / HIGHLIGHTS_PER_PAGE));
+        const paginatedHighlights = filtered.slice((highlightPage - 1) * HIGHLIGHTS_PER_PAGE, highlightPage * HIGHLIGHTS_PER_PAGE);
         const selectedEvents = highlightIds.map(id => events.find(e => e.id === id)).filter(Boolean) as EventType[];
 
         return (
@@ -217,7 +257,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {/* ── Success Modal ── */}
                 {highlightsShowModal && (
                     <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                        <div className="bg-white dark:bg-[#111827] rounded-3xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center animate-in zoom-in-95 duration-300 border border-white/10 dark:border-gray-800">
+                        <div className="bg-white dark:bg-[#111827] rounded-[15px] shadow-2xl p-8 max-w-sm w-full mx-4 text-center animate-in zoom-in-95 duration-300 border border-white/10 dark:border-gray-800">
                             {/* Animated checkmark */}
                             <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-5">
                                 <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -354,7 +394,24 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {/* Event picker */}
                 <div className="bg-white dark:bg-[#111827] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
                     <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                        <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">All Published Events</h4>
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">All Published Events</h4>
+                            <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                                {(['all', 'public', 'private'] as const).map(v => (
+                                    <button
+                                        key={v}
+                                        onClick={() => setHighlightVisFilter(v)}
+                                        className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${
+                                            highlightVisFilter === v
+                                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                                        }`}
+                                    >
+                                        {v}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                         <div className="relative">
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                             <input
@@ -367,11 +424,11 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </div>
                     </div>
 
-                    <div className="divide-y divide-gray-50 dark:divide-gray-800 max-h-[500px] overflow-y-auto">
-                        {filtered.length === 0 ? (
+                    <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                        {paginatedHighlights.length === 0 ? (
                             <div className="py-10 text-center text-sm text-gray-400">No published events found.</div>
                         ) : (
-                            filtered.map(event => {
+                            paginatedHighlights.map(event => {
                                 const isSelected = highlightIds.includes(event.id);
                                 const rank = highlightIds.indexOf(event.id) + 1;
                                 const maxReached = highlightIds.length >= 5 && !isSelected;
@@ -425,6 +482,44 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             })
                         )}
                     </div>
+
+                    {/* Pagination */}
+                    {highlightTotalPages > 1 && (
+                        <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                            <span className="text-xs text-gray-400">
+                                {(highlightPage - 1) * HIGHLIGHTS_PER_PAGE + 1}–{Math.min(highlightPage * HIGHLIGHTS_PER_PAGE, filtered.length)} of {filtered.length}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setHighlightPage(p => Math.max(1, p - 1))}
+                                    disabled={highlightPage === 1}
+                                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 disabled:opacity-30 transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                </button>
+                                {Array.from({ length: highlightTotalPages }, (_, i) => i + 1).map(p => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setHighlightPage(p)}
+                                        className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
+                                            highlightPage === p
+                                                ? 'bg-primary-600 text-white'
+                                                : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setHighlightPage(p => Math.min(highlightTotalPages, p + 1))}
+                                    disabled={highlightPage === highlightTotalPages}
+                                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 disabled:opacity-30 transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {highlightIds.length > 0 && (
@@ -648,7 +743,11 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     cy="50%" 
                                     outerRadius={80} 
                                     dataKey="value"
-                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                    label={({ name, percent, x, y, textAnchor }) => (
+                                        <text x={x} y={y} textAnchor={textAnchor} fill="#6b7280" fontSize={10} fontWeight={500}>
+                                            {`${name} ${(percent * 100).toFixed(0)}%`}
+                                        </text>
+                                    )}
                                     labelLine={true}
                                 >
                                     {realCategoryData.map((entry, index) => (
@@ -743,10 +842,30 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         </div>
     );
 
+    const EVENTS_PER_PAGE = 10;
+
     const renderEvents = () => {
         const visibilityFilteredEvents = eventVisibilityFilter === 'all' ? events
             : eventVisibilityFilter === 'public' ? events.filter(e => !e.isPrivate)
             : events.filter(e => !!e.isPrivate);
+
+        const allFilteredSortedEvents = visibilityFilteredEvents
+            .filter(event => eventFilter === 'all' ? true : event.status === eventFilter)
+            .sort((a, b) => {
+                if (eventSortOrder === 'newest' || eventSortOrder === 'oldest') {
+                    const tsA = (a as any).createdAt ?? 0;
+                    const tsB = (b as any).createdAt ?? 0;
+                    const msA = typeof tsA === 'object' && tsA?.toMillis ? tsA.toMillis() : Number(tsA);
+                    const msB = typeof tsB === 'object' && tsB?.toMillis ? tsB.toMillis() : Number(tsB);
+                    return eventSortOrder === 'newest' ? msB - msA : msA - msB;
+                }
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+                if (eventSortOrder === 'asc') return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
+                return nameA > nameB ? -1 : nameA < nameB ? 1 : 0;
+            });
+        const totalPages = Math.ceil(allFilteredSortedEvents.length / EVENTS_PER_PAGE);
+        const paginatedEvents = allFilteredSortedEvents.slice((eventsPage - 1) * EVENTS_PER_PAGE, eventsPage * EVENTS_PER_PAGE);
         const visibilityFilteredPending = eventVisibilityFilter === 'all' ? pendingRequests
             : eventVisibilityFilter === 'public' ? pendingRequests.filter(e => !e.isPrivate)
             : pendingRequests.filter(e => !!e.isPrivate);
@@ -882,6 +1001,16 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             {event.status === 'rejected' && <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Rejected</span>}
                                         </div>
                                         <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{event.organizer || 'Unknown'} • {formatDisplayDate(event.date)}</p>
+                                        {/* Rule-based alert chips */}
+                                        {(() => {
+                                            const alerts = getEventAlerts(event, events);
+                                            if (alerts.length === 0) return null;
+                                            return (
+                                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                                    {alerts.map(a => <AlertChip key={a.id} alert={a} />)}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                                 <div className="flex gap-2 justify-end">
@@ -1011,43 +1140,36 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 <div className="overflow-x-auto md:overflow-visible pb-16 md:pb-0">
                 <table className="w-full min-w-[600px] text-left">
                     <thead>
-                        <tr className="border-b border-gray-100 dark:border-gray-800 text-sm text-gray-500 dark:text-gray-400">
-                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Event</th>
-                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
-                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Location</th>
-                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Attendees</th>
-                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Feedback</th>
-                            <th className="pb-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right pr-4 min-w-[180px]">Status & Actions</th>
+                        <tr className="bg-gray-100 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400">
+                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest">Event</th>
+                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest">Date</th>
+                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest">Location</th>
+                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest text-center">Attendees</th>
+                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest text-center">Feedback</th>
+                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest text-right pr-4 min-w-[180px]">Status & Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                                {visibilityFilteredEvents
-                                    .filter(event => eventFilter === 'all' ? true : event.status === eventFilter)
-                                    .sort((a, b) => {
-                                        if (eventSortOrder === 'newest' || eventSortOrder === 'oldest') {
-                                            // Sort by creation timestamp (createdAt field, falling back to 0)
-                                            const tsA = (a as any).createdAt ?? 0;
-                                            const tsB = (b as any).createdAt ?? 0;
-                                            // Normalize: Firestore Timestamps have .toMillis(), numbers are already ms
-                                            const msA = typeof tsA === 'object' && tsA?.toMillis ? tsA.toMillis() : Number(tsA);
-                                            const msB = typeof tsB === 'object' && tsB?.toMillis ? tsB.toMillis() : Number(tsB);
-                                            return eventSortOrder === 'newest' ? msB - msA : msA - msB;
-                                        }
-                                        const nameA = a.name.toLowerCase();
-                                        const nameB = b.name.toLowerCase();
-                                        if (eventSortOrder === 'asc') {
-                                            return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
-                                        } else {
-                                            return nameA > nameB ? -1 : nameA < nameB ? 1 : 0;
-                                        }
-                                    })
-                                    .map(event => {
+                                {paginatedEvents.map(event => {
                             // Calculate real attendee count from the users list
                             const attendeeCount = users.filter(u => u.checkedInEventIds?.includes(event.id)).length;
                             const attendeesStr = event.maxParticipants ? `${attendeeCount}/${event.maxParticipants}` : `${attendeeCount} (No Limit)`;
                             return (
                                 <tr key={event.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                                    <td className="py-4 px-4 font-medium text-gray-900 dark:text-white">{event.name}</td>
+                                    <td className="py-4 px-4 font-medium text-gray-900 dark:text-white">
+                                        <div className="flex flex-col gap-1">
+                                            <span>{event.name}</span>
+                                            {(() => {
+                                                const alerts = getEventAlerts(event, events);
+                                                if (alerts.length === 0) return null;
+                                                return (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {alerts.map(a => <AlertChip key={a.id} alert={a} />)}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </td>
                                     <td className="py-4 px-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDisplayDate(event.date)}</td>
                                     <td className="py-4 px-4 text-gray-500 dark:text-gray-400">
                                         <div className="flex items-center gap-1.5 min-w-[120px]">
@@ -1197,6 +1319,38 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </tbody>
                 </table>
                 </div>
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-4 border-t border-gray-100 dark:border-gray-800">
+                        <span className="text-xs text-gray-400">
+                            Showing {(eventsPage - 1) * EVENTS_PER_PAGE + 1}–{Math.min(eventsPage * EVENTS_PER_PAGE, allFilteredSortedEvents.length)} of {allFilteredSortedEvents.length} events
+                        </span>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setEventsPage(p => Math.max(1, p - 1))}
+                                disabled={eventsPage === 1}
+                                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <button
+                                    key={page}
+                                    onClick={() => setEventsPage(page)}
+                                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${eventsPage === page ? 'bg-primary-600 text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                            <button
+                                onClick={() => setEventsPage(p => Math.min(totalPages, p + 1))}
+                                disabled={eventsPage === totalPages}
+                                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -1735,17 +1889,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         <AdminReports events={events} users={users} />
     );
 
-    const availableTabs = ['analytics', 'demographics', 'events', 'calendar', 'reports'];
-    if (canManageUsers) {
-        // Admins can also see users and highlights tabs
-        if (!availableTabs.includes('users')) {
-            availableTabs.splice(3, 0, 'users');
-        }
-        if (!availableTabs.includes('highlights')) {
-            availableTabs.push('highlights');
-        }
-    }
-
     const totalUsersCount = users.length;
     const totalEventsCount = events.length;
     const participationRate = residents.length > 0 ? Math.round((participants.length / residents.length) * 100) : 0;
@@ -1784,7 +1927,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         <div className="w-full animate-fade-in-up">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
                 {/* Total Users */}
-                <div className="bg-white dark:bg-[#111827] p-3 md:p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 flex flex-col justify-between">
+                <div className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 dark:text-purple-400 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -1798,7 +1941,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
 
                 {/* Total Events */}
-                <div className="bg-white dark:bg-[#111827] p-3 md:p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 flex flex-col justify-between">
+                <div className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 dark:text-purple-400 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -1812,7 +1955,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
 
                 {/* Participation Rate */}
-                <div className="bg-white dark:bg-[#111827] p-3 md:p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 flex flex-col justify-between">
+                <div className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 dark:text-purple-400 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
@@ -1826,7 +1969,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
 
                 {/* Pending Approvals */}
-                <div className="bg-white dark:bg-[#111827] p-3 md:p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 flex flex-col justify-between">
+                <div className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 dark:text-purple-400 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -1839,22 +1982,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6 bg-gray-100/50 dark:bg-gray-800/50 p-1.5 rounded-xl w-full md:w-fit">
-                {availableTabs.map((tab) => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab as any)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors whitespace-nowrap ${
-                            activeTab === tab
-                            ? 'bg-white dark:bg-primary-600 text-gray-900 dark:text-white shadow-sm'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                        }`}
-                    >
-                        {tab}
-                    </button>
-                ))}
-            </div>
-
             {activeTab === 'analytics' && renderAnalytics()}
             {activeTab === 'demographics' && renderDemographics()}
             {activeTab === 'events' && renderEvents()}
@@ -1864,9 +1991,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             {activeTab === 'highlights' && canManageUsers && renderHighlights()}
 
             {/* Feedback Details Modal */}
-            {viewingFeedbackEvent && (
-                <div className="fixed inset-0 z-[11000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-[#111827] w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            {viewingFeedbackEvent && typeof document !== 'undefined' && createPortal(
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white dark:bg-[#111827] w-full max-w-2xl rounded-[15px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 fade-in duration-200" style={{ maxHeight: '85vh' }}>
                         <div className="p-8 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                             <div>
                                 <h2 className="text-2xl font-black text-gray-900 dark:text-white">Event Feedback</h2>
@@ -1876,7 +2003,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        
                         <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
                             {(() => {
                                 const reviews = allFeedback.filter(f => f.eventId === viewingFeedbackEvent.id);
@@ -1890,7 +2016,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         </div>
                                     );
                                 }
-
                                 return reviews.map(review => (
                                     <div key={review.id} className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-[2rem] border border-transparent hover:border-purple-100 dark:hover:border-purple-900/30 transition-all">
                                         <div className="flex items-center justify-between mb-4">
@@ -1916,16 +2041,15 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             </div>
                                         </div>
                                         {review.comment && (
-                                            <p className="text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed italic">
-                                                "{review.comment}"
-                                            </p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed italic">"{review.comment}"</p>
                                         )}
                                     </div>
                                 ));
                             })()}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
             {/* ── Confirmation Dialogs ── */}
             <ConfirmationDialog

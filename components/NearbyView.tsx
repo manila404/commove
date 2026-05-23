@@ -30,11 +30,16 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
     const [showEventList, setShowEventList] = useState(false);
 
     // 1. Prepare ALL valid events for the Map
+    const now = new Date();
     const allMapEvents: DisplayEventType[] = events
         .filter(e => {
             const isPublished = e.status === 'published' || !e.status;
             const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
-            return isPublished || isScheduled;
+            if (!isPublished && !isScheduled) return false;
+            const endDateStr = e.endDate || e.date;
+            const endTimeStr = e.endTime || '23:59';
+            const eventEnd = new Date(`${endDateStr}T${endTimeStr}`);
+            return eventEnd >= now;
         })
         .map(e => ({
             ...e,

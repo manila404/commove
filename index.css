@@ -104,12 +104,30 @@ body {
   to { transform: translateY(0); }
 }
 
+@keyframes slide-in-from-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slide-out-to-right {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
 .animate-fade-in-up {
   animation: fade-in-up 0.4s ease-out forwards;
 }
 
 .animate-slide-up {
   animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in-from-right {
+  animation: slide-in-from-right 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-out-to-right {
+  animation: slide-out-to-right 0.45s cubic-bezier(0.4, 0, 0.6, 1) forwards;
 }
 
 /* Reposition reCAPTCHA on mobile to avoid overlap */
