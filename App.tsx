@@ -12,6 +12,8 @@ import type { User, EventType, DisplayEventType, Reminder, AppNotification } fro
 import { createNotification, subscribeToNotifications, hasNotification } from './services/notificationService';
 import { useAlert } from './contexts/AlertContext';
 import { usePermissions } from './contexts/PermissionContext';
+import { useNetworkStatus } from './contexts/NetworkStatusContext';
+import { withRetry, getFriendlyErrorMessage } from './utils/networkUtils';
 import { toast } from 'sonner';
 
 // Components
@@ -44,6 +46,7 @@ import PopularEvents from './components/PopularEvents';
 import ViewAllPopularEvents from './components/ViewAllPopularEvents';
 import DateEventsModal from './components/DateEventsModal';
 import EventFeedbackModal from './components/EventFeedbackModal';
+import NetworkStatusBanner from './components/NetworkStatusBanner';
 
 import {
     Globe,
@@ -108,6 +111,7 @@ const App: React.FC = () => {
 
     const { showAlert } = useAlert();
     const { permissions, requestLocation, requestNotifications, checkPermissions } = usePermissions();
+    const { isOnline } = useNetworkStatus();
 
     const categoryScrollRef = useRef<HTMLDivElement>(null);
 
@@ -389,6 +393,7 @@ const App: React.FC = () => {
 
                 } catch (error) {
                     console.error("Error loading user profile:", error);
+                    toast.error(getFriendlyErrorMessage(error));
                     setCurrentUser(null);
                 }
             } else {
@@ -484,11 +489,17 @@ const App: React.FC = () => {
     const loadEvents = useCallback(async () => {
         setAreEventsLoading(true);
         try {
-            const [fetchedEvents, ids] = await Promise.all([fetchEvents(), getHighlights()]);
+            const [fetchedEvents, ids] = await Promise.all([
+                withRetry(() => fetchEvents(), 2, 1500),
+                withRetry(() => getHighlights(), 2, 1500),
+            ]);
             setEvents(fetchedEvents);
             setHighlightIds(ids);
         } catch (error) {
             console.error("Failed to load events", error);
+            toast.error(getFriendlyErrorMessage(error), {
+                description: 'Pull down or tap Retry to try again.',
+            });
         } finally {
             setAreEventsLoading(false);
         }
@@ -502,6 +513,17 @@ const App: React.FC = () => {
         // or guest mode is toggled — NOT when savedEventIds, likedEventIds, etc. change.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser?.uid, isGuest]);
+
+    // Re-fetch events when user taps "Retry" on the network status banner
+    useEffect(() => {
+        const handleNetworkRetry = () => {
+            if (currentUser?.uid || isGuest) {
+                loadEvents();
+            }
+        };
+        window.addEventListener('commove:network-retry', handleNetworkRetry);
+        return () => window.removeEventListener('commove:network-retry', handleNetworkRetry);
+    }, [currentUser?.uid, isGuest, loadEvents]);
 
     // Restore event-dependent state after events load
     useEffect(() => {
@@ -1665,6 +1687,7 @@ const App: React.FC = () => {
 
     return (
         <div className={`h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300 font-sans ${activeTab === 'nearby' || activeOverlay ? 'overflow-hidden' : 'min-h-screen overflow-x-hidden'}`}>
+            <NetworkStatusBanner />
             <Header
                 currentUser={currentUser}
                 reminders={currentUser?.reminders || {}}

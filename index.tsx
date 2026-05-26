@@ -4,6 +4,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AlertProvider } from './contexts/AlertContext';
 import { PermissionProvider } from './contexts/PermissionContext';
+import { NetworkStatusProvider } from './contexts/NetworkStatusContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster } from 'sonner';
 
 const rootElement = document.getElementById('root');
@@ -36,11 +38,15 @@ const ToasterWrapper = () => {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <AlertProvider>
-      <PermissionProvider>
-        <App />
-        <ToasterWrapper />
-      </PermissionProvider>
-    </AlertProvider>
+    <ErrorBoundary>
+      <NetworkStatusProvider>
+        <AlertProvider>
+          <PermissionProvider>
+            <App />
+            <ToasterWrapper />
+          </PermissionProvider>
+        </AlertProvider>
+      </NetworkStatusProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
