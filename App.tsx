@@ -2188,7 +2188,7 @@ const App: React.FC = () => {
                             </button>
                             <button
                                 onClick={confirmLogout}
-                                className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors shadow-sm"
+                                className="flex-1 py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition-colors shadow-sm"
                             >
                                 Log Out
                             </button>

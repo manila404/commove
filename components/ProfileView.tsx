@@ -16,7 +16,7 @@ import {
     MoonIcon,
     PREDEFINED_AVATARS
 } from '../constants';
-import { updateUserAvatar } from '../services/userService';
+import { updateUserAvatar, updateUserData, deleteUser } from '../services/userService';
 import Spinner from './Spinner';
 
 const EyeIcon = ({ className }: { className?: string }) => (
@@ -63,6 +63,99 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 }) => {
     const [isChangingAvatar, setIsChangingAvatar] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [showManageAccountPanel, setShowManageAccountPanel] = useState(false);
+    const [showAccountModal, setShowAccountModal] = useState<null | 'deactivate' | 'delete'>(null);
+    const [accountModalStep, setAccountModalStep] = useState<1 | 2>(1);
+    const [isProcessingAccount, setIsProcessingAccount] = useState(false);
+    const [accountError, setAccountError] = useState<string | null>(null);
+    const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
+    const [confirmUnderstood, setConfirmUnderstood] = useState(false);
+    const [showAccountWarning, setShowAccountWarning] = useState<null | 'deactivate' | 'delete'>(null);
+    const [otherReason, setOtherReason] = useState('');
+
+    const DELETE_REASONS = [
+        "I'm not using the app.",
+        "I found a better alternative.",
+        "The app contains too many ads.",
+        "The app didn't have the features or functionality I was looking for.",
+        "I'm not satisfied with the quality of content.",
+        "The app was difficult to navigate.",
+        "Other."
+    ];
+
+    const DEACTIVATE_REASONS = [
+        "I need a break from the app.",
+        "Privacy concerns.",
+        "I'm switching to another account.",
+        "The app doesn't meet my needs right now.",
+        "Personal reasons.",
+        "Other."
+    ];
+
+    const toggleReason = (reason: string) => {
+        setSelectedReasons(prev =>
+            prev.includes(reason) ? prev.filter(r => r !== reason) : [...prev, reason]
+        );
+    };
+
+    const openAccountModal = (type: 'deactivate' | 'delete') => {
+        setAccountError(null);
+        setAccountModalStep(1);
+        setSelectedReasons([]);
+        setConfirmUnderstood(false);
+        setShowAccountModal(type);
+    };
+
+    const closeAccountModal = () => {
+        setShowAccountModal(null);
+        setAccountModalStep(1);
+        setSelectedReasons([]);
+        setConfirmUnderstood(false);
+        setAccountError(null);
+        setOtherReason('');
+    };
+
+    // Step 1 "proceed" — just advances to feedback form, no deletion yet
+    const handleProceedToFeedback = () => {
+        setAccountModalStep(2);
+    };
+
+    // Step 2 "Done" — THIS is where the actual deletion/deactivation happens
+    const handleFeedbackDone = async () => {
+        if (!user) return;
+        setIsProcessingAccount(true);
+        setAccountError(null);
+        try {
+            if (showAccountModal === 'delete') {
+                if (auth.currentUser) {
+                    await auth.currentUser.delete();
+                    // Firebase auto-signs out when auth user is deleted;
+                    // onAuthStateChanged in App.tsx will update state to guest screen
+                }
+                try {
+                    await updateUserData(user.uid, { isDeleted: true, isDeactivated: true } as any);
+                } catch { /* silent — Auth account is gone */ }
+            } else if (showAccountModal === 'deactivate') {
+                await updateUserData(user.uid, { isDeactivated: true } as any);
+                // Sign out directly — bypasses the logout confirmation modal
+                await auth.signOut();
+            }
+            closeAccountModal();
+            setShowManageAccountPanel(false); // Reset so App.tsx auth state drives guest screen
+            // Do NOT call onLogout() — that would trigger the "Confirm Logout" modal.
+            // Firebase's auth state change drives the guest screen transition.
+        } catch (error: any) {
+            console.error("Account action failed", error);
+            if (error.code === 'auth/requires-recent-login') {
+                setAccountError("For security, please sign out and sign back in, then try again.");
+                setAccountModalStep(1);
+            } else {
+                setAccountError(error.message || "Failed. Please try again.");
+                setAccountModalStep(1);
+            }
+            setIsProcessingAccount(false);
+        }
+    };
 
     const handleAvatarChange = async (url: string) => {
         if (!user) return;
@@ -91,8 +184,304 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     const badgeColor = 'bg-white/20 text-white';
     const isPendingFacilitator = user?.facilitatorRequestStatus === 'pending';
 
+    // Delete / Deactivate view — slides in over Manage Account panel
+    if (showAccountModal !== null) {
+        const isDelete = showAccountModal === 'delete';
+        const reasons = isDelete ? DELETE_REASONS : DEACTIVATE_REASONS;
+        return (
+            <div className="flex flex-col md:-mt-5 md:min-h-[calc(100vh-120px)] animate-slide-from-right bg-white dark:bg-gray-900">
+                <style>{`
+                    @keyframes slideInFromRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+                    .animate-slide-from-right { animation: slideInFromRight 0.3s cubic-bezier(0.16,1,0.3,1) forwards; }
+                    .modal-scroll { scrollbar-width: thin; scrollbar-color: rgba(156,163,175,0.4) transparent; }
+                    .modal-scroll::-webkit-scrollbar { width: 3px; }
+                    .modal-scroll::-webkit-scrollbar-track { background: transparent; }
+                    .modal-scroll::-webkit-scrollbar-thumb { background: rgba(156,163,175,0.4); border-radius: 9999px; }
+                    .modal-scroll::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+                `}</style>
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 md:pt-5 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 shrink-0">
+                    {accountModalStep === 1 ? (
+                        <>
+                            <button onClick={closeAccountModal} disabled={isProcessingAccount} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-600">
+                                <ArrowRightIcon className="w-5 h-5 rotate-180" />
+                            </button>
+                            <span className="text-base font-bold text-gray-900 dark:text-white">
+                                {isDelete ? 'Delete account' : 'Deactivate account'}
+                            </span>
+                            <div className="w-9" />
+                        </>
+                    ) : (
+                        <>
+                            <div className="w-9" />
+                            <span className="text-base font-bold text-gray-900 dark:text-white">
+                                {isDelete ? 'Request received' : 'Account deactivated'}
+                            </span>
+                            <button onClick={handleFeedbackDone} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </>
+                    )}
+                </div>
+
+                {/* Step 1 — Confirmation */}
+                {/* Step 1 — Warning + confirmation */}
+                {accountModalStep === 1 && (
+                    <div className="modal-scroll overflow-y-auto flex-1 px-5 pt-6 pb-8 flex flex-col">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 leading-snug">
+                            {isDelete ? 'Are you sure you want to delete your account?' : 'Are you sure you want to deactivate your account?'}
+                        </h2>
+                        {isDelete ? (
+                            <>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
+                                    Once you delete your account, it cannot be undone. All your data will be permanently erased from this app including your profile information, preferences, saved content, and any activity history.
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
+                                    We're sad to see you go, but we understand that sometimes it's necessary. Please take a moment to consider the consequences before proceeding.
+                                </p>
+                                {/* 30-day recovery notice */}
+                                <div className="flex items-start gap-2.5 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl p-3 mb-5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <p className="text-xs text-primary-700 dark:text-primary-300 leading-relaxed">
+                                        <span className="font-semibold">You have 30 days to recover your account.</span> After submitting this request, contact our support team within 30 days to restore your account and data.
+                                    </p>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
+                                    Deactivating your account will temporarily hide your profile and disable access. Your data — including preferences, saved events, and activity history — will be preserved.
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-5 leading-relaxed">
+                                    You can reactivate your account at any time simply by logging back in.
+                                </p>
+                            </>
+                        )}
+
+                        {/* "I understand" confirmation checkbox */}
+                        <label className="flex items-start gap-3 cursor-pointer mb-5">
+                            <div
+                                className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center border-2 shrink-0 transition-colors ${confirmUnderstood ? 'bg-primary-600 border-primary-600' : 'border-gray-300 dark:border-gray-600'}`}
+                                onClick={() => setConfirmUnderstood(v => !v)}
+                            >
+                                {confirmUnderstood && (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                )}
+                            </div>
+                            <span className="text-sm text-gray-700 dark:text-gray-300 leading-snug" onClick={() => setConfirmUnderstood(v => !v)}>
+                                {isDelete
+                                    ? 'I understand that deleting my account is irreversible and I have 30 days to recover it.'
+                                    : 'I understand that my account will be deactivated and I can reactivate it by logging back in.'
+                                }
+                            </span>
+                        </label>
+
+                        {accountError && (
+                            <p className="text-xs text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded-xl p-3 mb-4">{accountError}</p>
+                        )}
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={handleProceedToFeedback}
+                                disabled={!confirmUnderstood}
+                                className="w-full py-4 rounded-2xl font-bold text-base text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-40 bg-primary-600 hover:bg-primary-700 active:bg-primary-800"
+                            >
+                                {isDelete ? 'Proceed to delete' : 'Proceed to deactivate'}
+                            </button>
+                            <button onClick={closeAccountModal} className="w-full py-3 text-gray-500 dark:text-gray-400 font-semibold text-sm hover:text-gray-700 transition-colors">
+                                Go back
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 2 — Feedback (deletion/deactivation happens on Done) */}
+                {accountModalStep === 2 && (
+                    <div className="modal-scroll overflow-y-auto flex-1 px-5 pt-5 pb-8 flex flex-col">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5 leading-relaxed">
+                            {isDelete
+                                ? 'Before we process your request, please let us know why you\'re leaving.'
+                                : 'Before we deactivate your account, please let us know why.'
+                            }
+                        </p>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">
+                            {isDelete ? 'Why did you decide to leave this app?' : 'Why are you deactivating your account?'}
+                        </h3>
+                        <p className="text-xs text-gray-400 mb-4">Please select at least one reason</p>
+                        <div className="flex flex-col gap-1 mb-6">
+                            {reasons.map(reason => (
+                                <div key={reason} className="flex flex-col">
+                                    <label className="flex items-start gap-3 py-2 cursor-pointer">
+                                        <div
+                                            className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center border-2 shrink-0 transition-colors ${selectedReasons.includes(reason) ? 'bg-primary-600 border-primary-600' : 'border-gray-300 dark:border-gray-600'}`}
+                                            onClick={() => toggleReason(reason)}
+                                        >
+                                            {selectedReasons.includes(reason) && (
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            )}
+                                        </div>
+                                        <span className="text-sm text-gray-700 dark:text-gray-300 leading-snug" onClick={() => toggleReason(reason)}>{reason}</span>
+                                    </label>
+                                    {reason === 'Other.' && selectedReasons.includes('Other.') && (
+                                        <textarea
+                                            value={otherReason}
+                                            onChange={e => setOtherReason(e.target.value)}
+                                            placeholder="Please tell us more..."
+                                            rows={3}
+                                            className="ml-8 mt-1 mb-1 w-[calc(100%-2rem)] text-sm border border-gray-200 dark:border-gray-600 rounded-xl p-3 resize-none bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:border-primary-400"
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        {accountError && (
+                            <p className="text-xs text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded-xl p-3 mb-4">{accountError}</p>
+                        )}
+                        <button
+                            onClick={handleFeedbackDone}
+                            disabled={selectedReasons.length === 0 || isProcessingAccount}
+                            className="w-full py-4 rounded-2xl font-bold text-base text-white bg-primary-600 hover:bg-primary-700 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
+                        >
+                            {isProcessingAccount && <Spinner size="sm" />}
+                            {isDelete ? 'Confirm & delete account' : 'Confirm & deactivate account'}
+                        </button>
+                        <button onClick={() => setAccountModalStep(1)} disabled={isProcessingAccount} className="w-full py-3 text-gray-500 dark:text-gray-400 font-semibold text-sm hover:text-gray-700 transition-colors mt-1">
+                            Go back
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Manage Account panel — replaces ProfileView content in the same container
+    if (showManageAccountPanel) {
+        return (
+            <div className="flex flex-col md:-mt-5 md:min-h-[calc(100vh-120px)] animate-slide-from-right bg-white dark:bg-gray-900">
+                <style>{`
+                    @keyframes slideInFromRight {
+                        from { transform: translateX(100%); }
+                        to { transform: translateX(0); }
+                    }
+                    .animate-slide-from-right {
+                        animation: slideInFromRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    }
+                    .modal-scroll { scrollbar-width: thin; scrollbar-color: rgba(156,163,175,0.4) transparent; }
+                    .modal-scroll::-webkit-scrollbar { width: 3px; }
+                    .modal-scroll::-webkit-scrollbar-track { background: transparent; }
+                    .modal-scroll::-webkit-scrollbar-thumb { background: rgba(156,163,175,0.4); border-radius: 9999px; }
+                    .modal-scroll::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+                `}</style>
+                {/* Header */}
+                <div className="flex items-center gap-3 px-4 py-3 md:pt-5 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900">
+                    <button
+                        onClick={() => setShowManageAccountPanel(false)}
+                        className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-600"
+                    >
+                        <ArrowRightIcon className="w-5 h-5 rotate-180" />
+                    </button>
+                    <h2 className="text-base font-bold text-gray-900 dark:text-white">Manage Account</h2>
+                </div>
+                {/* Options */}
+                <div className="flex-1 px-4 pt-5 pb-6 bg-white dark:bg-gray-900">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm">
+                        {onProfileCardClick && (
+                            <button
+                                onClick={() => { setShowManageAccountPanel(false); onProfileCardClick(); }}
+                                className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="text-gray-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Edit Profile</span>
+                                </div>
+                                <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setShowAccountWarning('deactivate')}
+                            className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="text-gray-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                </div>
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Deactivate Account</span>
+                            </div>
+                            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                        </button>
+                        <button
+                            onClick={() => setShowAccountWarning('delete')}
+                            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="text-gray-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </div>
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Delete Account</span>
+                            </div>
+                            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Warning popup — shown before entering the full delete/deactivate flow */}
+                {showAccountWarning && (
+                    <div className="fixed inset-0 z-[6000] flex items-center justify-center p-5">
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAccountWarning(null)} />
+                        <div className="relative w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 text-center">
+                            <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${showAccountWarning === 'delete' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className={`w-7 h-7 ${showAccountWarning === 'delete' ? 'text-red-500' : 'text-amber-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                                {showAccountWarning === 'delete' ? 'Delete your account?' : 'Deactivate your account?'}
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+                                {showAccountWarning === 'delete'
+                                    ? 'You are about to permanently delete your account. This is a serious action. Are you sure you want to continue?'
+                                    : 'You are about to deactivate your account. Your data will be preserved and you can reactivate it later. Are you sure?'
+                                }
+                            </p>
+                            <div className="flex flex-col gap-2">
+                                <button
+                                    onClick={() => { openAccountModal(showAccountWarning); setShowAccountWarning(null); }}
+                                    className="w-full py-3 rounded-xl font-bold text-sm text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+                                >
+                                    Yes, proceed
+                                </button>
+                                <button
+                                    onClick={() => setShowAccountWarning(null)}
+                                    className="w-full py-3 rounded-xl font-semibold text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
-        <div className="overflow-x-hidden relative flex flex-col">
+        <div className="overflow-hidden relative flex flex-col">
             <style>{`
                 @keyframes slideInLeft {
                     from { opacity: 0; transform: translateX(-50px); }
@@ -101,16 +490,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 .animate-slide-in {
                     animation: slideInLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
+                @keyframes slideInFromRight {
+                    from { transform: translateX(100%); }
+                    to { transform: translateX(0); }
+                }
+                .animate-slide-from-right {
+                    animation: slideInFromRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                }
             `}</style>
 
             {/* Header Section */}
-            <div 
-                className={`bg-primary-600 dark:bg-primary-800 p-5 rounded-2xl shadow-lg relative z-20 mx-4 mt-4 md:!mt-0 ${onProfileCardClick ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}`}
-                onClick={(e) => {
-                    if ((e.target as HTMLElement).closest('button')) return;
-                    if (onProfileCardClick) onProfileCardClick();
-                }}
-            >
+            <div className="bg-primary-600 dark:bg-primary-800 p-5 rounded-2xl shadow-lg relative z-20 mx-4 mt-4 md:!mt-0">
                 <div className="flex items-center gap-4">
                     <div className="relative group shrink-0">
                         <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-primary-600 shadow-md overflow-hidden">
@@ -121,7 +511,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                             )}
                         </div>
                         {!isGuest && (
-                            <button 
+                            <button
                                 onClick={() => setIsChangingAvatar(!isChangingAvatar)}
                                 className="absolute -bottom-1 -right-1 w-5 h-5 bg-white dark:bg-gray-800 rounded-full shadow-md flex items-center justify-center text-primary-600 hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
                             >
@@ -210,6 +600,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 {/* Settings Section (Always Visible) */}
                 <div className="shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-gray-800">
                     <div>
+                        {!isGuest && (
+                            <button
+                                onClick={() => setShowManageAccountPanel(true)}
+                                className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="text-gray-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Manage Account</span>
+                                </div>
+                                <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                            </button>
+                        )}
                         <button onClick={toggleTheme} className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                              <div className="flex items-center gap-3">
                                 <div className="text-orange-500">
@@ -268,6 +674,59 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 )}
 
             </div>
+
+            {/* Deactivate / Delete Confirmation Modal */}
+            {showAccountModal && (
+                <div className="fixed inset-0 z-[6000] flex items-end sm:items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !isProcessingAccount && setShowAccountModal(null)} />
+                    <div className="relative w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+                        <div className={`p-5 ${showAccountModal === 'delete' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${showAccountModal === 'delete' ? 'bg-red-100 dark:bg-red-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
+                                {showAccountModal === 'delete' ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                )}
+                            </div>
+                            <h3 className={`text-base font-bold ${showAccountModal === 'delete' ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                                {showAccountModal === 'delete' ? 'Delete Account' : 'Deactivate Account'}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                {showAccountModal === 'delete'
+                                    ? 'This will permanently delete your account and all your data. This action cannot be undone.'
+                                    : 'Your account will be disabled. You can reactivate it by contacting support or logging in again.'
+                                }
+                            </p>
+                        </div>
+                        {accountError && (
+                            <div className="px-5 pt-3">
+                                <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-2">{accountError}</p>
+                            </div>
+                        )}
+                        <div className="p-5 flex flex-col gap-2">
+                            <button
+                                onClick={showAccountModal === 'delete' ? handleDeleteAccount : handleDeactivate}
+                                disabled={isProcessingAccount}
+                                className={`w-full py-3 rounded-xl font-bold text-sm text-white transition-opacity flex items-center justify-center gap-2 ${showAccountModal === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'} disabled:opacity-60`}
+                            >
+                                {isProcessingAccount && <Spinner size="sm" />}
+                                {showAccountModal === 'delete' ? 'Yes, Delete My Account' : 'Yes, Deactivate My Account'}
+                            </button>
+                            <button
+                                onClick={() => setShowAccountModal(null)}
+                                disabled={isProcessingAccount}
+                                className="w-full py-3 rounded-xl font-bold text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-60"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
