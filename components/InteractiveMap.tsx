@@ -436,20 +436,20 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
       )}
 
       {/* Zoom Controls - Top Left */}
-      <div className="absolute top-6 left-6 z-[1000] flex flex-col rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md shadow-2xl border border-white/20 dark:border-gray-700 overflow-hidden">
-             <button 
+      <div className="absolute top-3 left-3 z-[1000] flex flex-col rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md shadow-lg border border-white/20 dark:border-gray-700 overflow-hidden">
+             <button
                 onClick={handleZoomIn}
-                className="w-12 h-12 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 active:scale-95"
+                className="w-8 h-8 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 active:scale-95"
                 title="Explore Closer"
              >
-                <PlusIcon className="w-6 h-6" />
+                <PlusIcon className="w-4 h-4" />
              </button>
-             <button 
+             <button
                 onClick={handleZoomOut}
-                className="w-12 h-12 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors active:scale-95"
+                className="w-8 h-8 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors active:scale-95"
                 title="Bigger Picture"
              >
-                <MinusIcon className="w-6 h-6" />
+                <MinusIcon className="w-4 h-4" />
              </button>
       </div>
 

@@ -89,8 +89,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
         }
     };
 
-    const handlePasswordReset = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const sendResetEmail = async () => {
         setError('');
         setSuccessMessage('');
         setIsLoading(true);
@@ -102,12 +101,9 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
         }
 
         try {
-            // Removed actionCodeSettings to avoid "Domain not allowlisted" errors.
-            // This will use the default Firebase password reset flow.
             await sendPasswordResetEmail(auth, email);
             setSuccessMessage('If an account exists with this email, a password reset link has been sent. Please check your inbox and spam folder.');
         } catch (error: any) {
-            console.error("Password reset error:", error);
             if (error.code === 'auth/user-not-found') {
                 setError('No account found with this email.');
             } else if (error.code === 'auth/invalid-email') {
@@ -118,6 +114,15 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handlePasswordReset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await sendResetEmail();
+    };
+
+    const handleResend = async () => {
+        await sendResetEmail();
     };
 
     if (isResettingPassword) {
@@ -151,17 +156,34 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                     </div>
                     
                      {error && <p className="text-red-500 text-xs text-center">{error}</p>}
-                     {successMessage && <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl"><p className="text-green-600 dark:text-green-400 text-xs text-center">{successMessage}</p></div>}
+                     {successMessage && (
+                        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl space-y-2">
+                            <p className="text-green-600 dark:text-green-400 text-xs text-center">{successMessage}</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-xs text-center">
+                                Didn't receive it?{' '}
+                                <button
+                                    type="button"
+                                    onClick={handleResend}
+                                    disabled={isLoading}
+                                    className="font-bold text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
+                                >
+                                    {isLoading ? 'Sending...' : 'Resend email'}
+                                </button>
+                            </p>
+                        </div>
+                    )}
 
-                    <div className="pt-2">
-                        <button 
-                            type="submit" 
-                            disabled={isLoading} 
-                            className="w-full bg-primary-600 text-white font-bold py-3 px-4 rounded-full hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/20 disabled:bg-gray-400 text-base active:scale-95"
-                        >
-                            {isLoading ? 'Sending...' : 'Send Reset Link'}
-                        </button>
-                    </div>
+                    {!successMessage && (
+                        <div className="pt-2">
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full bg-primary-600 text-white font-bold py-3 px-4 rounded-full hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/20 disabled:bg-gray-400 text-base active:scale-95"
+                            >
+                                {isLoading ? 'Sending...' : 'Send Reset Link'}
+                            </button>
+                        </div>
+                    )}
                 </form>
             </div>
         );

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image as ImageIcon, ArrowLeft, Share2, Heart, Phone, MessageCircle, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { EventType, Reminder, User } from '../types';
-import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, BellIcon, StarIcon, ShieldCheckIcon, formatDisplayDate, formatTime } from '../constants';
+import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, BellIcon, StarIcon, ShieldCheckIcon, formatDisplayDate, formatTime, CommoveLogo } from '../constants';
 import InteractiveMap from './InteractiveMap';
 import { useAlert } from '../contexts/AlertContext';
 import { usePermissions } from '../contexts/PermissionContext';
@@ -235,8 +235,33 @@ const EventModal: React.FC<EventModalProps> = ({
           background: #9ca3af;
         }
       `}</style>
+      {/* Modal Top Bar */}
+      <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center select-none text-xl tracking-tighter" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
+          <div className="relative inline-flex items-center justify-center text-gray-900 dark:text-white mr-[-0.08em]">
+            <svg style={{ width: '0.65em', height: '0.65em', transform: 'translateY(0.06em)' }} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="20">
+              <path d="M 82 26 A 40 40 0 1 0 82 74" />
+              <circle cx="48" cy="50" r="14" fill="currentColor" stroke="none" className="text-primary-700 dark:text-primary-500" />
+            </svg>
+          </div>
+          <span className="text-gray-900 dark:text-white font-semibold">om</span>
+          <span className="text-primary-700 dark:text-primary-500 font-normal">move</span>
+        </div>
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+          Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.organizer || 'Admin'}</span>
+        </p>
+      </div>
+
       {/* Header Image Carousel */}
-      <div className={`relative rounded-[10px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 aspect-video md:aspect-auto md:h-96 group ${isEnded ? 'grayscale' : ''}`}>
+      <div className="flex justify-center">
+      <div className={`relative rounded-[15px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 w-[300px] h-[300px] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
+        {/* Blurred background fill — same image scaled+blurred so no white gaps */}
+        <img
+          src={allPhotos[activePhotoIndex] || undefined}
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60"
+          referrerPolicy="no-referrer"
+        />
         <AnimatePresence mode="wait">
           <motion.img
             key={activePhotoIndex}
@@ -245,7 +270,7 @@ const EventModal: React.FC<EventModalProps> = ({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="w-full h-full object-cover"
+            className="relative z-[1] w-full h-full object-contain"
             referrerPolicy="no-referrer"
           />
         </AnimatePresence>
@@ -303,25 +328,22 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
         )}
       </div>
+      </div>
 
       <div className={`px-6 pb-6 space-y-8 ${isEnded ? 'opacity-75' : ''}`}>
         {/* Category & Title */}
-        <div className="space-y-2">
-          <div className="mb-4">
+        <div className="space-y-3">
+          <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Event Details</p>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white leading-snug">{event.name}</h2>
+          <div className="flex flex-wrap gap-2 pt-1">
             {(Array.isArray(event.category) ? event.category : [event.category]).map(cat => (
-              <span key={cat} className="px-6 py-2 bg-purple-600 text-white text-sm font-bold rounded-full shadow-md">
+              <span key={cat} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium rounded-full">
                 {cat}
               </span>
             ))}
           </div>
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Event Details</p>
-          <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white leading-tight">{event.name}</h2>
           
           <div className="flex flex-wrap items-center gap-3 mt-4">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Lead Office: <span className="font-semibold">{event.organizer || 'Admin'}</span>
-              </p>
-
               {isFacilitatorOrAdmin && event.priority && (
                   <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${
                       event.priority === 'urgent' ? 'bg-red-50 dark:bg-red-900/30 border-red-100 text-red-700' :
@@ -345,50 +367,56 @@ const EventModal: React.FC<EventModalProps> = ({
         </div>
 
         {/* Meta Info Row */}
-        <div className="flex flex-wrap items-center gap-x-12 gap-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-sm">
-              <CalendarIcon className="w-5 h-5" />
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
+              <CalendarIcon className="w-5 h-5 text-purple-500" />
             </div>
-            <span className="font-bold text-gray-500 dark:text-gray-400">{formatDisplayDate(event.date, event.endDate)}</span>
+            <div>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Date</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDisplayDate(event.date, event.endDate)}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-sm">
-              <ClockIcon className="w-5 h-5" />
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+              <ClockIcon className="w-5 h-5 text-blue-500" />
             </div>
-            <span className="font-bold text-gray-500 dark:text-gray-400">{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
+            <div>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Time</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatTime(event.startTime)} – {formatTime(event.endTime)}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-sm">
-              <LocationIcon className="w-5 h-5" />
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-900/40 flex items-center justify-center shrink-0">
+              <LocationIcon className="w-5 h-5 text-green-500" />
             </div>
-            <span className="font-bold text-gray-500 dark:text-gray-400">{event.city} City Hall</span>
+            <div>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Location</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{event.city} City Hall</p>
+            </div>
           </div>
         </div>
 
         {/* Description */}
         <div className="space-y-3">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Description</h3>
-          <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-medium text-sm md:text-base">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Description</h3>
+          <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-normal text-base whitespace-pre-wrap">
             {event.description}
           </p>
-          {event.creatorUsername && (
-            <p className="pt-4 text-xs font-medium text-gray-500 dark:text-gray-400">
-              Lead Office: {event.creatorUsername.replace(/^@/, '')}
-            </p>
-          )}
         </div>
 
         {/* Further Instructions */}
         {event.instructions && (
-          <div className="space-y-2 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
-            <div className="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
               </svg>
-              <h4 className="text-sm font-bold text-amber-800 dark:text-amber-300">Attendee Instructions</h4>
             </div>
-            <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed whitespace-pre-line">{event.instructions}</p>
+            <div>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Attendee Instructions</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed whitespace-pre-wrap">{event.instructions}</p>
+            </div>
           </div>
         )}
 
@@ -407,9 +435,9 @@ const EventModal: React.FC<EventModalProps> = ({
           ) : (
           <>
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Participation</h3>
-            <p className={`text-xs font-black uppercase tracking-widest ${event.isPrivate ? 'text-orange-500' : 'text-purple-600'}`}>
-              {event.isPrivate ? 'Private Event • Registration Required' : 'Public Event • Anyone Can Attend'}
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Participation</h3>
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              {event.isPrivate ? 'Private event • Registration required' : 'Public event • Anyone can attend'}
             </p>
           </div>
 
@@ -532,32 +560,29 @@ const EventModal: React.FC<EventModalProps> = ({
               </div>
             ) : (
               // Public Event - No Registration for Residents
-              <div className="flex flex-col gap-4">
-                <div className="p-6 bg-gray-50 dark:bg-gray-700/50 rounded-[20px] border border-gray-100 dark:border-gray-700 text-center">
-                   <p className="text-gray-900 dark:text-white font-bold mb-1 italic opacity-70">"Anyone is welcome to attend this public event!"</p>
-                </div>
-                <button 
+              <div className="flex gap-3">
+                <button
                   onClick={() => onToggleParticipation(event.id, 'interested')}
-                  className={`w-full py-4 rounded-2xl border-2 font-black transition-all ${isInterested ? 'bg-purple-600 border-purple-600 text-white shadow-lg' : 'bg-white dark:bg-gray-800 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'}`}
+                  className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'}`}
                 >
-                  {isInterested ? '✓ Highlighted as Interested' : 'I am Interested In This Event'}
+                  {isInterested ? '✓ Interested' : 'Interested?'}
                 </button>
               </div>
             )
           ) : (
             // ADMIN / FACILITATOR / GUEST VIEW
-            <div className="flex gap-4">
-              <button 
+            <div className="flex gap-3">
+              <button
                 onClick={handleCheckIn}
-                className="flex-1 py-3.5 bg-purple-600 text-white font-bold rounded-[10px] shadow-lg hover:bg-purple-700 transition-all active:scale-95"
+                className="flex-1 py-3 bg-gray-900 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-black transition-all active:scale-95"
               >
-                {isCheckedIn ? 'Checked-in' : 'Check-In Now (Staff)'}
+                {isCheckedIn ? '✓ Checked-in' : 'Check-In Now (Staff)'}
               </button>
-              <button 
+              <button
                 onClick={() => onToggleParticipation(event.id, 'interested')}
-                className={`flex-1 py-3.5 rounded-[10px] border-2 font-bold transition-all ${isInterested ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-white border-purple-600 text-purple-600 hover:bg-purple-700 hover:text-white'}`}
+                className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-gray-900 border-gray-900 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-gray-900 text-gray-900 dark:text-white hover:bg-gray-900 hover:text-white'}`}
               >
-                {isInterested ? 'Interested' : 'Interested?'}
+                {isInterested ? '✓ Interested' : 'Interested?'}
               </button>
             </div>
           )}
@@ -565,22 +590,19 @@ const EventModal: React.FC<EventModalProps> = ({
           )}
         </div>
 
-        {/* Location at a Glance */}
+        {/* Location */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Location at a Glance</h3>
-            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-[10px]">
-               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Live GPS</span>
-               <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-[10px] shadow-sm border border-gray-100 dark:border-gray-600">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Online</span>
-               </div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Location</h3>
+            <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-lg">
+               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+               <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Live GPS</span>
             </div>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+          <p className="text-xs text-gray-400 dark:text-gray-500">
             {event.venue}, {event.street}, {event.city}, {event.province || 'Philippines'}
           </p>
-          <div className="rounded-[10px] overflow-hidden h-96 shadow-inner border border-gray-100 dark:border-gray-700">
+          <div className="rounded-[10px] overflow-hidden h-48 shadow-inner border border-gray-100 dark:border-gray-700">
             <InteractiveMap
               userLocation={currentUserLocation}
               events={[event]}
@@ -590,43 +612,41 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
         </div>
 
-        {/* Get Directions & Actions */}
+        {/* Actions */}
         <div className="space-y-3">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Get Directions</p>
-          <div className="flex gap-4">
-            <button 
+          <p className="text-xs text-gray-400 dark:text-gray-500">Get directions & actions</p>
+          <div className="flex flex-col gap-2">
+            <button
               onClick={handleGetDirections}
-              className="flex-1 py-3.5 bg-green-600 text-white font-bold rounded-[10px] shadow-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+              className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between"
             >
-              Google Maps
+              <div className="flex flex-col items-start">
+                <span>Google Maps</span>
+                <span className="text-[11px] font-normal text-gray-400 mt-0.5">Open in Google Maps for turn-by-turn directions</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
             </button>
-            <button 
+            <button
               onClick={() => onToggleSave(event.id)}
-              className="flex-1 py-3.5 bg-purple-600 text-white font-bold rounded-[10px] shadow-lg hover:bg-purple-700 transition-all"
+              className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between"
             >
-              {isSaved ? 'Unsave Event' : 'Save Event'}
+              <div className="flex flex-col items-start">
+                <span>{isSaved ? 'Unsave Event' : 'Save Event'}</span>
+                <span className="text-[11px] font-normal text-gray-400 mt-0.5">{isSaved ? 'Remove this event from your saved list' : 'Bookmark this event to revisit it anytime'}</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
             </button>
             {!isEnded && (
-            <button 
-              onClick={handleOpenReminderModal}
-              className={`flex-1 py-3.5 rounded-[10px] border-2 font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${
-                existingReminderLabel 
-                  ? 'bg-green-600 border-green-600 text-white shadow-green-500/20 hover:bg-green-700' 
-                  : 'bg-white border-gray-200 text-gray-400 hover:border-purple-400 hover:text-purple-600'
-              }`}
-            >
-              {existingReminderLabel ? (
-                <>
-                  <ShieldCheckIcon className="w-4 h-4 fill-white" />
-                  <span>{existingReminderLabel}</span>
-                </>
-              ) : (
-                <>
-                  <BellIcon className="w-4 h-4" />
-                  <span>Set Reminder</span>
-                </>
-              )}
-            </button>
+              <button
+                onClick={handleOpenReminderModal}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between"
+              >
+                <div className="flex flex-col items-start">
+                  <span>{existingReminderLabel ? `Reminder set — ${existingReminderLabel}` : 'Set Reminder'}</span>
+                  <span className="text-[11px] font-normal text-gray-400 mt-0.5">Notify when the event starts, at your chosen time</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              </button>
             )}
           </div>
         </div>
@@ -732,7 +752,7 @@ const EventModal: React.FC<EventModalProps> = ({
       {/* Description */}
       <div className="space-y-2">
         <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Description</h3>
-        <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-medium text-sm md:text-base">
+        <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-medium text-sm md:text-base whitespace-pre-wrap">
           {event.description}
         </p>
         {event.creatorUsername && (
@@ -1056,22 +1076,22 @@ const EventModal: React.FC<EventModalProps> = ({
   if (!isMobile) {
     return (
       <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[6000] p-4 md:p-20"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[6000] p-4 md:p-24"
         onClick={onClose}
       >
-        <div className="relative w-full max-w-4xl">
-          <button 
+        <div className="relative w-full max-w-2xl">
+          <button
             onClick={onClose}
             className="absolute top-0 -right-14 bg-white/10 hover:bg-white/20 text-white rounded-full p-2.5 transition-all z-[7000] shadow-lg border border-white/5"
           >
             <X className="h-6 w-6" />
           </button>
-          
-          <motion.div 
+
+          <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-gray-800 rounded-[10px] shadow-2xl w-full max-h-[90vh] overflow-y-auto relative custom-scrollbar"
+            className="bg-white dark:bg-gray-800 rounded-[10px] shadow-2xl w-full max-h-[95vh] overflow-y-auto relative custom-scrollbar"
             onClick={(e) => e.stopPropagation()}
           >
             {renderDesktopContent()}

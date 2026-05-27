@@ -47,6 +47,7 @@ import ViewAllPopularEvents from './components/ViewAllPopularEvents';
 import DateEventsModal from './components/DateEventsModal';
 import EventFeedbackModal from './components/EventFeedbackModal';
 import NetworkStatusBanner from './components/NetworkStatusBanner';
+import ResetPasswordModal from './components/ResetPasswordModal';
 
 import {
     Globe,
@@ -210,6 +211,15 @@ const App: React.FC = () => {
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
     const [showPermissionManager, setShowPermissionManager] = useState(false);
     const [showFeedbackModal, setShowFeedbackModal] = useState<EventType | null>(null);
+    const [resetPasswordOobCode, setResetPasswordOobCode] = useState<string | null>(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('mode') === 'resetPassword' && params.get('oobCode')) {
+                return params.get('oobCode');
+            }
+        } catch { }
+        return null;
+    });
     const [showViewAllPopular, setShowViewAllPopular] = useState(() => {
         try { return window.history.state?.view === 'popular-events'; } catch { return false; }
     });
@@ -2103,6 +2113,15 @@ const App: React.FC = () => {
                     onNotificationClick={handleOpenNotifications}
                     pendingFacilitatorCount={pendingFacilitatorCount}
                     unreadNotificationCount={unreadNotificationCount}
+                />
+            )}
+
+            {/* Password Reset Modal — triggered by Firebase reset link redirect */}
+            {resetPasswordOobCode && (
+                <ResetPasswordModal
+                    oobCode={resetPasswordOobCode}
+                    onClose={() => setResetPasswordOobCode(null)}
+                    onSuccess={() => setResetPasswordOobCode(null)}
                 />
             )}
 
