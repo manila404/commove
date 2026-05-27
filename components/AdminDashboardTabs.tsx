@@ -9,6 +9,7 @@ import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Lock, Eye
 import AdminReports from './AdminReports';
 import { getHighlights, setHighlights } from '../services/eventService';
 import { fetchAllFeedback } from '../services/feedbackService';
+import { generateEventDecisionInsight, generateMonthlyDecisionSummary } from '../services/analyticsInsightService';
 import type { EventFeedback } from '../types';
 import ConfirmationDialog from './ConfirmationDialog';
 
@@ -81,6 +82,15 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         </span>
     );
 
+    // ── Phase 3 analytics helpers ─────────────────────────────────────────────
+    const safeNum = (v: unknown): number => { const n = Number(v); return isFinite(n) ? n : 0; };
+    const calcEngagementRate = (interested: number, checkIn: number, views: number): string =>
+        views === 0 ? '—' : `${Math.min(100, Math.round(((interested + checkIn) / views) * 100))}%`;
+    const calcAttendanceRate = (checkIn: number, interested: number): string =>
+        interested === 0 ? '—' : `${Math.min(100, Math.round((checkIn / interested) * 100))}%`;
+    const calcFeedbackRate = (feedback: number, checkIn: number): string =>
+        checkIn === 0 ? '—' : `${Math.min(100, Math.round((feedback / checkIn) * 100))}%`;
+
     const [selectedDate, setSelectedDate] = useState<number>(new Date().getDate());
     const [viewingDate, setViewingDate] = useState<Date>(new Date());
     const [isMobile, setIsMobile] = React.useState(false);
@@ -91,7 +101,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [eventVisibilityFilter, setEventVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
     const [eventsPage, setEventsPage] = useState(1);
     useEffect(() => { setEventsPage(1); }, [eventFilter, eventSortOrder, eventVisibilityFilter]);
-
+    const [analyticsDrawerEvent, setAnalyticsDrawerEvent] = useState<EventType | null>(null);
     // User management extra state
     const [userSortOrder, setUserSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [userPage, setUserPage] = useState(1);
@@ -704,8 +714,147 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         { name: 'Mar', users: users.length - Math.floor(users.length * 0.1) - Math.floor(users.length * 0.15) - Math.floor(users.length * 0.08) - Math.floor(users.length * 0.2) - Math.floor(users.length * 0.25) }
     ];
 
-    const renderAnalytics = () => (
+    const renderAnalytics = () => {
+        const totalViews      = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
+        const totalSaves      = events.reduce((s, e) => s + safeNum(e.saveCount), 0);
+        const totalInterested = events.reduce((s, e) => s + safeNum(e.interestedCount), 0);
+        const totalCheckIns   = events.reduce((s, e) => s + safeNum(e.checkInCount), 0);
+        const ratedEvents     = events.filter(e => safeNum(e.feedbackCount) > 0);
+        const overallAvgRating = ratedEvents.length === 0 ? null :
+            ratedEvents.reduce((s, e) => s + safeNum(e.averageRating), 0) / ratedEvents.length;
+
+        return (
         <div className="flex flex-col gap-6 mt-6">
+
+            {/* Engagement Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {/* Views */}
+                <div className="bg-white dark:bg-[#111827] p-4 rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center">
+                            <Eye className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Views</span>
+                    </div>
+                    <span className="text-xl font-extrabold text-gray-900 dark:text-white">{totalViews.toLocaleString()}</span>
+                    <span className="text-[10px] text-gray-400">Total event views</span>
+                </div>
+                {/* Saves */}
+                <div className="bg-white dark:bg-[#111827] p-4 rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-6 h-6 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-500 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Saves</span>
+                    </div>
+                    <span className="text-xl font-extrabold text-gray-900 dark:text-white">{totalSaves.toLocaleString()}</span>
+                    <span className="text-[10px] text-gray-400">Events saved by users</span>
+                </div>
+                {/* Interested */}
+                <div className="bg-white dark:bg-[#111827] p-4 rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-6 h-6 rounded-lg bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Interested</span>
+                    </div>
+                    <span className="text-xl font-extrabold text-gray-900 dark:text-white">{totalInterested.toLocaleString()}</span>
+                    <span className="text-[10px] text-gray-400">Expressed interest</span>
+                </div>
+                {/* Check-ins */}
+                <div className="bg-white dark:bg-[#111827] p-4 rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-6 h-6 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Check-ins</span>
+                    </div>
+                    <span className="text-xl font-extrabold text-gray-900 dark:text-white">{totalCheckIns.toLocaleString()}</span>
+                    <span className="text-[10px] text-gray-400">Confirmed attendances</span>
+                </div>
+                {/* Avg Rating */}
+                <div className="bg-white dark:bg-[#111827] p-4 rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-6 h-6 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 flex items-center justify-center">
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Avg Rating</span>
+                    </div>
+                    <span className="text-xl font-extrabold text-gray-900 dark:text-white">
+                        {overallAvgRating === null ? '—' : overallAvgRating.toFixed(1)}
+                    </span>
+                    <span className="text-[10px] text-gray-400">{ratedEvents.length} rated event{ratedEvents.length !== 1 ? 's' : ''}</span>
+                </div>
+            </div>
+
+            {/* Monthly Decision Support Summary */}
+            {(() => {
+                const monthly = generateMonthlyDecisionSummary(events);
+                if (monthly.totalEvents === 0) return null;
+                return (
+                    <div className="bg-white dark:bg-[#111827] rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 flex items-center justify-center flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-extrabold text-gray-900 dark:text-white">Decision Support Summary</h3>
+                                <p className="text-[10px] text-gray-400">Rule-based analysis across {monthly.totalEvents} event{monthly.totalEvents !== 1 ? 's' : ''}</p>
+                            </div>
+                            {monthly.topCategory && (
+                                <span className="ml-auto text-[10px] font-black px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                                    Top: {monthly.topCategory}
+                                </span>
+                            )}
+                        </div>
+                        <div className="p-6 space-y-5">
+                            {/* Summary */}
+                            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{monthly.summary}</p>
+
+                            {/* Stats row */}
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    { label: 'Total Views', val: monthly.totalViews.toLocaleString() },
+                                    { label: 'Total Check-ins', val: monthly.totalCheckIns.toLocaleString() },
+                                    { label: 'Avg Rating', val: monthly.averageRating > 0 ? `${monthly.averageRating.toFixed(1)}/5` : '—' },
+                                ].map(s => (
+                                    <div key={s.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 text-center">
+                                        <p className="text-lg font-extrabold text-gray-900 dark:text-white">{s.val}</p>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mt-0.5">{s.label}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Flags */}
+                            {monthly.flags.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-500">Flags</p>
+                                    {monthly.flags.map((f, i) => (
+                                        <div key={i} className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg px-3 py-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                                            <p className="text-[11px] font-semibold text-red-700 dark:text-red-300 leading-snug">{f}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Recommendations */}
+                            {monthly.recommendations.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Recommendations for CICRD</p>
+                                    {monthly.recommendations.map((r, i) => (
+                                        <div key={i} className="flex items-start gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                                            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{r}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                     <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Monthly Trends</h3>
@@ -776,7 +925,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
             </div>
         </div>
-    );
+        );
+    };
 
     const renderDemographics = () => (
         <div className="flex flex-col gap-6 mt-6">
@@ -1245,7 +1395,15 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Event Actions</p>
                                                         </div>
                                                         
-                                                        <button 
+                                                        <button
+                                                            onClick={() => { setAnalyticsDrawerEvent(event); setActiveActionMenu(null); }}
+                                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                                            View Analytics
+                                                        </button>
+
+                                                        <button
                                                             onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); }}
                                                             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
                                                         >
@@ -1989,6 +2147,169 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             {activeTab === 'calendar' && renderCalendar()}
             {activeTab === 'reports' && renderReports()}
             {activeTab === 'highlights' && canManageUsers && renderHighlights()}
+
+            {/* ── Analytics Drawer ─────────────────────────────────────────────── */}
+            {analyticsDrawerEvent && typeof document !== 'undefined' && createPortal(
+                <>
+                    <style>{`@keyframes slideInFromRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+                    {/* Backdrop */}
+                    <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 99997, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}
+                        onClick={() => setAnalyticsDrawerEvent(null)}
+                    />
+                    {/* Panel */}
+                    <div style={{ position: 'fixed', top: 0, right: 0, height: '100%', width: '100%', maxWidth: '420px', zIndex: 99998, animation: 'slideInFromRight 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column' }}
+                        className="bg-white dark:bg-[#0f172a] shadow-2xl overflow-y-auto"
+                    >
+                        {(() => {
+                            const ev = analyticsDrawerEvent;
+                            const v  = safeNum(ev.viewCount);
+                            const sv = safeNum(ev.saveCount);
+                            const it = safeNum(ev.interestedCount);
+                            const ci = safeNum(ev.checkInCount);
+                            const fb = safeNum(ev.feedbackCount);
+                            const rt = safeNum(ev.averageRating);
+
+                            const engPct = v  > 0  ? Math.min(100, Math.round(((it + ci) / v)  * 100)) : null;
+                            const attPct = it > 0  ? Math.min(100, Math.round((ci / it) * 100))          : null;
+                            const fbPct  = ci > 0  ? Math.min(100, Math.round((fb / ci) * 100))           : null;
+
+                            const insight = generateEventDecisionInsight(ev!);
+                            const lvlCfg: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+                                'Excellent':         { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300', border: 'border-green-200 dark:border-green-800/40', dot: 'bg-green-500' },
+                                'Good':              { bg: 'bg-blue-50 dark:bg-blue-900/20',  text: 'text-blue-700 dark:text-blue-300',  border: 'border-blue-200 dark:border-blue-800/40',  dot: 'bg-blue-500' },
+                                'Needs Improvement': { bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800/40', dot: 'bg-amber-500' },
+                                'Low Performing':    { bg: 'bg-red-50 dark:bg-red-900/20',   text: 'text-red-700 dark:text-red-300',   border: 'border-red-200 dark:border-red-800/40',   dot: 'bg-red-500' },
+                            };
+                            const cfg = lvlCfg[insight.performanceLevel] ?? lvlCfg['Needs Improvement'];
+
+                            const RateBar = ({ label, pct, color }: { label: string; pct: number | null; color: string }) => (
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-bold text-gray-600 dark:text-gray-300">{label}</span>
+                                        <span className="text-xs font-extrabold text-gray-900 dark:text-white">{pct === null ? '—' : `${pct}%`}</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: pct === null ? '0%' : `${pct}%` }} />
+                                    </div>
+                                </div>
+                            );
+
+                            return (
+                                <>
+                                    {/* Header */}
+                                    <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-start justify-between gap-3 flex-shrink-0">
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-1">Event Analytics</p>
+                                            <h2 className="text-base font-extrabold text-gray-900 dark:text-white leading-snug">{ev.name}</h2>
+                                            <p className="text-xs text-gray-400 mt-0.5">{ev.venue || ev.city} · {ev.date}</p>
+                                        </div>
+                                        <button onClick={() => setAnalyticsDrawerEvent(null)} className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors mt-0.5">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                        {/* Metric Grid */}
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Engagement Metrics</p>
+                                            <div className="grid grid-cols-3 gap-3">
+                                                {[
+                                                    { label: 'Views', val: v, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20', icon: <Eye className="w-4 h-4" /> },
+                                                    { label: 'Saves', val: sv, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20', icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg> },
+                                                    { label: 'Interested', val: it, color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-50 dark:bg-pink-900/20', icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg> },
+                                                    { label: 'Check-ins', val: ci, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/20', icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+                                                    { label: 'Reviews', val: fb, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20', icon: <MessageSquare className="w-4 h-4" /> },
+                                                    { label: 'Avg Rating', val: fb > 0 ? rt.toFixed(1) : '—', color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-900/20', icon: <Star className="w-4 h-4 fill-current" /> },
+                                                ].map(m => (
+                                                    <div key={m.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 flex flex-col gap-2">
+                                                        <div className={`w-7 h-7 rounded-lg ${m.bg} ${m.color} flex items-center justify-center`}>{m.icon}</div>
+                                                        <span className="text-lg font-extrabold text-gray-900 dark:text-white leading-none">{typeof m.val === 'number' ? m.val.toLocaleString() : m.val}</span>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{m.label}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Rate Bars */}
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Performance Rates</p>
+                                            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-4">
+                                                <RateBar label="Engagement Rate  (interested + check-ins) ÷ views" pct={engPct} color="bg-indigo-500" />
+                                                <RateBar label="Attendance Rate  check-ins ÷ interested" pct={attPct} color="bg-purple-500" />
+                                                <RateBar label="Feedback Rate  reviews ÷ check-ins" pct={fbPct} color="bg-orange-500" />
+                                            </div>
+                                        </div>
+
+                                        {/* Decision Support — Rule-Based */}
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Decision Support</p>
+
+                                            {/* Performance badge + summary */}
+                                            <div className={`${cfg.bg} border ${cfg.border} rounded-xl p-4 mb-3`}>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
+                                                    <span className={`text-xs font-extrabold uppercase tracking-wide ${cfg.text}`}>{insight.performanceLevel}</span>
+                                                    <span className="ml-auto text-sm font-extrabold text-gray-700 dark:text-gray-200">{insight.performanceScore}/100</span>
+                                                </div>
+                                                <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{insight.summary}</p>
+                                            </div>
+
+                                            {/* Flags */}
+                                            {insight.flags.length > 0 && (
+                                                <div className="mb-3 space-y-1.5">
+                                                    {insight.flags.map((f, i) => (
+                                                        <div key={i} className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg px-3 py-2">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                                                            <p className="text-[11px] font-semibold text-red-700 dark:text-red-300 leading-snug">{f}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Insights */}
+                                            {insight.insights.length > 0 && (
+                                                <div className="mb-3">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Key Insights</p>
+                                                    <ul className="space-y-2">
+                                                        {insight.insights.map((ins, i) => (
+                                                            <li key={i} className="flex items-start gap-2">
+                                                                <span className="text-indigo-400 flex-shrink-0 mt-0.5">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                                                                </span>
+                                                                <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{ins}</p>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+
+                                            {/* Recommendations */}
+                                            {insight.recommendations.length > 0 && (
+                                                <div className="mb-3">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Recommendations</p>
+                                                    <ul className="space-y-2">
+                                                        {insight.recommendations.map((r, i) => (
+                                                            <li key={i} className="flex items-start gap-2">
+                                                                <span className="text-green-500 flex-shrink-0 mt-0.5">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                                                                </span>
+                                                                <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{r}</p>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </>,
+                document.body
+            )}
 
             {/* Feedback Details Modal */}
             {viewingFeedbackEvent && typeof document !== 'undefined' && createPortal(

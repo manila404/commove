@@ -55,12 +55,19 @@ service cloud.firestore {
       allow create: if isAuthenticated();
 
       allow update: if isStaff() ||
+        // Creator editing their own pending event (non-sensitive fields only)
         (
           isAuthenticated() &&
           resource.data.createdBy == request.auth.uid &&
           resource.data.status == 'pending' &&
           !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['status', 'isAdmin', 'role', 'createdBy'])
+        ) ||
+        // Any authenticated user may increment/decrement only the analytics counter fields
+        (
+          isAuthenticated() &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['viewCount', 'saveCount', 'interestedCount', 'checkInCount', 'feedbackCount', 'averageRating'])
         );
 
       allow delete: if isStaff();

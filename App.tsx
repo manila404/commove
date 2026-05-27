@@ -6,6 +6,7 @@ import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUse
 import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights } from './services/eventService';
 import { fetchUserFeedbackForEvent } from './services/feedbackService';
 import { getKNNRankedEvents } from './services/recommendationService'; // Import Recommendation Service
+import { incrementEventCounter } from './services/analyticsService';
 import { CATEGORIES, formatDisplayDate } from './constants';
 import { Tag } from 'lucide-react';
 import type { User, EventType, DisplayEventType, Reminder, AppNotification } from './types';
@@ -552,11 +553,11 @@ const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [events.length]);
 
-    // Keep the ranking snapshot up-to-date whenever the USER IDENTITY changes
-    // (login / logout / role change) or events are first loaded.
-    // Critically, this does NOT run on save/like/interest because those update
-    // only sub-fields of currentUser (savedEventIds, likedEventIds, etc.) but
-    // the uid stays the same — we gate on uid + events.length.
+    // Keep the ranking snapshot up-to-date whenever the USER IDENTITY or PREFERENCES
+    // change, or events are first loaded. Preferences are intentionally included so
+    // that saving new interests immediately re-ranks the feed.
+    // Save/like/interest actions do NOT trigger re-rank because those only update
+    // array sub-fields (savedEventIds, etc.) — not preferences or uid.
     useEffect(() => {
         if (currentUser) {
             rankingUserRef.current = currentUser;
@@ -564,7 +565,7 @@ const App: React.FC = () => {
             rankingUserRef.current = null;
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser?.uid, events.length, searchQuery, selectedCategory, selectedDateFilter, userLocation.lat, userLocation.lng]);
+    }, [currentUser?.uid, currentUser?.preferences, events.length, searchQuery, selectedCategory, selectedDateFilter, userLocation.lat, userLocation.lng]);
 
     // 5. Notifications & Reminders Loop
     useEffect(() => {
@@ -993,6 +994,8 @@ const App: React.FC = () => {
                 const updatedViewed = [...(currentUser.viewedEventIds || []), event.id];
                 setCurrentUser({ ...currentUser, viewedEventIds: updatedViewed });
                 addUserViewedEvent(currentUser.uid, event.id);
+                // Increment event viewCount only on first view per user
+                incrementEventCounter(event.id, 'viewCount', 1);
             }
         }
     };
@@ -1145,6 +1148,8 @@ const App: React.FC = () => {
             const newCheckedIn = [...currentCheckedIn, eventId];
             setCurrentUser({ ...currentUser, checkedInEventIds: newCheckedIn });
             await updateUserParticipation(currentUser.uid, 'checkedIn', newCheckedIn);
+            // QR check-in is always a first-time action (guard above prevents duplicates)
+            incrementEventCounter(eventId, 'checkInCount', 1);
             showAlert("Success!", `You have successfully joined ${event.name} as a participant.`, "success");
         }
     };
@@ -1249,8 +1254,9 @@ const App: React.FC = () => {
         if (auth.currentUser) {
             await updateUserPreferences(auth.currentUser.uid, categories);
             setCurrentUser(prev => prev ? { ...prev, preferences: categories } : null);
-            window.history.back();
         }
+        setShowPreferences(false);
+        try { window.history.back(); } catch (e) {}
     };
 
     const handleToggleSaveEvent = async (eventId: string) => {
@@ -1268,6 +1274,9 @@ const App: React.FC = () => {
         const newSavedArray = Array.from(currentSaved);
         setCurrentUser({ ...currentUser, savedEventIds: newSavedArray });
         await updateUserSavedEvents(currentUser.uid, currentSaved);
+
+        // Increment or decrement saveCount on the event document
+        incrementEventCounter(eventId, 'saveCount', isSaving ? 1 : -1);
 
         const event = events.find(e => e.id === eventId);
         if (isSaving) {
@@ -1417,6 +1426,13 @@ const App: React.FC = () => {
         const updatedUser = { ...currentUser, [field]: newIds };
         setCurrentUser(updatedUser);
         await updateUserParticipation(currentUser.uid, type, newIds);
+
+        // Sync engagement counters on the event document
+        if (type === 'interested') {
+            incrementEventCounter(eventId, 'interestedCount', isAlreadyIn ? -1 : 1);
+        } else if (type === 'checkedIn') {
+            incrementEventCounter(eventId, 'checkInCount', isAlreadyIn ? -1 : 1);
+        }
 
         const labels = {
             interested: isAlreadyIn ? "Removed from Interested" : "Marked as Interested",
@@ -1581,10 +1597,11 @@ const App: React.FC = () => {
                 return new Date(a.date).getTime() - new Date(b.date).getTime();
             });
         }
-        // NOTE: currentUser is intentionally excluded from deps here.
-        // isSaved/isPreferred below still react to currentUser via the events map,
-        // so card icons update instantly. Only the KNN RANK is snapshot-stabilised.
-    }, [events, searchQuery, userLocation, selectedCategory, selectedDateFilter, currentTime]);
+        // NOTE: currentUser is intentionally excluded from deps EXCEPT for preferences.
+        // isSaved/isPreferred still react to currentUser via the events map so card
+        // icons update instantly. Preferences are included so the feed re-ranks
+        // immediately after the user saves new interests.
+    }, [events, searchQuery, userLocation, selectedCategory, selectedDateFilter, currentTime, currentUser?.preferences]);
 
     // 7. Stable Order Management: Pin the sort order only when necessary
     useEffect(() => {
@@ -2186,7 +2203,7 @@ const App: React.FC = () => {
                         {onboardingStep === 'auth' || onboardingStep === 'completed' ? (
                             <Auth key="auth-component" onAuthSuccess={handleAuthSuccess} onGuestAccess={onboardingStep === 'completed' ? () => setIsGuest(true) : handleOnboardingSkip} onShowTermsAndConditions={handleOpenTermsAndConditions} />
                         ) : onboardingStep === 'preferences' ? (
-                            <Preferences key="prefs-component" onSave={async (cats) => { handleOnboardingNext(); }} onSkip={handleOnboardingSkip} />
+                            <Preferences key="prefs-component" onSave={async (cats) => { await handleSavePreferences(cats); handleOnboardingNext(); }} onSkip={handleOnboardingSkip} />
                         ) : null}
                     </motion.div>
                 )}

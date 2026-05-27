@@ -61,6 +61,14 @@ export interface EventType {
   agencyDocumentsUrl?: string;
   noPendingCaseUrl?: string;
   creatorUsername?: string; // Cache creator's username for branding
+
+  // Phase 1 Analytics counters — may be absent on old documents; treat missing as 0
+  viewCount?: number;
+  saveCount?: number;
+  interestedCount?: number;
+  checkInCount?: number;
+  feedbackCount?: number;
+  averageRating?: number;
 }
 
 export interface DisplayEventType extends EventType {

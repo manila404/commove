@@ -2,6 +2,7 @@
 import { collection, addDoc, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { EventFeedback } from '../types';
+import { updateEventFeedbackStats } from './analyticsService';
 
 const feedbackCollectionRef = collection(db, 'eventFeedback');
 
@@ -11,6 +12,11 @@ export const submitFeedback = async (feedbackData: Omit<EventFeedback, 'id'>): P
             ...feedbackData,
             createdAt: Date.now()
         });
+
+        // Update feedbackCount and averageRating on the event document.
+        // Fire-and-forget — a failure here must never block the feedback submission.
+        updateEventFeedbackStats(feedbackData.eventId, feedbackData.rating);
+
         return docRef.id;
     } catch (error) {
         console.error("Error submitting feedback:", error);

@@ -288,3 +288,109 @@ export const extractEventFromText = async (input: string): Promise<{ isEvent: bo
     return null;
   }
 };
+
+// ─── Analytics Insight (Gemini-powered) ──────────────────────────────────────
+
+export interface EventAnalyticsInsight {
+    summary: string;
+    performanceScore: number;
+    performanceLabel: string;
+    keyInsights: string[];
+    recommendations: Array<{
+        priority: 'high' | 'medium' | 'low';
+        category: string;
+        title: string;
+        action: string;
+    }>;
+    nextEventSuggestions: string[];
+}
+
+export const analyzeEventAnalytics = async (
+    event: EventType,
+    metrics: {
+        views: number;
+        saves: number;
+        interested: number;
+        checkIns: number;
+        feedbackCount: number;
+        avgRating: number;
+        engagementRate: number | null;
+        attendanceRate: number | null;
+        feedbackRate: number | null;
+    }
+): Promise<EventAnalyticsInsight | null> => {
+    if (!ai) return null;
+
+    const catStr = Array.isArray(event.category)
+        ? event.category.join(', ')
+        : (event.category ?? 'General');
+
+    const prompt = `You are an event analytics AI for Commove, a community event discovery platform in Bacoor, Cavite, Philippines. Analyze the following event data and return a JSON object with actionable insights for event organizers.
+
+Event: "${event.name}"
+Category: ${catStr}
+Location: ${event.venue ?? 'Not specified'}
+Type: ${event.isPrivate ? 'Private (approval required)' : 'Public (open to all)'}
+
+Analytics Counters:
+- Views: ${metrics.views}
+- Saves: ${metrics.saves}
+- Interested: ${metrics.interested}
+- Check-ins: ${metrics.checkIns}
+- Feedback submissions: ${metrics.feedbackCount}
+- Average rating: ${metrics.avgRating > 0 ? metrics.avgRating.toFixed(2) + '/5.00' : 'No ratings yet'}
+
+Computed Rates:
+- Engagement rate (interested/views): ${metrics.engagementRate !== null ? metrics.engagementRate.toFixed(1) + '%' : 'N/A (no views)'}
+- Attendance rate (check-ins/interested): ${metrics.attendanceRate !== null ? metrics.attendanceRate.toFixed(1) + '%' : 'N/A (no interested)'}
+- Feedback rate (feedback/check-ins): ${metrics.feedbackRate !== null ? metrics.feedbackRate.toFixed(1) + '%' : 'N/A (no check-ins)'}
+
+Provide a JSON response with:
+1. A summary paragraph (2-3 sentences) describing overall performance
+2. A performanceScore (0-100) based on the metrics
+3. A performanceLabel: "Excellent", "Good", "Needs Improvement", or "Low Performing"
+4. 3-5 keyInsights as specific observations about the data
+5. 3-5 recommendations each with priority (high/medium/low), category, title, and specific action
+6. 2-3 nextEventSuggestions for improving future similar events
+
+Be specific to this event's data. Reference actual numbers. Focus on actionable advice for community event organizers in the Philippines.`;
+
+    try {
+        const response = await retryWithBackoff<GenerateContentResponse>(() => ai!.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        summary: { type: Type.STRING },
+                        performanceScore: { type: Type.NUMBER },
+                        performanceLabel: { type: Type.STRING },
+                        keyInsights: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        recommendations: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    priority: { type: Type.STRING },
+                                    category: { type: Type.STRING },
+                                    title: { type: Type.STRING },
+                                    action: { type: Type.STRING },
+                                },
+                                required: ['priority', 'category', 'title', 'action'],
+                            },
+                        },
+                        nextEventSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    },
+                    required: ['summary', 'performanceScore', 'performanceLabel', 'keyInsights', 'recommendations', 'nextEventSuggestions'],
+                },
+            },
+        }));
+
+        return parseGeminiResponse(response.text) as EventAnalyticsInsight | null;
+    } catch (error) {
+        console.error('[gemini] analyzeEventAnalytics error:', error);
+        return null;
+    }
+};
