@@ -1107,135 +1107,334 @@ const EventModal: React.FC<EventModalProps> = ({
 
   return (
     <>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: '100%' }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed inset-0 bg-white dark:bg-gray-900 z-[6000] overflow-y-auto flex flex-col"
+        className="fixed inset-0 bg-white dark:bg-gray-800 z-[6000] overflow-y-auto"
       >
-        {/* Header Image Section */}
-        <div className={`relative w-full h-[45vh] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={activePhotoIndex}
-              src={allPhotos[activePhotoIndex] || undefined}
-              alt={`${event.name} - ${activePhotoIndex + 1}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          </AnimatePresence>
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <button
+            onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-white" />
+          </button>
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate max-w-[55%] text-center">
+            Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.organizer || 'Admin'}</span>
+          </p>
+          <button
+            onClick={() => onToggleLike(event.id)}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-700 dark:text-white'}`} />
+          </button>
+        </div>
 
-          {allPhotos.length > 1 && (
-            <>
-              {/* Left/Right controls for mobile/overlay */}
-              <button
-                onClick={(e) => { e.stopPropagation(); setActivePhotoIndex(prev => (prev - 1 + allPhotos.length) % allPhotos.length); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-all z-20"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setActivePhotoIndex(prev => (prev + 1) % allPhotos.length); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-all z-20"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
+        <div className="p-4 space-y-5">
+          {/* Image Carousel — desktop card style */}
+          <div className="flex justify-center">
+            <div className={`relative rounded-[15px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 w-[260px] h-[260px] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
+              <img
+                src={allPhotos[activePhotoIndex] || undefined}
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60"
+                referrerPolicy="no-referrer"
+              />
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={activePhotoIndex}
+                  src={allPhotos[activePhotoIndex] || undefined}
+                  alt={`${event.name} - ${activePhotoIndex + 1}`}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="relative z-[1] w-full h-full object-contain"
+                  referrerPolicy="no-referrer"
+                />
+              </AnimatePresence>
 
-              {/* Indicators */}
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-                {allPhotos.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActivePhotoIndex(i)}
-                    className={`h-1.5 rounded-full transition-all ${i === activePhotoIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}
-                  />
+              {allPhotos.length > 1 && (
+                <>
+                  <button onClick={() => setActivePhotoIndex(prev => (prev - 1 + allPhotos.length) % allPhotos.length)} className="absolute left-3 top-1/2 -translate-y-1/2 p-1.5 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-20">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setActivePhotoIndex(prev => (prev + 1) % allPhotos.length)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-20">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                    {allPhotos.map((_, i) => (
+                      <button key={i} onClick={() => setActivePhotoIndex(i)} className={`h-1.5 rounded-full transition-all ${i === activePhotoIndex ? 'w-5 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'}`} />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {!allPhotos.length && (
+                <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                  <ImageIcon className="w-12 h-12 text-gray-400" />
+                </div>
+              )}
+
+              {isEnded && (
+                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                  <div className="bg-black/70 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2 border border-white/20 shadow-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-white font-black tracking-wider text-xs uppercase">Event Ended</span>
+                  </div>
+                </div>
+              )}
+
+              {isLive && !isEnded && (
+                <div className="absolute bottom-0 left-0 w-full bg-red-600/90 text-white px-3 py-2 flex items-center justify-center animate-pulse backdrop-blur-sm z-10">
+                  <span className="w-2 h-2 bg-white rounded-full mr-2 shadow-[0_0_6px_white]"></span>
+                  <span className="font-black tracking-[0.2em] text-xs uppercase">Happening Now</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className={`space-y-5 pb-8 ${isEnded ? 'opacity-75' : ''}`}>
+            {/* Category & Title */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Event Details</p>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white leading-snug">{event.name}</h2>
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                {(Array.isArray(event.category) ? event.category : [event.category]).map(cat => (
+                  <span key={cat} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium rounded-full">{cat}</span>
                 ))}
               </div>
-            </>
-          )}
-
-          {!allPhotos.length && (
-            <div className="w-full h-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
-              <ImageIcon className="w-16 h-16 text-gray-400" />
             </div>
-          )}
-          
-          {/* Top Actions */}
-          <div className="absolute top-0 left-0 right-0 p-4 pt-12 md:pt-4 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent">
-            <button 
-              onClick={onClose}
-              className="w-10 h-10 bg-white/90 dark:bg-gray-800/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6 text-gray-900 dark:text-white" />
-            </button>
-            
-            <div className="flex gap-2">
-              <button className="hidden md:flex w-10 h-10 bg-white/90 dark:bg-gray-800/90 rounded-full items-center justify-center shadow-lg hover:bg-white transition-colors">
-                <Share2 className="w-5 h-5 text-gray-900 dark:text-white" />
-              </button>
-              <button 
-                onClick={() => onToggleLike(event.id)}
-                className="w-10 h-10 bg-white/90 dark:bg-gray-800/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
-              >
-                <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-900 dark:text-white'}`} />
-              </button>
-            </div>
-          </div>
 
-          {/* Teaser Video Overlay */}
-          <div className="hidden md:flex absolute inset-0 items-center justify-center pointer-events-none">
-            <div className="bg-black/30 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 border border-white/20">
-              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-gray-900 border-b-[6px] border-b-transparent ml-1" />
+            {/* Meta Info Grid */}
+            <div className="flex flex-col gap-2">
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-3 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
+                  <CalendarIcon className="w-4 h-4 text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Date</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatDisplayDate(event.date, event.endDate)}</p>
+                </div>
               </div>
-              <span className="text-white font-medium text-sm">Teaser Video</span>
-            </div>
-          </div>
-
-          {/* Event Ended overlay banner - mobile */}
-          {isEnded && (
-            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-              <div className="bg-black/70 backdrop-blur-sm px-6 py-3 rounded-full flex items-center gap-2.5 border border-white/20 shadow-xl">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-white font-black tracking-wider text-sm uppercase">Event Ended</span>
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-3 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                  <ClockIcon className="w-4 h-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Time</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatTime(event.startTime)} – {formatTime(event.endTime)}</p>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-3 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-900/40 flex items-center justify-center shrink-0">
+                  <LocationIcon className="w-4 h-4 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Location</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{event.city} City Hall</p>
+                </div>
               </div>
             </div>
-          )}
 
-          {isLive && !isEnded && (
-            <div className="absolute bottom-12 left-0 w-full bg-red-600/90 text-white px-4 py-2 flex items-center justify-center animate-pulse backdrop-blur-sm z-10">
-              <span className="w-2.5 h-2.5 bg-white rounded-full mr-2"></span>
-              <span className="font-bold tracking-wider text-sm">HAPPENING NOW</span>
+            {/* Description */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Description</h3>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed text-sm whitespace-pre-wrap">{event.description}</p>
+              {event.creatorUsername && (
+                <p className="pt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Lead Office: {event.creatorUsername.replace(/^@/, '')}</p>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Content Section */}
-        <div className="relative -mt-10 flex-1 bg-white dark:bg-gray-900 rounded-t-[40px] shadow-2xl p-6">
-          {/* Pull Indicator */}
-          <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-6" />
-          
-          {renderContent()}
-        </div>
+            {/* Instructions */}
+            {event.instructions && (
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-900 dark:text-white">Attendee Instructions</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed whitespace-pre-wrap">{event.instructions}</p>
+                </div>
+              </div>
+            )}
 
-        {/* Sticky Bottom Bar */}
-        <div className="hidden md:flex fixed bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 items-center justify-between z-[6001]">
-          <div>
-            <p className="text-gray-500 dark:text-gray-400 text-xs font-medium">Total Price</p>
-            <p className="text-2xl font-bold text-orange-500">$30.00 <span className="text-gray-400 text-sm font-normal">/person</span></p>
+            {/* Participation Block */}
+            <div className="space-y-3">
+              {isEnded ? (
+                <div className="p-5 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-black text-gray-500 dark:text-gray-400">This event has already ended</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Registration and participation are no longer available for past events.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Participation</h3>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      {event.isPrivate ? 'Private • Reg. required' : 'Public • Anyone can attend'}
+                    </p>
+                  </div>
+
+                  {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
+                    <div className={`p-3 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
+                      <p className="font-bold text-xs">
+                        {event.maxParticipants - approvedCount <= 0
+                          ? 'Event is Full'
+                          : `${event.maxParticipants - approvedCount} slot${event.maxParticipants - approvedCount !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
+                      </p>
+                    </div>
+                  )}
+
+                  {isResident ? (
+                    event.isPrivate ? (
+                      <div className="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-[20px] border-2 border-dashed border-purple-200 dark:border-purple-800/50">
+                        {isLoadingReg ? (
+                          <div className="flex justify-center p-4"><Spinner /></div>
+                        ) : userReg ? (
+                          <div className={`p-5 rounded-2xl text-center shadow-sm border-2 ${
+                            userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
+                            userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
+                            'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
+                          }`}>
+                            {userReg.status === 'pending' && (
+                              <>
+                                <div className={`w-10 h-10 mx-auto mb-2 rounded-full ${isEventFull ? 'bg-red-100 dark:bg-red-900/40' : 'bg-yellow-100 dark:bg-yellow-900/40'} flex items-center justify-center`}>
+                                  {isEventFull ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                  ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                  )}
+                                </div>
+                                <p className="text-sm font-black mb-1">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
+                                <p className="text-xs font-medium opacity-80">{isEventFull ? 'All slots have been filled.' : 'Pending approval from organizer.'}</p>
+                              </>
+                            )}
+                            {userReg.status === 'approved' && (
+                              <>
+                                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                </div>
+                                <p className="text-sm font-black mb-1">You are already registered!</p>
+                                <p className="text-xs font-medium opacity-80 mb-3">A slot has been assigned to you.</p>
+                                <button onClick={handleCheckIn} className="w-full py-2.5 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95">
+                                  {isCheckedIn ? '✓ Already Checked-In' : 'Check-In to Event'}
+                                </button>
+                              </>
+                            )}
+                            {userReg.status === 'rejected' && (
+                              <>
+                                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                </div>
+                                <p className="text-sm font-black mb-1">Registration Not Approved</p>
+                                <p className="text-xs font-medium opacity-80">Your registration was not approved.</p>
+                              </>
+                            )}
+                          </div>
+                        ) : isEventFull ? (
+                          <div className="p-5 rounded-2xl text-center bg-gray-50 dark:bg-gray-800/50 border-2 border-gray-200 dark:border-gray-700">
+                            <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            </div>
+                            <p className="text-sm font-black text-gray-700 dark:text-gray-300 mb-1">Event is Full</p>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">All slots have been filled.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="text-center">
+                              <p className="text-purple-900 dark:text-purple-100 font-bold mb-1">Request to Join</p>
+                              <p className="text-purple-600/60 dark:text-purple-400/60 text-xs font-medium uppercase tracking-tighter">Fill in your details below to register</p>
+                            </div>
+                            <form onSubmit={handleRegisterSubmit} className="space-y-3">
+                              <input type="text" placeholder="Full Name" required value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-purple-500 outline-none transition-all" />
+                              <input type="tel" placeholder="Phone Number (Optional)" value={regData.phoneNumber} onChange={e => setRegData({...regData, phoneNumber: e.target.value})} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-purple-500 outline-none transition-all" />
+                              <input type="email" placeholder="Email Address" required readOnly value={regData.email} className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold outline-none cursor-not-allowed opacity-70" />
+                              <button type="submit" disabled={isRegistering || !currentUser} className="w-full py-3 bg-purple-600 text-white font-black rounded-2xl shadow-xl shadow-purple-500/20 hover:bg-purple-700 disabled:opacity-50 transition-all active:scale-95">
+                                {isRegistering ? 'Submitting...' : 'Submit Registration Request'}
+                              </button>
+                            </form>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex gap-3">
+                        <button onClick={() => onToggleParticipation(event.id, 'interested')} className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'}`}>
+                          {isInterested ? '✓ Interested' : 'Interested?'}
+                        </button>
+                      </div>
+                    )
+                  ) : (
+                    <div className="flex gap-3">
+                      <button onClick={handleCheckIn} className="flex-1 py-3 bg-gray-900 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-black transition-all active:scale-95">
+                        {isCheckedIn ? '✓ Checked-in' : 'Check-In Now (Staff)'}
+                      </button>
+                      <button onClick={() => onToggleParticipation(event.id, 'interested')} className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-gray-900 border-gray-900 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-gray-900 text-gray-900 dark:text-white hover:bg-gray-900 hover:text-white'}`}>
+                        {isInterested ? '✓ Interested' : 'Interested?'}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Location */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Location</h3>
+                <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-lg">
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Live GPS</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                {event.venue}, {event.street}, {event.city}, {event.province || 'Philippines'}
+              </p>
+              <div className="rounded-[10px] overflow-hidden h-44 shadow-inner border border-gray-100 dark:border-gray-700">
+                <InteractiveMap userLocation={currentUserLocation} events={[event]} isLocationLive={isLocationLive} centerOnEvent={{ lat: event.lat, lng: event.lng }} />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400 dark:text-gray-500">Get directions & actions</p>
+              <div className="flex flex-col gap-2">
+                <button onClick={handleGetDirections} className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between">
+                  <div className="flex flex-col items-start">
+                    <span>Google Maps</span>
+                    <span className="text-[11px] font-normal text-gray-400 mt-0.5">Open for turn-by-turn directions</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                </button>
+                <button onClick={() => onToggleSave(event.id)} className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between">
+                  <div className="flex flex-col items-start">
+                    <span>{isSaved ? 'Unsave Event' : 'Save Event'}</span>
+                    <span className="text-[11px] font-normal text-gray-400 mt-0.5">{isSaved ? 'Remove from saved list' : 'Bookmark to revisit anytime'}</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                </button>
+                {!isEnded && (
+                  <button onClick={handleOpenReminderModal} className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between">
+                    <div className="flex flex-col items-start">
+                      <span>{existingReminderLabel ? existingReminderLabel : 'Set Reminder'}</span>
+                      <span className="text-[11px] font-normal text-gray-400 mt-0.5">Notify when the event starts</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          <button 
-            onClick={event.isPrivate ? undefined : handleCheckIn}
-            className="px-10 py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-3xl shadow-xl shadow-orange-500/20 transition-all active:scale-95"
-          >
-            Book Now
-          </button>
         </div>
       </motion.div>
 

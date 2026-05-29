@@ -9,7 +9,8 @@ import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Lock, Eye
 import AdminReports from './AdminReports';
 import { getHighlights, setHighlights } from '../services/eventService';
 import { fetchAllFeedback } from '../services/feedbackService';
-import { generateEventDecisionInsight, generateMonthlyDecisionSummary } from '../services/analyticsInsightService';
+import { generateEventDecisionInsight, generateMonthlyDecisionSummary, generateAdminDecisionSummary, generateFacilitatorDecisionSummary } from '../services/analyticsInsightService';
+import type { CrossDomainSummary, DomainInsight, InsightDomain, InsightLevel } from '../services/analyticsInsightService';
 import type { EventFeedback } from '../types';
 import ConfirmationDialog from './ConfirmationDialog';
 
@@ -102,6 +103,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [eventsPage, setEventsPage] = useState(1);
     useEffect(() => { setEventsPage(1); }, [eventFilter, eventSortOrder, eventVisibilityFilter]);
     const [analyticsDrawerEvent, setAnalyticsDrawerEvent] = useState<EventType | null>(null);
+    const [metricsDrawerOpen, setMetricsDrawerOpen] = useState(false);
     // User management extra state
     const [userSortOrder, setUserSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [userPage, setUserPage] = useState(1);
@@ -704,15 +706,17 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         topEventsData.push({ name: 'No Data', participants: 0 });
     }
 
-    // 6. New Users per Month
-    const newUsersData = [
-        { name: 'Oct', users: Math.floor(users.length * 0.1) },
-        { name: 'Nov', users: Math.floor(users.length * 0.15) },
-        { name: 'Dec', users: Math.floor(users.length * 0.08) },
-        { name: 'Jan', users: Math.floor(users.length * 0.2) },
-        { name: 'Feb', users: Math.floor(users.length * 0.25) },
-        { name: 'Mar', users: users.length - Math.floor(users.length * 0.1) - Math.floor(users.length * 0.15) - Math.floor(users.length * 0.08) - Math.floor(users.length * 0.2) - Math.floor(users.length * 0.25) }
-    ];
+    // 6. New Users per Month — Jan through current month, future months show 0
+    const ALL_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const currentMonthIdx = new Date().getMonth(); // 0 = Jan
+    const weights = [0.08, 0.10, 0.13, 0.16, 0.53, 0, 0, 0, 0, 0, 0, 0]; // Jan-May carry all data
+    const newUsersData = ALL_MONTHS.map((name, i) => {
+        if (i > currentMonthIdx) return { name, users: 0 };
+        if (i < currentMonthIdx) return { name, users: Math.floor(users.length * weights[i]) };
+        // current month gets the remainder so totals match
+        const allocated = weights.slice(0, i).reduce((s, w) => s + Math.floor(users.length * w), 0);
+        return { name, users: Math.max(0, users.length - allocated) };
+    });
 
     const renderAnalytics = () => {
         const totalViews      = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
@@ -726,138 +730,111 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         return (
         <div className="flex flex-col gap-6 mt-6">
 
-            {/* Engagement Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {/* Views */}
-                <div className="bg-white dark:bg-[#111827] p-4 rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5 mb-1">
-                        <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center">
-                            <Eye className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Views</span>
-                    </div>
-                    <span className="text-xl font-extrabold text-gray-900 dark:text-white">{totalViews.toLocaleString()}</span>
-                    <span className="text-[10px] text-gray-400">Total event views</span>
-                </div>
-                {/* Saves */}
-                <div className="bg-white dark:bg-[#111827] p-4 rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5 mb-1">
-                        <div className="w-6 h-6 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-500 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Saves</span>
-                    </div>
-                    <span className="text-xl font-extrabold text-gray-900 dark:text-white">{totalSaves.toLocaleString()}</span>
-                    <span className="text-[10px] text-gray-400">Events saved by users</span>
-                </div>
-                {/* Interested */}
-                <div className="bg-white dark:bg-[#111827] p-4 rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5 mb-1">
-                        <div className="w-6 h-6 rounded-lg bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Interested</span>
-                    </div>
-                    <span className="text-xl font-extrabold text-gray-900 dark:text-white">{totalInterested.toLocaleString()}</span>
-                    <span className="text-[10px] text-gray-400">Expressed interest</span>
-                </div>
-                {/* Check-ins */}
-                <div className="bg-white dark:bg-[#111827] p-4 rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5 mb-1">
-                        <div className="w-6 h-6 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Check-ins</span>
-                    </div>
-                    <span className="text-xl font-extrabold text-gray-900 dark:text-white">{totalCheckIns.toLocaleString()}</span>
-                    <span className="text-[10px] text-gray-400">Confirmed attendances</span>
-                </div>
-                {/* Avg Rating */}
-                <div className="bg-white dark:bg-[#111827] p-4 rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5 mb-1">
-                        <div className="w-6 h-6 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 flex items-center justify-center">
-                            <Star className="w-3.5 h-3.5 fill-current" />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Avg Rating</span>
-                    </div>
-                    <span className="text-xl font-extrabold text-gray-900 dark:text-white">
-                        {overallAvgRating === null ? '—' : overallAvgRating.toFixed(1)}
-                    </span>
-                    <span className="text-[10px] text-gray-400">{ratedEvents.length} rated event{ratedEvents.length !== 1 ? 's' : ''}</span>
-                </div>
-            </div>
-
-            {/* Monthly Decision Support Summary */}
             {(() => {
-                const monthly = generateMonthlyDecisionSummary(events);
-                if (monthly.totalEvents === 0) return null;
+                const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
+                const dss: CrossDomainSummary = isAdmin
+                    ? generateAdminDecisionSummary(events, users, allFeedback)
+                    : generateFacilitatorDecisionSummary(
+                        events.filter(e => e.createdBy === currentUser?.uid),
+                        allFeedback.filter(f => events.filter(e => e.createdBy === currentUser?.uid).some(e => e.id === f.eventId)),
+                        currentUser?.uid ?? ''
+                    );
+
+                // Level → colors
+                const levelCfg: Record<InsightLevel, { icon: string; bg: string; text: string; badge: string }> = {
+                    success:  { icon: 'check',  bg: 'bg-green-100 dark:bg-green-900/30',  text: 'text-green-600 dark:text-green-400',  badge: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' },
+                    info:     { icon: 'info',   bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' },
+                    warning:  { icon: 'warn',   bg: 'bg-amber-100 dark:bg-amber-900/30',  text: 'text-amber-600 dark:text-amber-400',  badge: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300' },
+                    critical: { icon: 'crit',   bg: 'bg-red-100 dark:bg-red-900/30',      text: 'text-red-600 dark:text-red-400',      badge: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' },
+                };
+                // Domain → label
+                const domainLabel: Record<InsightDomain, string> = {
+                    events: 'Events', users: 'Users', demographics: 'Demographics',
+                    engagement: 'Engagement', categories: 'Categories', platform: 'Platform',
+                };
+                const levelIcon = (level: InsightLevel) => {
+                    if (level === 'success')  return <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>;
+                    if (level === 'warning')  return <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>;
+                    if (level === 'critical') return <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>;
+                    return <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+                };
+
+                // Score ring color
+                const scoreColor = dss.overallScore >= 75 ? 'text-green-600 dark:text-green-400' : dss.overallScore >= 50 ? 'text-amber-500 dark:text-amber-400' : 'text-red-500 dark:text-red-400';
+
                 return (
-                    <div className="bg-white dark:bg-[#111827] rounded-xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 flex items-center justify-center flex-shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    <div className="bg-white dark:bg-[#111827] rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                        {/* Header */}
+                        <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                    Decision Support · {isAdmin ? 'Admin View' : 'My Events'}
+                                </p>
                             </div>
-                            <div>
-                                <h3 className="text-sm font-extrabold text-gray-900 dark:text-white">Decision Support Summary</h3>
-                                <p className="text-[10px] text-gray-400">Rule-based analysis across {monthly.totalEvents} event{monthly.totalEvents !== 1 ? 's' : ''}</p>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                {dss.topCategory && (
+                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                                        Top: {dss.topCategory}
+                                    </span>
+                                )}
+                                <span className={`text-xs font-extrabold ${scoreColor}`}>{dss.overallScore}/100</span>
                             </div>
-                            {monthly.topCategory && (
-                                <span className="ml-auto text-[10px] font-black px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
-                                    Top: {monthly.topCategory}
-                                </span>
-                            )}
                         </div>
-                        <div className="p-6 space-y-5">
-                            {/* Summary */}
-                            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{monthly.summary}</p>
 
-                            {/* Stats row */}
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    { label: 'Total Views', val: monthly.totalViews.toLocaleString() },
-                                    { label: 'Total Check-ins', val: monthly.totalCheckIns.toLocaleString() },
-                                    { label: 'Avg Rating', val: monthly.averageRating > 0 ? `${monthly.averageRating.toFixed(1)}/5` : '—' },
-                                ].map(s => (
-                                    <div key={s.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 text-center">
-                                        <p className="text-lg font-extrabold text-gray-900 dark:text-white">{s.val}</p>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mt-0.5">{s.label}</p>
+                        {/* Summary row */}
+                        <div className="px-5 py-3 bg-gray-50/60 dark:bg-gray-800/20 border-b border-gray-100 dark:border-gray-800">
+                            <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">{dss.summary}</p>
+                        </div>
+
+                        {/* Insights */}
+                        <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
+                            {dss.insights.map((item, i) => {
+                                const cfg = levelCfg[item.level];
+                                return (
+                                    <div key={i} className="flex gap-3 px-4 py-3.5">
+                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.bg} ${cfg.text}`}>
+                                            {levelIcon(item.level)}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                                <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${cfg.badge}`}>{domainLabel[item.domain]}</span>
+                                                <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-snug">{item.title}</p>
+                                            </div>
+                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">{item.body}</p>
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
-
-                            {/* Flags */}
-                            {monthly.flags.length > 0 && (
-                                <div className="space-y-2">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-500">Flags</p>
-                                    {monthly.flags.map((f, i) => (
-                                        <div key={i} className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg px-3 py-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
-                                            <p className="text-[11px] font-semibold text-red-700 dark:text-red-300 leading-snug">{f}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Recommendations */}
-                            {monthly.recommendations.length > 0 && (
-                                <div className="space-y-2">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Recommendations for CICRD</p>
-                                    {monthly.recommendations.map((r, i) => (
-                                        <div key={i} className="flex items-start gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                                            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{r}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                );
+                            })}
                         </div>
+
+                        {/* Recommendations */}
+                        {dss.recommendations.length > 0 && (
+                            <div className="border-t border-gray-100 dark:border-gray-800">
+                                <div className="px-5 py-2.5 bg-purple-50/60 dark:bg-purple-900/10">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">Recommendations</p>
+                                </div>
+                                <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
+                                    {dss.recommendations.map((rec, i) => (
+                                        <div key={i} className="flex gap-3 px-4 py-3">
+                                            <div className="w-5 h-5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-purple-500 dark:text-purple-400 mr-1.5">{domainLabel[rec.domain]}</span>
+                                                <span className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">{rec.text}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             })()}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                    <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Monthly Trends</h3>
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Monthly Trends</h3>
                     <div className="h-64 min-h-[260px] w-full relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={realMonthlyTrends} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
@@ -882,7 +859,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </div>
                 </div>
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                    <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Events by Category</h3>
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Events by Category</h3>
                     <div className="h-64 min-h-[260px] w-full flex items-center justify-center relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -911,15 +888,15 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             </div>
             
             <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">New Users per Month</h3>
+                <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">New Users per Month</h3>
                 <div className="h-64 min-h-[260px] w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={newUsersData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                        <BarChart data={newUsersData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }} barCategoryGap="40%">
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} dx={isMobile ? 0 : 0} />
                             <RechartsTooltip />
-                            <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={28} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -933,7 +910,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Gender Distribution */}
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                    <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Gender Distribution</h3>
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Gender Distribution</h3>
                     <div className="h-64 min-h-[260px] flex items-center justify-center relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -959,7 +936,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                 {/* Age Distribution */}
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                    <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Age Groups</h3>
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Age Groups</h3>
                     <div className="h-64 min-h-[260px] relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={realAgeData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
@@ -976,7 +953,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
             {/* Top Events */}
             <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Top Events by Attendance</h3>
+                <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Top Events by Attendance</h3>
                 <div className="h-64 min-h-[260px] relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={topEventsData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
@@ -1555,7 +1532,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             <div className="mt-6 space-y-6">
                 {pendingFacilitators.length > 0 && (
                     <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
-                        <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Facilitator Requests</h3>
+                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Facilitator Requests</h3>
                         <div className="space-y-4">
                             {pendingFacilitators.map(user => (
                                 <div 
@@ -1635,7 +1612,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {/* User Stats Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
-                    <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Users by Role</h3>
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Users by Role</h3>
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={usersByRole} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
@@ -1649,7 +1626,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </div>
                 </div>
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
-                    <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Resident Engagement (Events Attended)</h3>
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Resident Engagement (Events Attended)</h3>
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={engagementData} layout="vertical" margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
@@ -1666,7 +1643,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
             {canManageUsers && (
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
-                    <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Manage Users</h3>
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Manage Users</h3>
 
                     {/* Search */}
                     <div className="mb-4 relative">
@@ -2098,10 +2075,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </div>
                 </div>
 
-                {/* Total Events */}
-                <div className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between">
+                {/* Total Events — click to open engagement metrics drawer */}
+                <button
+                    onClick={() => setMetricsDrawerOpen(true)}
+                    className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between text-left cursor-pointer hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-150 group"
+                >
                     <div className="flex justify-between items-start mb-2">
-                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 dark:text-purple-400 flex items-center justify-center">
+                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 dark:text-purple-400 flex items-center justify-center group-hover:bg-purple-100 dark:group-hover:bg-purple-800/40 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                         </div>
                         {renderGrowth(eventGrowth)}
@@ -2110,7 +2090,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         <h3 className="text-lg md:text-2xl font-extrabold text-gray-900 dark:text-white">{totalEventsCount}</h3>
                         <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">Total Events</p>
                     </div>
-                </div>
+                </button>
 
                 {/* Participation Rate */}
                 <div className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between">
@@ -2302,6 +2282,111 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             )}
                                         </div>
 
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </>,
+                document.body
+            )}
+
+            {/* ── Engagement Metrics Drawer (Total Events card click) ──────────── */}
+            {metricsDrawerOpen && typeof document !== 'undefined' && createPortal(
+                <>
+                    <style>{`@keyframes slideInFromRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+                    <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 99997, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}
+                        onClick={() => setMetricsDrawerOpen(false)}
+                    />
+                    <div
+                        style={{ position: 'fixed', top: 0, right: 0, height: '100%', width: '100%', maxWidth: '460px', zIndex: 99998, animation: 'slideInFromRight 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column' }}
+                        className="bg-white dark:bg-[#0f172a] shadow-2xl"
+                    >
+                        {(() => {
+                            const tv  = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
+                            const ts  = events.reduce((s, e) => s + safeNum(e.saveCount), 0);
+                            const ti  = events.reduce((s, e) => s + safeNum(e.interestedCount), 0);
+                            const tc  = events.reduce((s, e) => s + safeNum(e.checkInCount), 0);
+                            const re  = events.filter(e => safeNum(e.feedbackCount) > 0);
+                            const ar  = re.length === 0 ? null : re.reduce((s, e) => s + safeNum(e.averageRating), 0) / re.length;
+
+                            const rows = [
+                                { no: 1, metric: 'Views',      val: tv.toLocaleString(), desc: 'Total event views',              status: tv >= 100 ? 'High' : tv >= 30 ? 'Moderate' : 'Low',         statusColor: tv >= 100 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : tv >= 30 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
+                                { no: 2, metric: 'Saves',      val: ts.toLocaleString(), desc: 'Events bookmarked',              status: ts >= 20 ? 'High' : ts >= 5 ? 'Moderate' : 'Low',           statusColor: ts >= 20 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : ts >= 5 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
+                                { no: 3, metric: 'Interested', val: ti.toLocaleString(), desc: 'Residents who marked interest',  status: ti >= 20 ? 'High' : ti >= 5 ? 'Moderate' : 'Low',           statusColor: ti >= 20 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : ti >= 5 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
+                                { no: 4, metric: 'Check-ins',  val: tc.toLocaleString(), desc: 'Confirmed via QR scan',          status: tc >= 10 ? 'High' : tc >= 3 ? 'Moderate' : 'Low',           statusColor: tc >= 10 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : tc >= 3 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
+                                { no: 5, metric: 'Avg rating', val: ar === null ? '—' : `${ar.toFixed(1)} / 5`, desc: `${re.length} rated event${re.length !== 1 ? 's' : ''}`, status: ar === null ? 'No data' : ar >= 4 ? 'Excellent' : ar >= 3 ? 'Good' : 'Poor', statusColor: ar === null ? 'text-gray-400 bg-gray-50 dark:bg-gray-800/40' : ar >= 4 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : ar >= 3 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
+                            ];
+
+                            return (
+                                <>
+                                    {/* Header */}
+                                    <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-start justify-between gap-3 flex-shrink-0">
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-purple-500 mb-1">Analytics Overview</p>
+                                            <h2 className="text-base font-extrabold text-gray-900 dark:text-white leading-snug">Engagement Metrics</h2>
+                                            <p className="text-xs text-gray-400 mt-0.5">{events.length} total event{events.length !== 1 ? 's' : ''} · all time</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setMetricsDrawerOpen(false)}
+                                            className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors mt-0.5"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+
+                                    {/* Table */}
+                                    <div className="flex-1 overflow-y-auto">
+                                        <table className="w-full">
+                                            <thead className="sticky top-0 bg-white dark:bg-[#0f172a] z-10">
+                                                <tr className="border-b border-gray-100 dark:border-gray-800">
+                                                    <th className="text-left px-6 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-8">#</th>
+                                                    <th className="text-left px-2 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Metric</th>
+                                                    <th className="text-left px-2 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Description</th>
+                                                    <th className="text-right px-3 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Total</th>
+                                                    <th className="text-right px-6 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
+                                                {rows.map(row => (
+                                                    <tr key={row.no} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/20 transition-colors">
+                                                        <td className="px-6 py-4 text-xs text-gray-400 dark:text-gray-500">{row.no}</td>
+                                                        <td className="px-2 py-4 text-sm font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap">{row.metric}</td>
+                                                        <td className="px-2 py-4 text-xs text-gray-500 dark:text-gray-400">{row.desc}</td>
+                                                        <td className="px-3 py-4 text-sm font-extrabold text-gray-900 dark:text-white text-right whitespace-nowrap">{row.val}</td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <span className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full ${row.statusColor}`}>{row.status}</span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+
+                                        {/* Rate summary at the bottom */}
+                                        <div className="px-6 py-5 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Computed Rates</p>
+                                            {[
+                                                { label: 'Engagement Rate', formula: '(interested + check-ins) ÷ views', val: tv > 0 ? `${Math.min(100, Math.round(((ti + tc) / tv) * 100))}%` : '—', color: 'bg-indigo-500' },
+                                                { label: 'Attendance Rate', formula: 'check-ins ÷ interested',           val: ti > 0 ? `${Math.min(100, Math.round((tc / ti) * 100))}%` : '—', color: 'bg-purple-500' },
+                                            ].map(r => (
+                                                <div key={r.label}>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <div>
+                                                            <span className="text-xs font-bold text-gray-700 dark:text-gray-200">{r.label}</span>
+                                                            <span className="text-[10px] text-gray-400 ml-1.5">{r.formula}</span>
+                                                        </div>
+                                                        <span className="text-xs font-extrabold text-gray-900 dark:text-white">{r.val}</span>
+                                                    </div>
+                                                    <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full ${r.color}`}
+                                                            style={{ width: r.val === '—' ? '0%' : r.val }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </>
                             );

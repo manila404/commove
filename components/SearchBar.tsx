@@ -63,17 +63,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
 
   return (
     <div className="relative group" ref={dropdownRef}>
-      {/* Backdrop for focus */}
-      {isFocused && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[1000] transition-opacity duration-300" 
-          onClick={() => setIsFocused(false)}
-        />
-      )}
-
-      <form 
-        onSubmit={(e) => { e.preventDefault(); handleSearch(query); }} 
-        className="relative z-[1001]"
+      <form
+        onSubmit={(e) => { e.preventDefault(); handleSearch(query); }}
+        className="relative"
       >
         <div className="absolute inset-y-0 left-0 pl-3.5 md:pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-purple-600">
           <Search size={16} className={`md:w-[18px] md:h-[18px] ${isFocused ? 'text-purple-600' : 'text-gray-400 dark:text-gray-500'}`} />
@@ -84,7 +76,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
           onFocus={() => setIsFocused(true)}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search events, venues, or categories..."
-          className={`w-full pl-10 md:pl-11 pr-10 md:pr-12 py-2.5 md:py-3.5 bg-white dark:bg-gray-800 border-2 rounded-[15px] text-sm md:text-base text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all duration-300 ${isFocused ? 'border-purple-500 ring-4 ring-purple-500/10' : 'border-gray-100 dark:border-gray-700 shadow-sm hover:border-gray-200'}`}
+          className={`w-full pl-10 md:pl-11 pr-10 md:pr-12 py-2 md:py-2.5 rounded-full text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all duration-300 ${isFocused ? 'bg-white dark:bg-gray-800 border-2 border-purple-500 ring-4 ring-purple-500/10' : 'bg-gray-100 dark:bg-gray-700 border-2 border-transparent'}`}
         />
         {query && (
           <button
@@ -99,44 +91,44 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
 
       {/* Suggested & History Dropdown */}
       {isFocused && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-[24px] shadow-2xl z-[1001] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-[24px] shadow-2xl z-10 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           
-          {/* Recent Searches */}
+          {/* Recent Searches — Pinterest style */}
           {(!query && history.length > 0) && (
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-2 px-2">
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Recent Searches</span>
-                <button 
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-gray-900 dark:text-white">Recent searches</span>
+                <button
                   onClick={clearHistory}
-                  className="text-[11px] font-bold text-red-500 hover:text-red-700 flex items-center gap-1 uppercase tracking-wide px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  className="text-xs font-semibold text-gray-400 hover:text-red-500 dark:hover:text-red-400 flex items-center gap-1 transition-colors"
                 >
                   <Trash2 size={12} />
-                  Clear All
+                  Clear
                 </button>
               </div>
-              <div className="space-y-1">
+              <div className="grid grid-cols-2 gap-2">
                 {history.map((term, i) => (
                   <button
                     key={term + i}
                     onClick={() => handleSearch(term)}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition-colors text-left group"
+                    className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left group"
                   >
-                    <Clock size={14} className="text-gray-400 group-hover:text-purple-500" />
-                    <span className="text-sm font-medium">{term}</span>
+                    <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                      <Clock size={14} className="text-gray-500 dark:text-gray-400" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{term}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Suggestions */}
+          {/* Suggested Events — Pinterest style */}
           {query.trim() && (
             <div className="p-4">
-              <div className="px-2 mb-3">
-                <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">Suggested Events</span>
-              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white tracking-[0.06em]">Suggested Events</span>
               {suggestions.length > 0 ? (
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2 mt-3">
                   {suggestions.map(event => (
                     <button
                       key={event.id}
@@ -145,52 +137,40 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
                         setIsFocused(false);
                         saveToHistory(query);
                       }}
-                      className="w-full flex items-center gap-4 p-2.5 bg-white dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-50 dark:border-gray-700 rounded-2xl transition-all text-left shadow-sm group"
+                      className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left group"
                     >
-                      {event.imageUrl ? (
-                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 dark:border-gray-600 transform group-hover:scale-105 transition-transform">
-                          <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="w-14 h-14 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center flex-shrink-0 text-purple-600 border border-purple-100 dark:border-purple-800/30">
-                          <Search size={20} />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-purple-600 transition-colors">{event.name}</h4>
-                        <div className="flex flex-col gap-0.5 mt-0.5">
-                          <div className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500 truncate">
-                            <MapPin size={10} className="flex-shrink-0" />
-                            <span>{event.venue}</span>
+                      <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-600">
+                        {event.imageUrl ? (
+                          <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Search size={14} className="text-gray-400" />
                           </div>
-                          <div className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
-                            <Calendar size={10} className="flex-shrink-0" />
-                            <span>{formatDisplayDate(event.date)}</span>
-                          </div>
-                        </div>
+                        )}
                       </div>
+                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate line-clamp-2 leading-tight">{event.name}</span>
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="py-8 text-center bg-gray-50/50 dark:bg-gray-900/20 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <Search size={20} className="text-gray-400" />
+                <div className="py-6 text-center">
+                  <div className="w-9 h-9 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Search size={16} className="text-gray-400" />
                   </div>
-                  <p className="text-sm font-bold text-gray-400">No events found matching "{query}"</p>
-                  <p className="text-[11px] text-gray-300 dark:text-gray-600">Try common keywords like 'Concert'</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">No events found matching "{query}"</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Try keywords like 'Concert' or 'Health'</p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Prompt to see all if results more than 4 */}
+          {/* See all results */}
           {suggestions.length === 4 && (
-            <button 
+            <button
               onClick={() => handleSearch(query)}
-              className="w-full py-3 bg-gray-50/50 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-t border-gray-100 dark:border-gray-700"
+              className="w-full py-2.5 text-gray-500 dark:text-gray-400 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-t border-gray-100 dark:border-gray-700"
             >
-              See all results matching "{query}"
+              See all results for "{query}"
             </button>
           )}
 

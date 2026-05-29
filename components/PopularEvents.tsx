@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChevronRight, Calendar, MapPin, Flame, Clock } from 'lucide-react';
+import { ChevronRight, Calendar, Flame } from 'lucide-react';
 import type { DisplayEventType } from '../types';
 import { formatTime } from '../constants';
 
@@ -25,14 +25,14 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
   if (popularEvents.length === 0) return null;
 
   const formatShortDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
   return (
     <div className="space-y-4 animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">Popular Events</h2>
+          <h2 className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">Popular Events</h2>
           <p className="text-xs font-semibold text-gray-400 mt-0.5">Bacoor</p>
         </div>
         <button
@@ -75,22 +75,17 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
 
                   {/* Text */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 flex items-center gap-1 mb-1">
-                      <Calendar size={10} className="text-primary-500" />
+                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">
                       {formatShortDate(event.date)}
                       {event.startTime && (
-                        <span className="flex items-center gap-0.5 ml-1">
-                          <Clock size={10} className="text-primary-500" />
-                          {formatTime(event.startTime)}
-                        </span>
+                        <span className="ml-1">{formatTime(event.startTime)}</span>
                       )}
                     </p>
                     <h3 className="text-sm font-extrabold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1 group-hover:text-primary-600 transition-colors">
                       {event.name}
                     </h3>
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1 truncate font-medium">
-                      <MapPin size={11} className="text-red-500 flex-shrink-0" />
-                      <span className="truncate">{event.venue}</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">
+                      {event.venue}
                     </p>
                   </div>
                 </button>
@@ -128,17 +123,15 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
 
             {/* Details */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-400 dark:text-gray-500 mb-1">
-                <Calendar size={11} className="text-primary-500" />
-                <span>{formatShortDate(event.date)}</span>
-              </div>
+              <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">
+                {formatShortDate(event.date)}
+              </p>
               <h3 className="text-sm font-extrabold text-gray-900 dark:text-white line-clamp-2 mb-1 group-hover:text-primary-600 transition-colors leading-snug">
                 {event.name}
               </h3>
-              <div className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 font-medium">
-                <MapPin size={11} className="flex-shrink-0 text-red-500" />
-                <span className="truncate">{event.venue}</span>
-              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
+                {event.venue}
+              </p>
             </div>
           </button>
         ))}

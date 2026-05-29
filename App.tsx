@@ -8,7 +8,7 @@ import { fetchUserFeedbackForEvent } from './services/feedbackService';
 import { getKNNRankedEvents } from './services/recommendationService'; // Import Recommendation Service
 import { incrementEventCounter } from './services/analyticsService';
 import { CATEGORIES, formatDisplayDate } from './constants';
-import { Tag } from 'lucide-react';
+import { Tag, Search, X } from 'lucide-react';
 import type { User, EventType, DisplayEventType, Reminder, AppNotification } from './types';
 import { createNotification, subscribeToNotifications, hasNotification } from './services/notificationService';
 import { useAlert } from './contexts/AlertContext';
@@ -44,6 +44,7 @@ import HighlightsSlider from './components/HighlightsSlider';
 import QRScannerModal from './components/QRScannerModal';
 import PermissionManager from './components/PermissionManager';
 import PopularEvents from './components/PopularEvents';
+import UpcomingNextWeek from './components/UpcomingNextWeek';
 import ViewAllPopularEvents from './components/ViewAllPopularEvents';
 import DateEventsModal from './components/DateEventsModal';
 import EventFeedbackModal from './components/EventFeedbackModal';
@@ -159,6 +160,15 @@ const App: React.FC = () => {
         return () => clearInterval(timer);
     }, []);
 
+    // Sticky search bar — runs every render so ref is always current
+    useEffect(() => {
+        const el = outerContainerRef.current;
+        if (!el) return;
+        const handler = () => setIsSearchSticky(el.scrollTop > 130);
+        el.addEventListener('scroll', handler, { passive: true });
+        return () => el.removeEventListener('scroll', handler);
+    });
+
     // UI State - Managed via History
     const [activeTab, setActiveTab] = useState<'feed' | 'calendar' | 'nearby' | 'notifications'>(() => {
         try {
@@ -209,6 +219,8 @@ const App: React.FC = () => {
         try { return window.history.state?.view === 'scanner'; } catch { return false; }
     });
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [isSearchSticky, setIsSearchSticky] = useState(false);
+    const outerContainerRef = useRef<HTMLDivElement>(null);
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
     const [showPermissionManager, setShowPermissionManager] = useState(false);
     const [showFeedbackModal, setShowFeedbackModal] = useState<EventType | null>(null);
@@ -1033,12 +1045,9 @@ const App: React.FC = () => {
 
         setSelectedEvent(null);
         try {
-            if (window.history.state?.view === 'event-details') {
-                window.history.back();
-            } else {
-                // If we aren't in a pushed state, just reset URL
-                window.history.replaceState({ view: 'feed' }, '', '/');
-            }
+            // Always use replaceState — history.back() can exit the app entirely
+            // if the user opened the event directly or after a page refresh
+            window.history.replaceState({ view: 'feed' }, '', '/');
         } catch (e) { }
 
         // Immediate state restoration to prevent flickering or accidental feed redirect
@@ -1760,14 +1769,14 @@ const App: React.FC = () => {
                             pendingFacilitatorCount={pendingFacilitatorCount}
                             unreadNotificationCount={unreadNotificationCount}
                         />
-                        <main className={`flex-1 min-h-0 transition-all duration-300 ${activeTab === 'nearby'
+                        <main ref={outerContainerRef} className={`flex-1 min-h-0 transition-all duration-300 scroll-smooth ${activeTab === 'nearby'
                             ? 'h-full overflow-hidden'
                             : 'w-full px-0'
                             } ${activeTab === 'feed' && isStaff ? '' : activeTab === 'feed' ? 'pb-24' : ''} overflow-x-hidden`}>
                             {activeTab === 'feed' && !isStaff && (
-                                <div className="space-y-4 animate-fade-in-up pt-8 md:pt-10">
+                                <div key="feed" className="space-y-4 animate-fade-in pt-8 md:pt-10">
                                     {currentUser?.facilitatorRequestStatus === 'rejected' && (
-                                        <div className="mx-4 md:mx-8 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm">
+                                        <div className="mx-4 md:ml-8 md:mr-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm">
                                             <div className="flex justify-between items-start">
                                                 <div className="space-y-1">
                                                     <h3 className="text-red-800 dark:text-red-400 font-bold text-sm">Facilitator Request Rejected</h3>
@@ -1785,28 +1794,57 @@ const App: React.FC = () => {
                                             </div>
                                         </div>
                                     )}
-                                    <div className="px-4 md:px-8 space-y-4">
+                                    {/* Sticky bar — desktop only, fixed below header when scrolled past heading */}
+                                    {isSearchSticky && (
+                                        <div className="hidden md:flex fixed top-16 left-20 right-4 z-[200] items-center gap-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm pl-8 pr-4 py-2.5">
+                                            <div className="flex-1 relative">
+                                                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                                <input
+                                                    type="text"
+                                                    value={searchQuery}
+                                                    onChange={e => setSearchQuery(e.target.value)}
+                                                    placeholder="Search events, venues, or categories..."
+                                                    className="w-full pl-9 pr-8 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm border-2 border-transparent focus:border-purple-500 focus:bg-white dark:focus:bg-gray-800 focus:outline-none transition-all"
+                                                />
+                                                {searchQuery && (
+                                                    <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                        <X size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-2 flex-shrink-0">
+                                                <button onClick={() => setSelectedCategory('All')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>All</button>
+                                                <button onClick={() => setSelectedCategory('Happening Now')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse`}></span>
+                                                    Happening Now
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="px-4 md:pl-8 md:pr-4 space-y-4">
                                         <div className="space-y-1 mb-5 animate-fade-in-up">
-                                            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Discover Events</h1>
+                                            <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Discover Events</h1>
                                             <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm md:max-w-none leading-relaxed">
                                                 Explore popular events near you, browse by category, or check out some of the great community calendars.
                                             </p>
                                         </div>
 
-
-                                        <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
+                                        <div className={isSearchSticky ? 'md:invisible md:pointer-events-none' : ''}>
+                                            <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
+                                        </div>
 
                                         {/* Quick Filters (All & Happening Now) */}
-                                        <div className="flex gap-2.5 animate-fade-in-up">
+                                        <div className={`flex gap-2.5 ${isSearchSticky ? 'md:invisible md:pointer-events-none' : 'animate-fade-in-up'}`}>
                                             <button
                                                 onClick={() => setSelectedCategory('All')}
-                                                className={`px-4 md:px-6 py-1.5 md:py-2.5 rounded-full text-sm font-bold transition-all shadow-sm ${selectedCategory === 'All' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
+                                                className={`px-3.5 md:px-5 py-1 md:py-1.5 rounded-full text-sm font-semibold transition-all shadow-sm ${selectedCategory === 'All' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
                                             >
                                                 All
                                             </button>
                                             <button
                                                 onClick={() => setSelectedCategory('Happening Now')}
-                                                className={`px-4 md:px-6 py-1.5 md:py-2.5 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
+                                                className={`px-3.5 md:px-5 py-1 md:py-1.5 rounded-full text-sm font-semibold transition-all shadow-sm flex items-center gap-2 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
                                             >
                                                 <span className={`w-2 h-2 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse`}></span>
                                                 Happening Now
@@ -1847,7 +1885,7 @@ const App: React.FC = () => {
                                         {/* 3. Category Cards */}
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
-                                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Categories</h2>
+                                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Categories</h2>
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => scrollCategories('left')}
@@ -1904,15 +1942,29 @@ const App: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {/* 4. Trending Heading */}
+                                        {/* 4. Upcoming Next Week */}
+                                        {!searchQuery && selectedCategory === 'All' && !selectedDateFilter && (
+                                            <UpcomingNextWeek
+                                                events={getDisplayEvents}
+                                                onEventSelect={handleOpenEvent}
+                                                onViewAll={() => {
+                                                    setSelectedCategory('All');
+                                                    setTimeout(() => {
+                                                        document.getElementById('recommended-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                    }, 50);
+                                                }}
+                                            />
+                                        )}
+
+                                        {/* 5. Trending Heading */}
                                         <div className="space-y-4">
                                             {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && highlightedDisplayEvents.length > 0 && (
-                                                <div className="-mx-4 md:-mx-8 mb-6">
-                                                    <h2 className="px-4 md:px-8 text-xl font-bold text-gray-900 dark:text-white mb-4">Highlights</h2>
+                                                <div className="-mx-4 md:-ml-8 md:-mr-4 mb-6">
+                                                    <h2 className="px-4 md:pl-8 md:pr-4 text-xl font-bold text-gray-900 dark:text-white mb-4">Highlights</h2>
                                                     <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
                                                 </div>
                                             )}
-                                            <h2 className="text-xl font-bold text-gray-900 dark:text-white pt-1">
+                                            <h2 id="recommended-section" className="text-lg font-bold text-gray-900 dark:text-white pt-1">
                                                 {selectedDateFilter ? `Events on ${formatDisplayDate(selectedDateFilter)}` :
                                                     selectedCategory === 'All' ? 'Recommended for You' : selectedCategory}
                                             </h2>
@@ -1921,7 +1973,12 @@ const App: React.FC = () => {
                                             {areEventsLoading ? (
                                                 <div className="flex justify-center py-10"><Spinner size="lg" /></div>
                                             ) : (
-                                                <EventList events={finalDisplayEvents} onEventSelect={handleOpenEvent} onToggleSave={handleToggleSaveEvent} />
+                                                <EventList events={finalDisplayEvents} onEventSelect={handleOpenEvent} onToggleSave={handleToggleSaveEvent} category={selectedCategory} onExploreUpcoming={() => {
+                                                    setSelectedCategory('All');
+                                                    setTimeout(() => {
+                                                        document.getElementById('recommended-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                    }, 50);
+                                                }} />
                                             )}
                                         </div>
                                     </div>
@@ -1929,7 +1986,7 @@ const App: React.FC = () => {
                             )}
 
                             {activeTab === 'feed' && isStaff && (
-                                <div className="animate-fade-in-up h-full min-h-0 flex flex-col px-2 md:px-0">
+                                <div key="feed-staff" className="animate-fade-in h-full min-h-0 flex flex-col px-2 md:px-0">
                                     <AdminPanel
                                         currentUser={currentUser!}
                                         events={events}
@@ -1943,7 +2000,7 @@ const App: React.FC = () => {
                             )}
 
                             {activeTab === 'calendar' && (
-                                <div className="px-4 md:px-8 pt-8 md:pt-10 pb-28 md:pb-12 animate-fade-in-up">
+                                <div key="calendar" className="px-4 md:px-8 pt-8 md:pt-10 pb-28 md:pb-12 animate-fade-in">
                                     <CalendarView
                                         events={events.filter(e => {
                                             if (isStaff) {
@@ -2025,7 +2082,7 @@ const App: React.FC = () => {
                             )}
 
                             {activeTab === 'notifications' && (
-                                <div className="px-4 md:px-8 pt-8 md:pt-10 animate-fade-in-up">
+                                <div key="notifications" className="px-4 md:px-8 pt-8 md:pt-10 animate-fade-in">
                                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Notifications</h2>
                                     {currentUser ? (
                                         <NotificationList

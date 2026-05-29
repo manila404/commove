@@ -17,6 +17,10 @@
   --color-primary-900: #4c1d95;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -94,6 +98,11 @@ body {
   display: none !important;
 }
 
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -114,8 +123,17 @@ body {
   to { transform: translateX(100%); }
 }
 
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out forwards;
+}
+
 .animate-fade-in-up {
   animation: fade-in-up 0.4s ease-out forwards;
+}
+
+/* Smooth scrolling for all scrollable elements */
+* {
+  scroll-behavior: smooth;
 }
 
 .animate-slide-up {
