@@ -32,7 +32,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
       {/* Header */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <h2 className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">Popular Events</h2>
+          <h2 className="text-base md:text-lg font-semibold md:font-extrabold text-gray-900 dark:text-white tracking-tight">Popular Events</h2>
           <p className="text-xs font-semibold text-gray-400 mt-0.5">Bacoor</p>
         </div>
         <button

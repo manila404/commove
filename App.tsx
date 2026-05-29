@@ -8,7 +8,7 @@ import { fetchUserFeedbackForEvent } from './services/feedbackService';
 import { getKNNRankedEvents } from './services/recommendationService'; // Import Recommendation Service
 import { incrementEventCounter } from './services/analyticsService';
 import { CATEGORIES, formatDisplayDate } from './constants';
-import { Tag, Search, X } from 'lucide-react';
+import { Tag } from 'lucide-react';
 import type { User, EventType, DisplayEventType, Reminder, AppNotification } from './types';
 import { createNotification, subscribeToNotifications, hasNotification } from './services/notificationService';
 import { useAlert } from './contexts/AlertContext';
@@ -1797,20 +1797,8 @@ const App: React.FC = () => {
                                     {/* Sticky bar — desktop only, fixed below header when scrolled past heading */}
                                     {isSearchSticky && (
                                         <div className="hidden md:flex fixed top-16 left-20 right-4 z-[200] items-center gap-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm pl-8 pr-4 py-2.5">
-                                            <div className="flex-1 relative">
-                                                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                                <input
-                                                    type="text"
-                                                    value={searchQuery}
-                                                    onChange={e => setSearchQuery(e.target.value)}
-                                                    placeholder="Search events, venues, or categories..."
-                                                    className="w-full pl-9 pr-8 py-2 bg-gray-100 dark:bg-gray-700 rounded-full text-sm border-2 border-transparent focus:border-purple-500 focus:bg-white dark:focus:bg-gray-800 focus:outline-none transition-all"
-                                                />
-                                                {searchQuery && (
-                                                    <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                                        <X size={14} />
-                                                    </button>
-                                                )}
+                                            <div className="flex-1">
+                                                <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
                                             </div>
                                             <div className="flex gap-2 flex-shrink-0">
                                                 <button onClick={() => setSelectedCategory('All')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>All</button>
@@ -1885,7 +1873,7 @@ const App: React.FC = () => {
                                         {/* 3. Category Cards */}
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
-                                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Categories</h2>
+                                                <h2 className="text-base md:text-lg font-semibold md:font-bold text-gray-900 dark:text-white">Categories</h2>
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => scrollCategories('left')}
@@ -1964,7 +1952,7 @@ const App: React.FC = () => {
                                                     <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
                                                 </div>
                                             )}
-                                            <h2 id="recommended-section" className="text-lg font-bold text-gray-900 dark:text-white pt-1">
+                                            <h2 id="recommended-section" className="text-base md:text-lg font-semibold md:font-bold text-gray-900 dark:text-white pt-1">
                                                 {selectedDateFilter ? `Events on ${formatDisplayDate(selectedDateFilter)}` :
                                                     selectedCategory === 'All' ? 'Recommended for You' : selectedCategory}
                                             </h2>
@@ -1973,12 +1961,19 @@ const App: React.FC = () => {
                                             {areEventsLoading ? (
                                                 <div className="flex justify-center py-10"><Spinner size="lg" /></div>
                                             ) : (
-                                                <EventList events={finalDisplayEvents} onEventSelect={handleOpenEvent} onToggleSave={handleToggleSaveEvent} category={selectedCategory} onExploreUpcoming={() => {
-                                                    setSelectedCategory('All');
-                                                    setTimeout(() => {
-                                                        document.getElementById('recommended-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                    }, 50);
-                                                }} />
+                                                <EventList
+                                                    events={finalDisplayEvents}
+                                                    onEventSelect={handleOpenEvent}
+                                                    onToggleSave={handleToggleSaveEvent}
+                                                    category={selectedCategory}
+                                                    onExploreUpcoming={() => {
+                                                        setSelectedCategory('All');
+                                                        setTimeout(() => {
+                                                            document.getElementById('recommended-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                        }, 50);
+                                                    }}
+                                                    onBrowse={() => setSelectedCategory('All')}
+                                                />
                                             )}
                                         </div>
                                     </div>

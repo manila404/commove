@@ -1,6 +1,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+
 import type { DisplayEventType } from '../types';
 
 interface UpcomingNextWeekProps {
@@ -62,15 +63,16 @@ const UpcomingNextWeek: React.FC<UpcomingNextWeekProps> = ({ events, onEventSele
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+        <h2 className="text-base md:text-lg font-semibold md:font-bold text-gray-900 dark:text-white">
           Upcoming Events
         </h2>
         {onViewAll && (
           <button
             onClick={onViewAll}
-            className="text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+            className="flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-primary-600 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl transition-all active:scale-95"
           >
             Show all
+            <ChevronRight size={14} />
           </button>
         )}
       </div>

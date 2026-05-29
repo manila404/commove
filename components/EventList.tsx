@@ -9,9 +9,10 @@ interface EventListProps {
   onToggleSave: (eventId: string) => void;
   category?: string;
   onExploreUpcoming?: () => void;
+  onBrowse?: () => void;
 }
 
-const EventList: React.FC<EventListProps> = ({ events, onEventSelect, onToggleSave, category, onExploreUpcoming }) => {
+const EventList: React.FC<EventListProps> = ({ events, onEventSelect, onToggleSave, category, onExploreUpcoming, onBrowse }) => {
   if (events.length === 0) {
     if (category === 'Happening Now') {
       return (
@@ -40,9 +41,24 @@ const EventList: React.FC<EventListProps> = ({ events, onEventSelect, onToggleSa
     }
 
     return (
-      <div className="text-center py-16">
+      <div className="text-center py-10 flex flex-col items-center">
+        <img
+          src="/noeventsimage.png"
+          alt="No events found"
+          className="w-40 h-40 md:w-52 md:h-52 object-contain mb-4 opacity-90"
+        />
         <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">No Events Found</h2>
-        <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">Try adjusting your search or category.</p>
+        <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm max-w-xs md:max-w-sm leading-relaxed">
+          We couldn't find any events matching your current filter.<br className="hidden md:block" /> Try exploring a different category or check back later.
+        </p>
+        {onBrowse && (
+          <button
+            onClick={onBrowse}
+            className="mt-5 px-5 py-2.5 rounded-full bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm transition-all active:scale-95 shadow-sm"
+          >
+            Browse Events
+          </button>
+        )}
       </div>
     );
   }

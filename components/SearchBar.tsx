@@ -37,7 +37,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
   const handleSearch = (searchTerm: string) => {
     setQuery(searchTerm);
     saveToHistory(searchTerm);
-    onSearch(searchTerm);
+    // Don't filter the main feed — search results live only in the dropdown
     setIsFocused(false);
   };
 
@@ -91,7 +91,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
 
       {/* Suggested & History Dropdown */}
       {isFocused && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-[24px] shadow-2xl z-10 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-10 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           
           {/* Recent Searches — Pinterest style */}
           {(!query && history.length > 0) && (
