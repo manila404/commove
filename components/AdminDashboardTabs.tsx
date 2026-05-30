@@ -83,6 +83,37 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         </span>
     );
 
+    // ── Card-level decision support micro-insight ─────────────────────────────
+    const CardInsight = ({ level, text, rec }: { level: InsightLevel; text: string; rec?: string }) => {
+        const cfgMap: Record<InsightLevel, { bg: string; border: string; iconBg: string; iconText: string }> = {
+            success:  { bg: 'bg-green-50 dark:bg-green-900/10',   border: 'border-green-100 dark:border-green-800/30',   iconBg: 'bg-green-100 dark:bg-green-900/30',   iconText: 'text-green-600 dark:text-green-400' },
+            info:     { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400' },
+            warning:  { bg: 'bg-amber-50 dark:bg-amber-900/10',   border: 'border-amber-100 dark:border-amber-800/30',   iconBg: 'bg-amber-100 dark:bg-amber-900/30',   iconText: 'text-amber-600 dark:text-amber-400' },
+            critical: { bg: 'bg-red-50 dark:bg-red-900/10',       border: 'border-red-100 dark:border-red-800/30',       iconBg: 'bg-red-100 dark:bg-red-900/30',       iconText: 'text-red-600 dark:text-red-400' },
+        };
+        const cfg = cfgMap[level];
+        const iconPaths: Record<InsightLevel, React.ReactNode> = {
+            success:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />,
+            info:     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
+            warning:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />,
+            critical: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />,
+        };
+        return (
+            <div className={`mt-3 rounded-lg border p-2.5 ${cfg.bg} ${cfg.border}`}>
+                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Decision Support</p>
+                <div className="flex gap-2 items-start">
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.iconBg} ${cfg.iconText}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">{iconPaths[level]}</svg>
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">{text}</p>
+                        {rec && <p className="text-[10px] text-purple-600 dark:text-purple-400 leading-relaxed mt-1 font-medium">→ {rec}</p>}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     // ── Phase 3 analytics helpers ─────────────────────────────────────────────
     const safeNum = (v: unknown): number => { const n = Number(v); return isFinite(n) ? n : 0; };
     const calcEngagementRate = (interested: number, checkIn: number, views: number): string =>
@@ -104,6 +135,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     useEffect(() => { setEventsPage(1); }, [eventFilter, eventSortOrder, eventVisibilityFilter]);
     const [analyticsDrawerEvent, setAnalyticsDrawerEvent] = useState<EventType | null>(null);
     const [metricsDrawerOpen, setMetricsDrawerOpen] = useState(false);
+    const [dsDrawerOpen, setDsDrawerOpen] = useState(false);
     // User management extra state
     const [userSortOrder, setUserSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [userPage, setUserPage] = useState(1);
@@ -718,6 +750,84 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         return { name, users: Math.max(0, users.length - allocated) };
     });
 
+    // ── Card-level micro-insight computations ────────────────────────────────
+    type CardInsightData = { level: InsightLevel; text: string; rec?: string };
+
+    const monthlyTrendsInsight: CardInsightData = (() => {
+        const visible = realMonthlyTrends.filter(m => m.participants > 0 || m.events > 0);
+        if (visible.length < 2) return { level: 'info', text: 'Not enough monthly data yet to identify trends. Check-ins and events will build trend data over time.', rec: 'Publish events and promote QR check-in to start capturing monthly patterns.' };
+        const last = visible[visible.length - 1];
+        const prev = visible[visible.length - 2];
+        const pDiff = last.participants - prev.participants;
+        const pPct  = prev.participants > 0 ? Math.round(Math.abs(pDiff / prev.participants) * 100) : 0;
+        if (pDiff > 0) return { level: 'success', text: `Check-in participation rose${pPct > 0 ? ` by ${pPct}%` : ''} from ${prev.name} to ${last.name}. Community attendance is trending upward.`, rec: 'Maintain current event frequency and timing to sustain this positive momentum.' };
+        if (pDiff < 0) return { level: 'warning', text: `Check-ins dropped from ${prev.participants} (${prev.name}) to ${last.participants} (${last.name}). Participation is declining this period.`, rec: 'Consider scheduling more events or sending re-engagement notifications to residents.' };
+        return { level: 'info', text: `Participation held steady between ${prev.name} and ${last.name}. Events are consistent but growth has plateaued.`, rec: 'Introduce new event categories or formats to stimulate fresh interest.' };
+    })() as CardInsightData;
+
+    const categoryInsight: CardInsightData = (() => {
+        const total = realCategoryData.reduce((s, d) => s + d.value, 0);
+        if (total === 0 || realCategoryData[0]?.name === 'No Data') return { level: 'info', text: 'No category check-in data available yet. This chart will populate as residents attend events.', rec: 'Promote QR check-in at events to start building category participation data.' };
+        const sorted = [...realCategoryData].sort((a, b) => b.value - a.value);
+        const top = sorted[0];
+        const topPct = Math.round((top.value / total) * 100);
+        if (realCategoryData.length === 1) return { level: 'warning', text: `All check-ins are concentrated in the "${top.name}" category. Category diversity is very limited.`, rec: 'Encourage facilitators to create events across more categories to broaden community reach.' };
+        if (topPct > 60) return { level: 'info', text: `"${top.name}" accounts for ${topPct}% of all check-ins — strong niche presence but may limit broader audience reach.`, rec: 'Promote events in underrepresented categories to attract residents with varied interests.' };
+        return { level: 'success', text: `Check-ins are spread across ${realCategoryData.length} categories with "${top.name}" leading at ${topPct}%. Portfolio diversity is healthy.` };
+    })() as CardInsightData;
+
+    const newUsersInsight: CardInsightData = (() => {
+        if (users.length === 0) return { level: 'info', text: 'No registered users yet. Resident accounts will appear as users sign up through the platform.', rec: 'Promote the platform via community announcements to drive initial registrations.' };
+        const current = newUsersData[currentMonthIdx];
+        const prev = currentMonthIdx > 0 ? newUsersData[currentMonthIdx - 1] : null;
+        if (!prev || prev.users === 0) return { level: 'info', text: `${current.users} resident${current.users !== 1 ? 's' : ''} registered this month. Building a baseline for growth tracking.`, rec: 'Promote the platform via community outreach to accelerate registrations.' };
+        const diff = current.users - prev.users;
+        const pct  = Math.round(Math.abs(diff / prev.users) * 100);
+        if (diff > 0) return { level: 'success', text: `Registrations increased by ${pct}% from ${prev.name} (${prev.users}) to ${current.name} (${current.users}). Platform adoption is growing.`, rec: 'Sustain growth through community outreach and ensuring new users can easily discover events.' };
+        if (diff < 0) return { level: 'warning', text: `Registration pace slowed from ${prev.users} (${prev.name}) to ${current.users} (${current.name}) this month.`, rec: 'Consider a registration drive or barangay-wide announcement to attract new community members.' };
+        return { level: 'info', text: `User registrations are steady at ${current.users} for ${current.name}, matching last month. Growth has plateaued.`, rec: 'Introduce referral incentives or promote the platform at community events to boost sign-ups.' };
+    })() as CardInsightData;
+
+    const genderInsight: CardInsightData = (() => {
+        if (realGenderData[0]?.name === 'No Data' || realGenderData.length === 0) return { level: 'info', text: 'No gender data available. Users must complete their profiles for this distribution to populate.', rec: 'Encourage residents to complete their profile to enable targeted event planning.' };
+        const total = realGenderData.reduce((s, d) => s + d.value, 0);
+        const sorted = [...realGenderData].sort((a, b) => b.value - a.value);
+        const top = sorted[0];
+        const topPct = Math.round((top.value / total) * 100);
+        if (topPct > 75) return { level: 'warning', text: `${topPct}% of active participants are ${top.name.toLowerCase()}. Gender representation is significantly skewed.`, rec: 'Design programs targeting underrepresented groups to improve gender inclusivity across community events.' };
+        const secondPct = sorted.length > 1 ? Math.round((sorted[1].value / total) * 100) : 0;
+        return { level: 'success', text: `Gender representation is balanced — ${top.name}: ${topPct}%${sorted[1] ? `, ${sorted[1].name}: ${secondPct}%` : ''}. Events are reaching a diverse audience.` };
+    })() as CardInsightData;
+
+    const ageGroupInsight: CardInsightData = (() => {
+        const hasData = realAgeData.some(d => d.value > 0 && d.name !== 'Unknown');
+        if (!hasData) return { level: 'info', text: 'No age data available yet. Residents must have birthdays set in their profiles for this distribution to appear.', rec: 'Prompt users to complete their profile to enable age-based event planning.' };
+        const total = realAgeData.reduce((s, d) => s + d.value, 0);
+        const sorted = [...realAgeData].filter(d => d.name !== 'Unknown' && d.value > 0).sort((a, b) => b.value - a.value);
+        if (sorted.length === 0) return { level: 'info', text: 'Age data exists but all entries are unclassified. Encourage profile completion for accurate demographics.', rec: undefined };
+        const top = sorted[0];
+        const topPct = Math.round((top.value / total) * 100);
+        const ageRecs: Record<string, string> = {
+            'Under 18': 'Ensure youth events include age-appropriate guidelines and parental awareness notifications.',
+            '18-24': 'Prioritize technology, career development, and social events for the dominant young adult group.',
+            '25-34': 'Schedule family-friendly and professional development events for working adults.',
+            '35-44': 'Consider weekend and evening events to accommodate working parents in this dominant group.',
+            '45-54': 'Include wellness, financial literacy, and community service programs for this segment.',
+            '55-64': 'Health, recreation, and civic engagement events are well-suited for this demographic.',
+            '65+': 'Offer accessible, health-focused, and social events tailored for senior residents.',
+        };
+        return { level: topPct > 50 ? 'info' : 'success', text: `The "${top.name}" age group represents ${topPct}% of active participants${topPct > 50 ? ' — programming should align with this dominant demographic' : ' — participation is well spread across age groups'}.`, rec: ageRecs[top.name] };
+    })() as CardInsightData;
+
+    const topEventsInsight: CardInsightData = (() => {
+        if (topEventsData[0]?.name === 'No Data' || topEventsData.every(d => d.participants === 0)) return { level: 'info', text: 'No attendance data yet. Residents must check in to events for top event rankings to appear.', rec: 'Promote QR check-in at event entrances to improve attendance tracking accuracy.' };
+        const top = topEventsData[0];
+        const totalCheckins = topEventsData.reduce((s, d) => s + d.participants, 0);
+        const topShare = Math.round((top.participants / totalCheckins) * 100);
+        if (topShare > 60 && topEventsData.length > 1) return { level: 'info', text: `"${top.name}" accounts for ${topShare}% of top-event check-ins. Attendance is heavily concentrated in this single event.`, rec: "Replicate this event's successful format to drive attendance across other community events." };
+        return { level: 'success', text: `"${top.name}" leads with ${top.participants} check-ins across ${topEventsData.length} standout events — a healthy distribution of attendance.`, rec: 'Schedule more events with formats similar to top performers to sustain community engagement.' };
+    })() as CardInsightData;
+
     const renderAnalytics = () => {
         const totalViews      = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
         const totalSaves      = events.reduce((s, e) => s + safeNum(e.saveCount), 0);
@@ -729,108 +839,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
         return (
         <div className="flex flex-col gap-6 mt-6">
-
-            {(() => {
-                const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
-                const dss: CrossDomainSummary = isAdmin
-                    ? generateAdminDecisionSummary(events, users, allFeedback)
-                    : generateFacilitatorDecisionSummary(
-                        events.filter(e => e.createdBy === currentUser?.uid),
-                        allFeedback.filter(f => events.filter(e => e.createdBy === currentUser?.uid).some(e => e.id === f.eventId)),
-                        currentUser?.uid ?? ''
-                    );
-
-                // Level → colors
-                const levelCfg: Record<InsightLevel, { icon: string; bg: string; text: string; badge: string }> = {
-                    success:  { icon: 'check',  bg: 'bg-green-100 dark:bg-green-900/30',  text: 'text-green-600 dark:text-green-400',  badge: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' },
-                    info:     { icon: 'info',   bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' },
-                    warning:  { icon: 'warn',   bg: 'bg-amber-100 dark:bg-amber-900/30',  text: 'text-amber-600 dark:text-amber-400',  badge: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300' },
-                    critical: { icon: 'crit',   bg: 'bg-red-100 dark:bg-red-900/30',      text: 'text-red-600 dark:text-red-400',      badge: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' },
-                };
-                // Domain → label
-                const domainLabel: Record<InsightDomain, string> = {
-                    events: 'Events', users: 'Users', demographics: 'Demographics',
-                    engagement: 'Engagement', categories: 'Categories', platform: 'Platform',
-                };
-                const levelIcon = (level: InsightLevel) => {
-                    if (level === 'success')  return <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>;
-                    if (level === 'warning')  return <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>;
-                    if (level === 'critical') return <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>;
-                    return <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-                };
-
-                // Score ring color
-                const scoreColor = dss.overallScore >= 75 ? 'text-green-600 dark:text-green-400' : dss.overallScore >= 50 ? 'text-amber-500 dark:text-amber-400' : 'text-red-500 dark:text-red-400';
-
-                return (
-                    <div className="bg-white dark:bg-[#111827] rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-                        {/* Header */}
-                        <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                                <p className="text-sm font-bold text-gray-900 dark:text-white">
-                                    Decision Support · {isAdmin ? 'Admin View' : 'My Events'}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                                {dss.topCategory && (
-                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
-                                        Top: {dss.topCategory}
-                                    </span>
-                                )}
-                                <span className={`text-xs font-extrabold ${scoreColor}`}>{dss.overallScore}/100</span>
-                            </div>
-                        </div>
-
-                        {/* Summary row */}
-                        <div className="px-5 py-3 bg-gray-50/60 dark:bg-gray-800/20 border-b border-gray-100 dark:border-gray-800">
-                            <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">{dss.summary}</p>
-                        </div>
-
-                        {/* Insights */}
-                        <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                            {dss.insights.map((item, i) => {
-                                const cfg = levelCfg[item.level];
-                                return (
-                                    <div key={i} className="flex gap-3 px-4 py-3.5">
-                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.bg} ${cfg.text}`}>
-                                            {levelIcon(item.level)}
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                                                <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${cfg.badge}`}>{domainLabel[item.domain]}</span>
-                                                <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-snug">{item.title}</p>
-                                            </div>
-                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">{item.body}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Recommendations */}
-                        {dss.recommendations.length > 0 && (
-                            <div className="border-t border-gray-100 dark:border-gray-800">
-                                <div className="px-5 py-2.5 bg-purple-50/60 dark:bg-purple-900/10">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">Recommendations</p>
-                                </div>
-                                <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                                    {dss.recommendations.map((rec, i) => (
-                                        <div key={i} className="flex gap-3 px-4 py-3">
-                                            <div className="w-5 h-5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                                            </div>
-                                            <div className="min-w-0">
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-purple-500 dark:text-purple-400 mr-1.5">{domainLabel[rec.domain]}</span>
-                                                <span className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">{rec.text}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                );
-            })()}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
@@ -857,6 +865,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
+                    <CardInsight {...monthlyTrendsInsight} />
                 </div>
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                     <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Events by Category</h3>
@@ -884,9 +893,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
+                    <CardInsight {...categoryInsight} />
                 </div>
             </div>
-            
+
             <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                 <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">New Users per Month</h3>
                 <div className="h-64 min-h-[260px] w-full relative">
@@ -900,6 +910,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
+                <CardInsight {...newUsersInsight} />
             </div>
         </div>
         );
@@ -914,13 +925,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     <div className="h-64 min-h-[260px] flex items-center justify-center relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie 
-                                    data={realGenderData} 
-                                    cx="50%" 
-                                    cy="50%" 
-                                    innerRadius={60} 
-                                    outerRadius={80} 
-                                    paddingAngle={5} 
+                                <Pie
+                                    data={realGenderData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
                                     dataKey="value"
                                 >
                                     {realGenderData.map((entry, index) => (
@@ -932,6 +943,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
+                    <CardInsight {...genderInsight} />
                 </div>
 
                 {/* Age Distribution */}
@@ -948,6 +960,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
+                    <CardInsight {...ageGroupInsight} />
                 </div>
             </div>
 
@@ -965,6 +978,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
+                <CardInsight {...topEventsInsight} />
             </div>
         </div>
     );
@@ -2120,6 +2134,44 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
             </div>
 
+            {/* ── Decision Support trigger button — visible on all tabs ─────── */}
+            {(activeTab === 'analytics' || activeTab === 'demographics' || activeTab === 'events' || activeTab === 'users') && (
+                <div className="flex justify-end mb-3">
+                    <button
+                        onClick={() => setDsDrawerOpen(true)}
+                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-[#111827] border border-purple-200 dark:border-purple-800/50 text-purple-600 dark:text-purple-400 text-xs font-bold shadow-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:border-purple-300 dark:hover:border-purple-700 transition-all active:scale-95"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        Decision Support
+                        {(() => {
+                            const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
+                            const dss = isAdmin
+                                ? generateAdminDecisionSummary(events, users, allFeedback)
+                                : generateFacilitatorDecisionSummary(
+                                    events.filter(e => e.createdBy === currentUser?.uid),
+                                    allFeedback.filter(f => events.filter(e => e.createdBy === currentUser?.uid).some(e => e.id === f.eventId)),
+                                    currentUser?.uid ?? ''
+                                );
+                            const flagCount = dss.flags.length;
+                            const scoreColor = dss.overallScore >= 75 ? 'bg-green-500' : dss.overallScore >= 50 ? 'bg-amber-500' : 'bg-red-500';
+                            return (
+                                <span className="flex items-center gap-1.5">
+                                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${scoreColor}`} />
+                                    <span className="text-[10px] font-black text-gray-400 dark:text-gray-500">{dss.overallScore}/100</span>
+                                    {flagCount > 0 && (
+                                        <span className="ml-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                                            {flagCount} flag{flagCount > 1 ? 's' : ''}
+                                        </span>
+                                    )}
+                                </span>
+                            );
+                        })()}
+                    </button>
+                </div>
+            )}
+
             {activeTab === 'analytics' && renderAnalytics()}
             {activeTab === 'demographics' && renderDemographics()}
             {activeTab === 'events' && renderEvents()}
@@ -2288,6 +2340,212 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         })()}
                     </div>
                 </>,
+                document.body
+            )}
+
+            {/* ── Decision Support Drawer (multi-domain, slide from right) ──────── */}
+            {dsDrawerOpen && typeof document !== 'undefined' && createPortal(
+                (() => {
+                    const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
+                    const dss: CrossDomainSummary = isAdmin
+                        ? generateAdminDecisionSummary(events, users, allFeedback)
+                        : generateFacilitatorDecisionSummary(
+                            events.filter(e => e.createdBy === currentUser?.uid),
+                            allFeedback.filter(f => events.filter(e => e.createdBy === currentUser?.uid).some(e => e.id === f.eventId)),
+                            currentUser?.uid ?? ''
+                        );
+
+                    const domainOrder: InsightDomain[] = ['events', 'engagement', 'users', 'demographics', 'categories', 'platform'];
+                    const domainLabel: Record<InsightDomain, string> = {
+                        events: 'Events', users: 'Users', demographics: 'Demographics',
+                        engagement: 'Engagement', categories: 'Categories', platform: 'Platform',
+                    };
+                    const domainIcon: Record<InsightDomain, React.ReactNode> = {
+                        events:      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
+                        engagement:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />,
+                        users:       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />,
+                        demographics:<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
+                        categories:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />,
+                        platform:    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />,
+                    };
+                    const levelCfg: Record<InsightLevel, { bg: string; border: string; iconBg: string; iconText: string; badge: string }> = {
+                        success:  { bg: 'bg-green-50 dark:bg-green-900/10',   border: 'border-green-100 dark:border-green-800/30',   iconBg: 'bg-green-100 dark:bg-green-900/30',   iconText: 'text-green-600 dark:text-green-400',   badge: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' },
+                        info:     { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' },
+                        warning:  { bg: 'bg-amber-50 dark:bg-amber-900/10',   border: 'border-amber-100 dark:border-amber-800/30',   iconBg: 'bg-amber-100 dark:bg-amber-900/30',   iconText: 'text-amber-600 dark:text-amber-400',   badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' },
+                        critical: { bg: 'bg-red-50 dark:bg-red-900/10',       border: 'border-red-100 dark:border-red-800/30',       iconBg: 'bg-red-100 dark:bg-red-900/30',       iconText: 'text-red-600 dark:text-red-400',       badge: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' },
+                    };
+                    const levelIconPath = (level: InsightLevel): React.ReactNode => {
+                        if (level === 'success')  return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />;
+                        if (level === 'warning')  return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />;
+                        if (level === 'critical') return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />;
+                        return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />;
+                    };
+
+                    const scoreColor = dss.overallScore >= 75 ? '#22c55e' : dss.overallScore >= 50 ? '#f59e0b' : '#ef4444';
+                    const scoreLabel = dss.overallScore >= 75 ? 'Performing Well' : dss.overallScore >= 50 ? 'Needs Attention' : 'Action Required';
+
+                    // Group insights by domain
+                    const grouped: Partial<Record<InsightDomain, typeof dss.insights>> = {};
+                    dss.insights.forEach(item => {
+                        if (!grouped[item.domain]) grouped[item.domain] = [];
+                        grouped[item.domain]!.push(item);
+                    });
+                    // Group recommendations by domain
+                    const groupedRecs: Partial<Record<InsightDomain, typeof dss.recommendations>> = {};
+                    dss.recommendations.forEach(rec => {
+                        if (!groupedRecs[rec.domain]) groupedRecs[rec.domain] = [];
+                        groupedRecs[rec.domain]!.push(rec);
+                    });
+
+                    const activeDomains = domainOrder.filter(d => grouped[d]?.length);
+
+                    return (
+                        <>
+                            <style>{`@keyframes dsSlideIn{from{transform:translateX(100%)}to{transform:translateX(0%)}}`}</style>
+                            {/* Backdrop */}
+                            <div
+                                style={{ position: 'fixed', inset: 0, zIndex: 99995, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)' }}
+                                onClick={() => setDsDrawerOpen(false)}
+                            />
+                            {/* Slide panel */}
+                            <div
+                                style={{ position: 'fixed', top: 0, right: 0, height: '100%', width: '100%', maxWidth: '460px', zIndex: 99996, animation: 'dsSlideIn 0.3s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column' }}
+                                className="bg-white dark:bg-[#0f172a] shadow-2xl"
+                            >
+                                {/* ── Drawer Header ───────────────────────── */}
+                                <div className="flex-shrink-0 px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${scoreColor}20` }}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke={scoreColor} strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                            </svg>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-extrabold text-gray-900 dark:text-white leading-tight">Decision Support</p>
+                                            <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500">{isAdmin ? 'Admin View' : 'My Events'} · {activeDomains.length} domain{activeDomains.length !== 1 ? 's' : ''} analyzed</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <div className="text-right">
+                                            <p className="text-lg font-extrabold leading-tight" style={{ color: scoreColor }}>{dss.overallScore}<span className="text-xs font-medium text-gray-400">/100</span></p>
+                                            <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: scoreColor }}>{scoreLabel}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setDsDrawerOpen(false)}
+                                            className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors flex-shrink-0"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* ── Summary strip ───────────────────────── */}
+                                <div className="flex-shrink-0 px-5 py-3 bg-gray-50/80 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800">
+                                    <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">{dss.summary}</p>
+                                    {dss.flags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                            {dss.flags.map((flag, i) => (
+                                                <span key={i} className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01" /></svg>
+                                                    {flag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── Scrollable domain cards ──────────────── */}
+                                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+                                    {activeDomains.map(domain => {
+                                        const domainInsights = grouped[domain] ?? [];
+                                        const domainRecs     = groupedRecs[domain] ?? [];
+                                        const hasCritical = domainInsights.some(i => i.level === 'critical');
+                                        const hasWarning  = domainInsights.some(i => i.level === 'warning');
+                                        const headerAccent = hasCritical ? 'border-red-200 dark:border-red-800/40 bg-red-50/50 dark:bg-red-900/10'
+                                            : hasWarning ? 'border-amber-200 dark:border-amber-800/40 bg-amber-50/50 dark:bg-amber-900/10'
+                                            : 'border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30';
+                                        const iconAccent = hasCritical ? 'text-red-500' : hasWarning ? 'text-amber-500' : 'text-indigo-500';
+
+                                        return (
+                                            <div key={domain} className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm">
+                                                {/* Domain card header */}
+                                                <div className={`flex items-center gap-2.5 px-4 py-2.5 border-b ${headerAccent}`}>
+                                                    <div className={`flex-shrink-0 ${iconAccent}`}>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">{domainIcon[domain]}</svg>
+                                                    </div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300">{domainLabel[domain]}</p>
+                                                    <span className="ml-auto text-[9px] font-bold text-gray-400 dark:text-gray-500">{domainInsights.length} insight{domainInsights.length !== 1 ? 's' : ''}</span>
+                                                    {hasCritical && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">Critical</span>}
+                                                    {!hasCritical && hasWarning && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">Warning</span>}
+                                                </div>
+
+                                                {/* Insights */}
+                                                <div className="divide-y divide-gray-50 dark:divide-gray-800/60 bg-white dark:bg-[#111827]">
+                                                    {domainInsights.map((item, i) => {
+                                                        const cfg = levelCfg[item.level];
+                                                        return (
+                                                            <div key={i} className="flex gap-3 px-4 py-3">
+                                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.iconBg} ${cfg.iconText}`}>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">{levelIconPath(item.level)}</svg>
+                                                                </div>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                                                        <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${cfg.badge}`}>{item.level}</span>
+                                                                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-snug">{item.title}</p>
+                                                                    </div>
+                                                                    <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">{item.body}</p>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {/* Domain-specific recommendations */}
+                                                {domainRecs.length > 0 && (
+                                                    <div className="border-t border-gray-100 dark:border-gray-800 bg-purple-50/40 dark:bg-purple-900/10">
+                                                        {domainRecs.map((rec, i) => (
+                                                            <div key={i} className="flex gap-2.5 px-4 py-2.5 border-b border-purple-50 dark:border-purple-900/10 last:border-0">
+                                                                <div className="w-4 h-4 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-500 dark:text-purple-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                                                                </div>
+                                                                <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">{rec.text}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+
+                                    {activeDomains.length === 0 && (
+                                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                                            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                                </svg>
+                                            </div>
+                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-300">All Systems Nominal</p>
+                                            <p className="text-xs text-gray-400 mt-1">No issues detected across any domain. The platform is performing within expected parameters.</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── Drawer footer ────────────────────────── */}
+                                <div className="flex-shrink-0 px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/20 flex items-center justify-between">
+                                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{dss.recommendations.length} total recommendation{dss.recommendations.length !== 1 ? 's' : ''} · {dss.insights.length} insight{dss.insights.length !== 1 ? 's' : ''}</p>
+                                    <button
+                                        onClick={() => setDsDrawerOpen(false)}
+                                        className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    );
+                })(),
                 document.body
             )}
 
