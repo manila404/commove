@@ -1811,7 +1811,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         )}
                                         <div className="flex gap-2 items-center ml-auto">
                                             {/* Role control: admins are locked; others get a User/Facilitator dropdown */}
-                                            {user.role === 'admin' || user.email === 'admin@commove.com' ? (
+                                            {user.role === 'admin' || user.email === 'admincommove@gmail.com' ? (
                                                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/40 rounded-lg">
                                                     <Lock className="w-3 h-3 text-purple-500 dark:text-purple-400 shrink-0" />
                                                     <span className="text-xs font-bold text-purple-600 dark:text-purple-400">Admin</span>
@@ -1834,8 +1834,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             )}
                                             <button
                                                 onClick={() => onDeleteUser(user.uid)}
-                                                disabled={user.email === 'admin@commove.com'}
-                                                className={`p-1.5 rounded-lg transition-colors border border-transparent ${user.email === 'admin@commove.com' ? 'text-gray-300 cursor-not-allowed' : 'text-red-500 hover:bg-red-50 hover:border-red-100'}`}
+                                                disabled={user.email === 'admincommove@gmail.com'}
+                                                className={`p-1.5 rounded-lg transition-colors border border-transparent ${user.email === 'admincommove@gmail.com' ? 'text-gray-300 cursor-not-allowed' : 'text-red-500 hover:bg-red-50 hover:border-red-100'}`}
                                                 title="Delete User"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

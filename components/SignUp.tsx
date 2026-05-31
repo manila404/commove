@@ -105,7 +105,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             return;
         }
 
-        if (!email.trim().toLowerCase().endsWith('@gmail.com') && email.trim().toLowerCase() !== 'admin@commove.com') {
+        if (!email.trim().toLowerCase().endsWith('@gmail.com') && email.trim().toLowerCase() !== 'admincommove@gmail.com') {
             setError("Email must be a @gmail.com address.");
             return;
         }
@@ -202,7 +202,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             const newUserProfileData: Omit<User, 'uid'> = { 
                 name: displayName, 
                 email: user.email!,
-                isAdmin: email === 'admin@commove.com', 
+                isAdmin: email === 'admincommove@gmail.com', 
                 role: 'user', 
                 facilitatorRequestStatus: (isFacilitator || step === 3) ? 'pending' : undefined,
                 idUrl: finalIdUrl || idImage || undefined,

@@ -17,7 +17,7 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'facilitator'] ||
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'admin@commove.com'
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'admincommove@gmail.com'
         );
     }
 
@@ -25,7 +25,7 @@ service cloud.firestore {
       return isAuthenticated() &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'admin@commove.com'
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'admincommove@gmail.com'
         );
     }
 
@@ -45,11 +45,11 @@ service cloud.firestore {
       allow list: if true; // username uniqueness check runs before auth exists
       allow create: if isOwner(userId);
       allow update: if (isOwner(userId) || isStaff()) &&
-        !(resource.data.email == 'admin@commove.com' && (
-          request.resource.data.email != 'admin@commove.com' ||
+        !(resource.data.email == 'admincommove@gmail.com' && (
+          request.resource.data.email != 'admincommove@gmail.com' ||
           request.resource.data.role != 'admin'
         ));
-      allow delete: if isAdmin() && resource.data.email != 'admin@commove.com';
+      allow delete: if isAdmin() && resource.data.email != 'admincommove@gmail.com';
     }
 
     // ─── Events ───────────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ service cloud.firestore {
         isStaff() ||
         request.resource.data.userId == request.auth.uid ||
         get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.role == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.email == 'admin@commove.com'
+        get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.email == 'admincommove@gmail.com'
       );
     }
 

@@ -5,11 +5,20 @@ const MAX_ATTEMPTS  = 5;
 // sessionStorage is cleared when the tab is closed, so every new browser
 // session must go through OTP even if Firebase has a persisted auth token.
 
-export const markOTPVerified    = (uid: string) => sessionStorage.setItem(`otp_ok_${uid}`, '1');
-export const isOTPVerified      = (uid: string) => sessionStorage.getItem(`otp_ok_${uid}`) === '1';
-export const setSignupInProgress  = ()           => sessionStorage.setItem('otp_signup', '1');
-export const clearSignupInProgress = ()          => sessionStorage.removeItem('otp_signup');
-export const isSignupInProgress   = ()           => sessionStorage.getItem('otp_signup') === '1';
+export const markOTPVerified      = (uid: string) => sessionStorage.setItem(`otp_ok_${uid}`, '1');
+export const isOTPVerified        = (uid: string) => sessionStorage.getItem(`otp_ok_${uid}`) === '1';
+
+// Signup in progress — set before createUserWithEmailAndPassword so the
+// auth gate doesn't sign the new user out before we can set the verified flag.
+export const setSignupInProgress  = ()            => sessionStorage.setItem('otp_signup', '1');
+export const clearSignupInProgress = ()           => sessionStorage.removeItem('otp_signup');
+export const isSignupInProgress   = ()            => sessionStorage.getItem('otp_signup') === '1';
+
+// Login in progress — set before signInWithEmailAndPassword so the
+// auth gate doesn't sign the user out while they're on the OTP screen.
+export const setLoginInProgress   = ()            => sessionStorage.setItem('otp_login', '1');
+export const clearLoginInProgress = ()            => sessionStorage.removeItem('otp_login');
+export const isLoginInProgress    = ()            => sessionStorage.getItem('otp_login') === '1';
 
 interface OTPRecord {
     code:      string;

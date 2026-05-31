@@ -61,9 +61,10 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
     setIsOpen(false);
   };
 
-  const isStaff = user.role === 'admin' || user.role === 'facilitator';
-  const roleLabel = user.role === 'admin' ? 'Administrator' : (user.role === 'facilitator' ? 'Facilitator' : 'Resident');
-  const dashboardTitle = user.role === 'admin' ? 'Admin Analytics' : 'Facilitator Dashboard';
+  const isStaff = user.role === 'admin' || user.role === 'facilitator' || user.isAdmin === true;
+  const isAdminUser = user.role === 'admin' || user.isAdmin === true;
+  const roleLabel = isAdminUser ? 'Administrator' : (user.role === 'facilitator' ? 'Facilitator' : 'Resident');
+  const dashboardTitle = isAdminUser ? 'Admin Analytics' : 'Facilitator Dashboard';
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -78,7 +79,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
           <img src={user.avatarUrl || undefined} alt={user.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
         ) : (
           <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-bold text-sm">
-              {user.name.charAt(0)}
+              {(user.name || 'U').charAt(0)}
           </div>
         )}
       </button>

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { isOTPVerified, isSignupInProgress } from './services/otpService';
-import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, addUserViewedEvent, updateUserParticipation, getAllUsers, subscribeToUserProfile } from './services/userService';
+import { isOTPVerified, isSignupInProgress, isLoginInProgress } from './services/otpService';
+import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, updateUserData, addUserViewedEvent, updateUserParticipation, getAllUsers, subscribeToUserProfile } from './services/userService';
 import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights } from './services/eventService';
 import { fetchUserFeedbackForEvent } from './services/feedbackService';
 import { getKNNRankedEvents } from './services/recommendationService'; // Import Recommendation Service
@@ -354,7 +354,7 @@ const App: React.FC = () => {
                 // Allow if OTP was verified this session OR signup is mid-flight.
                 // Any other persisted Firebase session that hasn't gone through
                 // OTP (e.g. a new browser tab) is signed out immediately.
-                if (!isOTPVerified(firebaseUser.uid) && !isSignupInProgress()) {
+                if (!isOTPVerified(firebaseUser.uid) && !isSignupInProgress() && !isLoginInProgress()) {
                     await signOut(auth);
                     return;
                 }
@@ -403,11 +403,14 @@ const App: React.FC = () => {
                         }
                     }
 
-                    // Strict Role Enforcement
-                    if (firebaseUser.email === 'admin@commove.com' && profile.role !== 'admin') {
+                    // Strict Role Enforcement — also sync email so Firestore matches Firebase Auth
+                    if (firebaseUser.email === 'admincommove@gmail.com' && profile.role !== 'admin') {
                         await updateUserRole(firebaseUser.uid, 'admin');
+                        await updateUserData(firebaseUser.uid, { email: 'admincommove@gmail.com', isAdmin: true });
                         profile.role = 'admin';
                         profile.isAdmin = true;
+                        profile.email = 'admincommove@gmail.com';
+                        if (!profile.name) profile.name = firebaseUser.displayName || 'Admin';
                     } else if (firebaseUser.email === 'facilitator@commove.com' && profile.role !== 'facilitator') {
                         await updateUserRole(firebaseUser.uid, 'facilitator');
                         profile.role = 'facilitator';
@@ -971,7 +974,7 @@ const App: React.FC = () => {
     };
 
     const handleOpenEvent = (event: EventType, notifType?: string) => {
-        const isStaffUser = currentUser?.role === 'admin' || currentUser?.role === 'facilitator';
+        const isStaffUser = currentUser?.role === 'admin' || currentUser?.role === 'facilitator' || currentUser?.isAdmin === true;
 
         // For admin/facilitator: route approval-type notifications to Admin Panel
         if (isStaffUser && (notifType === 'event_created' || notifType === 'event_approved' || notifType === 'event_rejected')) {
@@ -1719,7 +1722,7 @@ const App: React.FC = () => {
         return <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900"><Spinner size="lg" /></div>;
     }
 
-    const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'facilitator';
+    const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'facilitator' || currentUser?.isAdmin === true;
 
 
 
@@ -2093,8 +2096,8 @@ const App: React.FC = () => {
                                         <NotificationList
                                             userId={currentUser.uid}
                                             events={events}
-                                            isStaff={currentUser.role === 'admin' || currentUser.role === 'facilitator'}
-                                            isAdmin={currentUser.role === 'admin'}
+                                            isStaff={currentUser.role === 'admin' || currentUser.role === 'facilitator' || currentUser.isAdmin === true}
+                                            isAdmin={currentUser.role === 'admin' || currentUser.isAdmin === true}
                                             onEventSelect={(event, notifType) => handleOpenEvent(event, notifType)}
                                             onEventUpdated={handleEventUpdated}
                                             onNavigateToAdmin={(event, tab, targetId) => {

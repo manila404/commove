@@ -5,7 +5,7 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'fir
 import { EyeIcon, EyeSlashIcon, ChevronLeftIcon, CommoveLogo } from '../constants';
 import Captcha, { CaptchaRef } from './Captcha';
 import OTPVerification from './OTPVerification';
-import { generateOTP, storeOTP, markOTPVerified } from '../services/otpService';
+import { generateOTP, storeOTP, markOTPVerified, setLoginInProgress, clearLoginInProgress } from '../services/otpService';
 import { sendOTPEmail } from '../services/emailService';
 
 interface SignInProps {
@@ -62,6 +62,9 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                 return;
             }
 
+            // Flag login as in-progress so the OTP gate in onAuthStateChanged
+            // doesn't sign the user out while they're on the OTP screen.
+            setLoginInProgress();
             const credential = await signInWithEmailAndPassword(auth, email, password);
 
             // Save email if rememberMe is checked
@@ -78,6 +81,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
             await storeOTP(email, otp);
             const sent = await sendOTPEmail(email, otp, credential.user.displayName ?? email.split('@')[0]);
             if (!sent) {
+                clearLoginInProgress();
                 await signOut(auth);
                 setError('Failed to send verification code. Please try again.');
                 captchaRef.current?.reset();
@@ -86,14 +90,13 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
             }
             setShowOTP(true);
         } catch (error: any) {
-            // Improved error handling
+            clearLoginInProgress(); // always clear on any failure
             const errorCode = error.code;
             if (errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password') {
                 setError('Invalid email or password. Please check your credentials.');
             } else if (errorCode === 'auth/too-many-requests') {
                 setError('Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or try again later.');
             } else {
-                // Only log unexpected errors
                 console.error("Sign in error", error);
                 setError('Failed to sign in. Please try again.');
             }
@@ -147,10 +150,12 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                 userName={auth.currentUser?.displayName ?? email.split('@')[0]}
                 onVerified={() => {
                     if (auth.currentUser) markOTPVerified(auth.currentUser.uid);
+                    clearLoginInProgress();
                     setShowOTP(false);
                     onAuthSuccess();
                 }}
                 onBack={async () => {
+                    clearLoginInProgress();
                     await signOut(auth);
                     setShowOTP(false);
                     setError('');

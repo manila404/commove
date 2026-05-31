@@ -39,7 +39,7 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             const userData = userDoc.data() as User;
-            if (userData.email === 'admin@commove.com') {
+            if (userData.email === 'admincommove@gmail.com') {
                 return { uid: userDoc.id, ...userData, role: 'admin' as UserRole, isAdmin: true } as User;
             }
             return { uid: userDoc.id, ...userData } as User;
@@ -62,7 +62,7 @@ export const subscribeToUserProfile = (uid: string, callback: (user: User | null
     return onSnapshot(userDocRef, (snap) => {
         if (snap.exists()) {
             const data = snap.data() as User;
-            if (data.email === 'admin@commove.com') {
+            if (data.email === 'admincommove@gmail.com') {
                 callback({ uid: snap.id, ...data, role: 'admin' as UserRole, isAdmin: true });
             } else {
                 callback({ uid: snap.id, ...data });
@@ -77,7 +77,7 @@ export const subscribeToUserProfile = (uid: string, callback: (user: User | null
 
 export const createUserProfile = async (uid: string, data: Omit<User, 'uid'>): Promise<void> => {
     try {
-        const role: UserRole = data.email === 'admin@commove.com' ? 'admin' : (data.email === 'facilitator@commove.com' ? 'facilitator' : 'user');
+        const role: UserRole = data.email === 'admincommove@gmail.com' ? 'admin' : (data.email === 'facilitator@commove.com' ? 'facilitator' : 'user');
 
         const dataWithRole = {
             ...data,
@@ -190,7 +190,7 @@ export const deleteUser = async (uid: string): Promise<void> => {
         const userDocRef = doc(db, usersCollectionRef, uid);
         const userDoc = await getDoc(userDocRef);
         
-        if (userDoc.exists() && userDoc.data().email === 'admin@commove.com') {
+        if (userDoc.exists() && userDoc.data().email === 'admincommove@gmail.com') {
             throw new Error("Cannot delete the Root Administrator account.");
         }
         
@@ -361,7 +361,7 @@ export const getAdmins = async (): Promise<User[]> => {
         } as User));
 
         // Always ensure root admin is included (even if their role field isn't set yet)
-        const ROOT_ADMIN_EMAIL = 'admin@commove.com';
+        const ROOT_ADMIN_EMAIL = 'admincommove@gmail.com';
         const hasRootAdmin = admins.some(a => a.email === ROOT_ADMIN_EMAIL);
         if (!hasRootAdmin) {
             const allUsersSnap = await getDocs(query(usersRef, where("email", "==", ROOT_ADMIN_EMAIL), limit(1)));
@@ -417,7 +417,7 @@ export const updateUserRole = async (uid: string, role: UserRole): Promise<void>
         const userDocRef = doc(db, usersCollectionRef, uid);
         const userDoc = await getDoc(userDocRef);
         
-        if (userDoc.exists() && userDoc.data().email === 'admin@commove.com') {
+        if (userDoc.exists() && userDoc.data().email === 'admincommove@gmail.com') {
             console.warn("Attempted to change role of Root Admin. Action blocked.");
             return;
         }

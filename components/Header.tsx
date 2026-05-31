@@ -119,7 +119,7 @@ const Header: React.FC<HeaderProps> = ({
                             <img src={currentUser.avatarUrl || undefined} alt={currentUser.name} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
                         ) : currentUser ? (
                             <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-bold text-sm">
-                                {currentUser.name.charAt(0)}
+                                {(currentUser.name || 'U').charAt(0)}
                             </div>
                         ) : (
                             // Guest: show generic user icon
