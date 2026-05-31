@@ -2240,6 +2240,10 @@ const App: React.FC = () => {
                     currentUser={currentUser}
                     isLocationLive={isLocationLive}
                     onToggleParticipation={handleToggleParticipation}
+                    onLoginRequired={() => {
+                        setSelectedEvent(null);
+                        setIsGuest(false);
+                    }}
                 />
             )}
 

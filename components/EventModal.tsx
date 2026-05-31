@@ -27,6 +27,7 @@ interface EventModalProps {
   currentUser: User | null;
   isLocationLive?: boolean;
   onToggleParticipation: (eventId: string, type: 'interested' | 'registered' | 'checkedIn') => void;
+  onLoginRequired?: () => void;
 }
 
 const EventModal: React.FC<EventModalProps> = ({ 
@@ -39,11 +40,13 @@ const EventModal: React.FC<EventModalProps> = ({
   reminder, 
   onSetReminder, 
   onCancelReminder, 
-  currentUserLocation, 
+  currentUserLocation,
   currentUser,
   isLocationLive = true,
   onToggleParticipation,
+  onLoginRequired,
 }) => {
+  const isGuest = !currentUser;
   const { showAlert } = useAlert();
   const { permissions, requestNotifications } = usePermissions();
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -572,14 +575,16 @@ const EventModal: React.FC<EventModalProps> = ({
           ) : (
             // ADMIN / FACILITATOR / GUEST VIEW
             <div className="flex gap-3">
+              {!isGuest && (
+                <button
+                  onClick={handleCheckIn}
+                  className="flex-1 py-3 bg-gray-900 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-black transition-all active:scale-95"
+                >
+                  {isCheckedIn ? '✓ Checked-in' : 'Check-In Now (Staff)'}
+                </button>
+              )}
               <button
-                onClick={handleCheckIn}
-                className="flex-1 py-3 bg-gray-900 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-black transition-all active:scale-95"
-              >
-                {isCheckedIn ? '✓ Checked-in' : 'Check-In Now (Staff)'}
-              </button>
-              <button
-                onClick={() => onToggleParticipation(event.id, 'interested')}
+                onClick={() => isGuest ? onLoginRequired?.() : onToggleParticipation(event.id, 'interested')}
                 className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-gray-900 border-gray-900 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-gray-900 text-gray-900 dark:text-white hover:bg-gray-900 hover:text-white'}`}
               >
                 {isInterested ? '✓ Interested' : 'Interested?'}
@@ -900,14 +905,16 @@ const EventModal: React.FC<EventModalProps> = ({
         ) : (
           // ADMIN / FACILITATOR / GUEST MOBILE VIEW
           <div className="flex flex-col gap-2.5">
-            <button 
-              onClick={handleCheckIn}
-              className="w-full py-2.5 md:py-3.5 bg-purple-600 text-white text-sm md:text-base font-bold rounded-2xl shadow-lg hover:bg-purple-700 transition-all active:scale-95"
-            >
-              {isCheckedIn ? '✓ Checked-in (Staff)' : 'Check-In Now (Staff)'}
-            </button>
-            <button 
-              onClick={() => onToggleParticipation(event.id, 'interested')}
+            {!isGuest && (
+              <button
+                onClick={handleCheckIn}
+                className="w-full py-2.5 md:py-3.5 bg-purple-600 text-white text-sm md:text-base font-bold rounded-2xl shadow-lg hover:bg-purple-700 transition-all active:scale-95"
+              >
+                {isCheckedIn ? '✓ Checked-in (Staff)' : 'Check-In Now (Staff)'}
+              </button>
+            )}
+            <button
+              onClick={() => isGuest ? onLoginRequired?.() : onToggleParticipation(event.id, 'interested')}
               className={`w-full py-2.5 md:py-3.5 rounded-2xl border-2 text-sm md:text-base font-bold transition-all ${isInterested ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-white border-purple-600 text-purple-600 hover:bg-purple-700 hover:text-white'}`}
             >
               {isInterested ? 'Interested' : 'Interested?'}
