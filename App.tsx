@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
+import { isOTPVerified, isSignupInProgress } from './services/otpService';
 import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, addUserViewedEvent, updateUserParticipation, getAllUsers, subscribeToUserProfile } from './services/userService';
 import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights } from './services/eventService';
 import { fetchUserFeedbackForEvent } from './services/feedbackService';
@@ -349,6 +350,15 @@ const App: React.FC = () => {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
+                // ── OTP gate ─────────────────────────────────────────────────
+                // Allow if OTP was verified this session OR signup is mid-flight.
+                // Any other persisted Firebase session that hasn't gone through
+                // OTP (e.g. a new browser tab) is signed out immediately.
+                if (!isOTPVerified(firebaseUser.uid) && !isSignupInProgress()) {
+                    await signOut(auth);
+                    return;
+                }
+                // ─────────────────────────────────────────────────────────────
                 try {
 
                     // Reset Navigation on Login ONLY for explicit manual logins

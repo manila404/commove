@@ -1,9 +1,12 @@
 
 import React, { useState, useRef } from 'react';
 import { auth } from '../services/firebase';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { EyeIcon, EyeSlashIcon, ChevronLeftIcon, CommoveLogo } from '../constants';
 import Captcha, { CaptchaRef } from './Captcha';
+import OTPVerification from './OTPVerification';
+import { generateOTP, storeOTP, markOTPVerified } from '../services/otpService';
+import { sendOTPEmail } from '../services/emailService';
 
 interface SignInProps {
     onSwitchToSignUp: () => void;
@@ -20,6 +23,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
     const [isLoading, setIsLoading] = useState(false);
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [isResettingPassword, setIsResettingPassword] = useState(false);
+    const [showOTP, setShowOTP] = useState(false);
     const captchaRef = useRef<CaptchaRef>(null);
     
     const [rememberMe, setRememberMe] = useState(() => {
@@ -58,8 +62,8 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                 return;
             }
 
-            await signInWithEmailAndPassword(auth, email, password);
-            
+            const credential = await signInWithEmailAndPassword(auth, email, password);
+
             // Save email if rememberMe is checked
             if (rememberMe) {
                 localStorage.setItem('savedEmail', email);
@@ -68,8 +72,19 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                 localStorage.removeItem('savedEmail');
                 localStorage.setItem('rememberMe', 'false');
             }
-            
-            onAuthSuccess();
+
+            // Send OTP — user stays Firebase-authenticated but app access is gated
+            const otp = generateOTP();
+            await storeOTP(email, otp);
+            const sent = await sendOTPEmail(email, otp, credential.user.displayName ?? email.split('@')[0]);
+            if (!sent) {
+                await signOut(auth);
+                setError('Failed to send verification code. Please try again.');
+                captchaRef.current?.reset();
+                setIsLoading(false);
+                return;
+            }
+            setShowOTP(true);
         } catch (error: any) {
             // Improved error handling
             const errorCode = error.code;
@@ -124,6 +139,25 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
     const handleResend = async () => {
         await sendResetEmail();
     };
+
+    if (showOTP) {
+        return (
+            <OTPVerification
+                email={email}
+                userName={auth.currentUser?.displayName ?? email.split('@')[0]}
+                onVerified={() => {
+                    if (auth.currentUser) markOTPVerified(auth.currentUser.uid);
+                    setShowOTP(false);
+                    onAuthSuccess();
+                }}
+                onBack={async () => {
+                    await signOut(auth);
+                    setShowOTP(false);
+                    setError('');
+                }}
+            />
+        );
+    }
 
     if (isResettingPassword) {
         return (

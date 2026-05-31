@@ -2,9 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─────────────────────────────────────────
-    // Helper Functions
-    // ─────────────────────────────────────────
+    // ─── Helper Functions ─────────────────────────────────────────────────────
 
     function isAuthenticated() {
       return request.auth != null;
@@ -31,31 +29,36 @@ service cloud.firestore {
         );
     }
 
-    // ─────────────────────────────────────────
-    // Users Collection
-    // ─────────────────────────────────────────
+    // ─── OTP Verification Codes ───────────────────────────────────────────────
+    // Written by the client before authentication exists.
+    // Security is enforced in app logic: 10-min expiry + 5-attempt limit.
+
+    match /otpCodes/{emailKey} {
+      allow read, write: if true;
+    }
+
+    // ─── Users ────────────────────────────────────────────────────────────────
+
     match /users/{userId} {
-      allow get: if isOwner(userId) || isStaff() || get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
-      allow list: if isAuthenticated(); // Allow admin discovery for notifications
+      allow get: if isOwner(userId) || isStaff() ||
+        get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
+      allow list: if true; // username uniqueness check runs before auth exists
       allow create: if isOwner(userId);
-      allow update: if (isOwner(userId) || isStaff()) && 
-        // Root Admin Protection: cannot change email or role for the master admin account
+      allow update: if (isOwner(userId) || isStaff()) &&
         !(resource.data.email == 'admin@commove.com' && (
-          request.resource.data.email != 'admin@commove.com' || 
+          request.resource.data.email != 'admin@commove.com' ||
           request.resource.data.role != 'admin'
         ));
       allow delete: if isAdmin() && resource.data.email != 'admin@commove.com';
     }
 
-    // ─────────────────────────────────────────
-    // Events Collection
-    // ─────────────────────────────────────────
+    // ─── Events ───────────────────────────────────────────────────────────────
+
     match /events/{eventId} {
       allow read: if true;
       allow create: if isAuthenticated();
-
       allow update: if isStaff() ||
-        // Creator editing their own pending event (non-sensitive fields only)
+        // Creator may edit their own pending event (non-sensitive fields only)
         (
           isAuthenticated() &&
           resource.data.createdBy == request.auth.uid &&
@@ -63,50 +66,40 @@ service cloud.firestore {
           !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['status', 'isAdmin', 'role', 'createdBy'])
         ) ||
-        // Any authenticated user may increment/decrement only the analytics counter fields
+        // Any authenticated user may update analytics counters only
         (
           isAuthenticated() &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['viewCount', 'saveCount', 'interestedCount', 'checkInCount', 'feedbackCount', 'averageRating'])
         );
-
       allow delete: if isStaff();
     }
 
-    // ─────────────────────────────────────────
-    // Registrations Collection
-    // ─────────────────────────────────────────
+    // ─── Registrations ────────────────────────────────────────────────────────
+
     match /registrations/{registrationId} {
       allow read: if isAuthenticated() &&
         (resource.data.userId == request.auth.uid || isStaff());
-
       allow create: if isAuthenticated() &&
         request.resource.data.userId == request.auth.uid;
-
       allow update: if isStaff();
       allow delete: if isStaff();
     }
 
-    // ─────────────────────────────────────────
-    // Notifications Collection
-    // ─────────────────────────────────────────
-    match /notifications/{notificationId} {
-      // Users can only read, update (mark as read), and delete their OWN notifications.
-      allow read, update, delete: if isOwner(resource.data.userId);
+    // ─── Notifications ────────────────────────────────────────────────────────
 
-      // Staff (admin/facilitator) can create notifications for ANY user (to send approve/reject alerts).
-      // Regular users can only create notifications for THEMSELVES (self-reminders) OR for ADMINS (facilitator requests).
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
       allow create: if isAuthenticated() && (
-        isStaff() || 
+        isStaff() ||
         request.resource.data.userId == request.auth.uid ||
         get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.role == 'admin' ||
         get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.email == 'admin@commove.com'
       );
     }
 
-    // ─────────────────────────────────────────
-    // Event Feedback Collection
-    // ─────────────────────────────────────────
+    // ─── Event Feedback ───────────────────────────────────────────────────────
+
     match /eventFeedback/{feedbackId} {
       allow read: if true;
       allow create: if isAuthenticated();

@@ -9,6 +9,9 @@ import { ChevronLeftIcon, EyeIcon, EyeSlashIcon, PREDEFINED_AVATARS } from '../c
 import Spinner from './Spinner';
 import Captcha, { CaptchaRef } from './Captcha';
 import KYCVerification from './KYCVerification';
+import OTPVerification from './OTPVerification';
+import { generateOTP, storeOTP, markOTPVerified, setSignupInProgress, clearSignupInProgress } from '../services/otpService';
+import { sendOTPEmail } from '../services/emailService';
 
 interface SignUpProps {
     onSwitchToSignIn: () => void;
@@ -33,6 +36,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
     const [isFacilitator, setIsFacilitator] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const isSubmittingRef = useRef(false); // prevents double-submission race condition
     const captchaRef = useRef<CaptchaRef>(null);
     const avatarScrollRef = useRef<HTMLDivElement>(null);
     const avatarDragRef = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
@@ -67,6 +71,8 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
 
     const handleNextStep = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmittingRef.current) return;
+        isSubmittingRef.current = true;
         setError('');
         setIsLoading(true);
 
@@ -149,10 +155,22 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             return;
         }
 
-        if (isFacilitator) {
-            setStep(2);
-        } else {
-            submitForm();
+        // Send OTP before proceeding — step 2 is always OTP verification
+        try {
+            const otp  = generateOTP();
+            await storeOTP(email, otp);
+            const sent = await sendOTPEmail(email, otp, `${firstName} ${lastName}`.trim());
+            if (!sent) {
+                setError('Failed to send verification code. Please check your email and try again.');
+                setIsLoading(false);
+                return;
+            }
+            setStep(2); // OTP step
+        } catch {
+            setError('Something went wrong while sending the verification code. Please try again.');
+        } finally {
+            setIsLoading(false);
+            isSubmittingRef.current = false;
         }
     };
 
@@ -168,8 +186,13 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             }
 
             // 1. Create user in Firebase Auth
+            // Flag signup as in-progress so the auth listener doesn't
+            // sign the user out before we can set the OTP-verified flag.
+            setSignupInProgress();
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
+            markOTPVerified(user.uid); // OTP was verified in step 2
+            clearSignupInProgress();
             const displayName = `${firstName} ${lastName}`.trim();
 
             // 2. Update Firebase Auth profile
@@ -181,7 +204,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                 email: user.email!,
                 isAdmin: email === 'admin@commove.com', 
                 role: 'user', 
-                facilitatorRequestStatus: (isFacilitator || step === 2) ? 'pending' : undefined,
+                facilitatorRequestStatus: (isFacilitator || step === 3) ? 'pending' : undefined,
                 idUrl: finalIdUrl || idImage || undefined,
                 faceUrl: faceImage || undefined,
                 birthday: birthday,
@@ -219,7 +242,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             onAuthSuccess();
 
         } catch (err: any) {
-            // Check for permission errors specifically
+            clearSignupInProgress(); // ensure flag is cleared on any failure
             if (err.code === 'auth/email-already-in-use' || (err.message && err.message.includes('auth/email-already-in-use'))) {
                 setError('This email is already registered. Please sign in instead.');
             } else if (err.code === 'permission-denied' || (err.message && err.message.includes('permission'))) {
@@ -236,10 +259,35 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
         }
     };
 
+    // Step 2 = OTP verification (all users)
+    // Step 3 = KYC (facilitators only, was previously step 2)
+    if (step === 2) {
+        return (
+            <div className="w-full flex-1 flex flex-col min-h-0 justify-center py-4">
+                <OTPVerification
+                    email={email}
+                    userName={`${firstName} ${lastName}`.trim()}
+                    onVerified={() => {
+                        if (isFacilitator) {
+                            setStep(3); // go to KYC
+                        } else {
+                            submitForm(); // create account immediately
+                        }
+                    }}
+                    onBack={() => setStep(1)}
+                />
+                {/* Captcha must stay mounted so captchaRef.current is not null when submitForm runs */}
+                <div className="hidden pointer-events-none opacity-0 h-0 overflow-hidden">
+                    <Captcha ref={captchaRef} />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="w-full flex-1 flex flex-col min-h-0">
             <div className="relative flex items-center text-left mb-6 mt-0 flex-shrink-0">
-                <button onClick={step === 1 ? onSwitchToSignIn : () => setStep(step - 1)} className="-ml-2 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 transition-colors mr-1">
+                <button onClick={step === 1 ? onSwitchToSignIn : () => setStep(step === 3 ? 2 : step - 1)} className="-ml-2 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 transition-colors mr-1">
                     <ChevronLeftIcon className="w-5 h-5" />
                 </button>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -484,16 +532,16 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                 </div>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
                 <div className="animate-fade-in-up">
-                    <KYCVerification 
+                    <KYCVerification
                         onComplete={(idUrl) => {
                             setIdImage(idUrl);
                             submitForm(idUrl);
-                        }} 
-                        onBack={() => setStep(1)} 
+                        }}
+                        onBack={() => setStep(2)}
                     />
-                    
+
                     {error && (
                         <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-2 rounded-xl mt-4">
                             <p className="text-red-600 dark:text-red-300 text-xs text-center font-bold">{error}</p>
