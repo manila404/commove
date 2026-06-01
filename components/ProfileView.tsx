@@ -180,8 +180,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     // Determine access level
     const isGuest = !user;
     const isStaff = user?.role === 'admin' || user?.role === 'facilitator' || user?.isAdmin === true;
-    const isAdminUser = user?.role === 'admin' || user?.isAdmin === true;
-    const roleLabel = isGuest ? 'Guest' : (isAdminUser ? 'Administrator' : (user.role === 'facilitator' ? 'Facilitator' : 'Resident'));
+    const isAdminUser = user?.role === 'admin' || (user?.isAdmin === true && user?.role !== 'facilitator');
+    const roleLabel = isGuest ? 'Guest' : (user?.role === 'facilitator' ? 'Facilitator' : (isAdminUser ? 'Administrator' : 'Resident'));
     const badgeColor = 'bg-white/20 text-white';
     const isPendingFacilitator = user?.facilitatorRequestStatus === 'pending';
 

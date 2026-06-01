@@ -65,6 +65,7 @@ export interface EventType {
   // Phase 1 Analytics counters — may be absent on old documents; treat missing as 0
   viewCount?: number;
   saveCount?: number;
+  likeCount?: number;
   interestedCount?: number;
   checkInCount?: number;
   feedbackCount?: number;
@@ -149,6 +150,7 @@ export type NotificationType =
   | 'event_rejected' // admin rejected a permit request
   | 'event_registration' // user registered for an event
   | 'event_created'      // facilitator created an event (notifies admin)
+  | 'event_submitted'    // confirmation to the facilitator that their event was submitted for review
   | 'event_feedback'     // request for feedback after event ends
   | 'event_updated'      // admin updated an event's schedule/details
   | 'event_cancelled'    // admin cancelled a published event

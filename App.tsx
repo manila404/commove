@@ -1323,6 +1323,7 @@ const App: React.FC = () => {
         const newLikedArray = Array.from(currentLiked);
         setCurrentUser({ ...currentUser, likedEventIds: newLikedArray });
         await updateUserLikes(currentUser.uid, new Set(newLikedArray));
+        await incrementEventCounter(eventId, 'likeCount', isLiking ? 1 : -1);
 
         if (isLiking) {
             toast.success("Event Liked", { description: "Event added to your likes." });
@@ -1919,7 +1920,7 @@ const App: React.FC = () => {
                                                         <button
                                                             key={cat}
                                                             onClick={() => setSelectedCategory(cat)}
-                                                            className={`relative min-w-[150px] md:min-w-[220px] h-[68px] md:h-[75px] rounded-[15px] p-3 text-left overflow-hidden transition-all transform active:scale-95 shadow-sm snap-start ${isSelected ? 'shadow-md opacity-100' : 'opacity-90 hover:opacity-100'} bg-gradient-to-br ${data.bg}`}
+                                                            className={`relative min-w-[150px] md:min-w-[220px] h-[68px] md:h-[75px] rounded-[10px] p-3 text-left overflow-hidden transition-all transform active:scale-95 shadow-sm snap-start ${isSelected ? 'shadow-md opacity-100' : 'opacity-90 hover:opacity-100'} bg-gradient-to-br ${data.bg}`}
                                                         >
                                                             {/* Background Pattern */}
                                                             <div className="absolute inset-0 overflow-hidden pointer-events-none">

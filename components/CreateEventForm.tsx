@@ -420,7 +420,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             const admins = await getAdmins();
             admins.forEach(a => createNotification(a.uid, 'event_created', 'Event Update Request', `${currentUser.name} updated an event for review.`, eventToEdit.id));
             // Notify Facilitator
-            await createNotification(currentUser.uid, 'event_created', 'Event Submitted', 'Your event update has been submitted for review.', eventToEdit.id);
+            await createNotification(currentUser.uid, 'event_submitted', 'Event Submitted', 'Your event update has been submitted for review.', eventToEdit.id);
           } catch (e) { console.error(e); }
         } else if (isAdmin && mode === 'publish') {
            try {
@@ -440,7 +440,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             const admins = await getAdmins();
             admins.forEach(a => createNotification(a.uid, 'event_created', 'New Event Request', `${currentUser.name} submitted an event for review.`, newEvent.id));
             // Notify Facilitator
-            await createNotification(currentUser.uid, 'event_created', 'Event Submitted', 'Your event has been submitted for review.', newEvent.id);
+            await createNotification(currentUser.uid, 'event_submitted', 'Event Submitted', 'Your event has been submitted for review.', newEvent.id);
           } catch (e) { console.error(e); }
         } else if (isAdmin && mode === 'publish') {
            try {

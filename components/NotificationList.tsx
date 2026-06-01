@@ -50,7 +50,7 @@ const TypeIcon: React.FC<{ type: AppNotification['type']; isRead: boolean }> = (
             </div>
         );
     }
-    if (type === 'event_created') {
+    if (type === 'event_created' || type === 'event_submitted') {
         return (
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isRead ? 'bg-gray-100 dark:bg-gray-700 text-gray-400' : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -298,6 +298,17 @@ const NotificationActionPanel: React.FC<{
                         </button>
                     )}
 
+                    {/* Facilitator submission confirmation — never show admin quick-actions here */}
+                    {isStaff && notif.type === 'event_submitted' && (
+                        <button
+                            onClick={() => onGoToAdmin('requests')}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg transition-colors"
+                        >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            View My Submissions
+                        </button>
+                    )}
+
                     {/* Resident-specific actions */}
                     {!isStaff && notif.type === 'event_approved' && event && (
                         <button
@@ -396,7 +407,7 @@ const NotificationActionPanel: React.FC<{
                     )}
 
                     {/* Generic fallback if event exists but no specific handler */}
-                    {event && !['event_created', 'event_approved', 'event_rejected', 'event_registration', 'reminder', 'event_upcoming', 'event_tomorrow', 'event_feedback', 'event_updated', 'event_cancelled', 'system'].includes(notif.type) && (
+                    {event && !['event_created', 'event_submitted', 'event_approved', 'event_rejected', 'event_registration', 'reminder', 'event_upcoming', 'event_tomorrow', 'event_feedback', 'event_updated', 'event_cancelled', 'system'].includes(notif.type) && (
                         <button
                             onClick={() => onViewEvent()}
                             className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-lg transition-colors"

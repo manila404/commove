@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
   ArrowLeft,
-  Flame,
   Calendar,
   MapPin,
   Clock,
@@ -113,6 +112,15 @@ const HorizontalEventCard: React.FC<{
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+const safeNum = (v: unknown) => { const n = Number(v); return isFinite(n) ? n : 0; };
+const popularityScore = (e: DisplayEventType): number =>
+  safeNum(e.likeCount)       * 3   +
+  safeNum(e.saveCount)       * 2.5 +
+  safeNum(e.interestedCount) * 2   +
+  safeNum(e.checkInCount)    * 1.5 +
+  safeNum(e.approvedCount)   * 1   +
+  safeNum(e.viewCount)       * 0.1;
+
 const ViewAllPopularEvents: React.FC<ViewAllPopularEventsProps> = ({
   events,
   onBack,
@@ -120,9 +128,11 @@ const ViewAllPopularEvents: React.FC<ViewAllPopularEventsProps> = ({
 }) => {
   const [search, setSearch] = useState('');
 
-  // Group events by date
+  // Only show events with real engagement, sorted by popularity within each day
   const groupedEvents = useMemo(() => {
-    let filtered = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const popular = events.filter(e => popularityScore(e) > 0);
+
+    let filtered = [...popular].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (search.trim()) {
       const q = search.toLowerCase();

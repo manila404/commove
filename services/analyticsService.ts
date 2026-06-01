@@ -42,7 +42,7 @@ export const calculateNewAverageRating = (
  */
 export const incrementEventCounter = async (
     eventId: string,
-    field: 'viewCount' | 'saveCount' | 'interestedCount' | 'checkInCount',
+    field: 'viewCount' | 'saveCount' | 'likeCount' | 'interestedCount' | 'checkInCount',
     amount: 1 | -1 = 1
 ): Promise<void> => {
     try {

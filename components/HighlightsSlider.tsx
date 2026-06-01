@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
 import type { DisplayEventType } from '../types';
 import { formatDisplayDate } from '../constants';
 
@@ -8,166 +7,73 @@ interface HighlightsSliderProps {
   onEventSelect: (event: DisplayEventType) => void;
 }
 
-const getCategoryColor = (category: string) => {
-  const colors: Record<string, string> = {
-    'Concerts': 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-    'Arts': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-    'Competitions': 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-    'Technology': 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-    'Gaming': 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
-    'Conference': 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
-    'Business': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-    'Health': 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
-    'Expo Events': 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
-    'Cafe': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
-    'Cosplay': 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
-  };
-  return colors[category] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
-};
+const CARD_STYLES = [
+  { bg: '#0d9488', shadow: 'rgba(13,148,136,0.4)' },
+  { bg: '#be185d', shadow: 'rgba(190,24,93,0.4)' },
+  { bg: '#d97706', shadow: 'rgba(217,119,6,0.4)' },
+  { bg: '#1d4ed8', shadow: 'rgba(29,78,216,0.4)' },
+  { bg: '#7c3aed', shadow: 'rgba(124,58,237,0.4)' },
+];
 
 const HighlightsSlider: React.FC<HighlightsSliderProps> = ({ events, onEventSelect }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
   const highlights = events.filter(e => e.imageUrl).slice(0, 5);
-
-  useEffect(() => {
-    if (highlights.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % highlights.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [highlights.length]);
 
   if (highlights.length === 0) return null;
 
-  const total = highlights.length;
-  const safeIndex = currentIndex % total;
-
   return (
-    <div className="relative w-full pb-8 flex flex-col items-center overflow-hidden">
-      <div className="relative w-full h-52 md:h-[480px] flex items-center justify-center">
-        <AnimatePresence initial={false}>
-          {highlights.map((highlight, index) => {
-            let offset = (index - safeIndex) % total;
-            if (offset < 0) offset += total;
-            
-            let isCenter = offset === 0;
-            let isRight = offset === 1;
-            let isLeft = offset === total - 1;
-            
-            if (total === 1) {
-              isCenter = true; isRight = false; isLeft = false;
-            } else if (total === 2) {
-              isRight = offset === 1;
-              isLeft = false;
-            }
+    <div className="w-full">
+      {/* Mobile: horizontal scroll | Desktop: grid */}
+      <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-visible md:snap-none">
+        {highlights.map((event, index) => {
+          const style = CARD_STYLES[index % CARD_STYLES.length];
+          const subtitle = event.venue
+            ? `${event.venue} • ${formatDisplayDate(event.date, event.endDate)}`
+            : formatDisplayDate(event.date, event.endDate);
 
-            let x = "0%";
-            let scale = 1;
-            let zIndex = 10;
-            let opacity = 1;
-            
-            if (isCenter) {
-              x = "0%";
-              scale = 1;
-              zIndex = 10;
-              opacity = 1;
-            } else if (isRight) {
-              x = isMobile ? "94%" : "95%";
-              scale = 0.82;
-              zIndex = 5;
-              opacity = 1;
-            } else if (isLeft) {
-              x = isMobile ? "-94%" : "-95%";
-              scale = 0.82;
-              zIndex = 5;
-              opacity = 1;
-            } else {
-              x = offset > total / 2 ? "200%" : "-200%";
-              scale = 0.8;
-              zIndex = 1;
-              opacity = 0;
-            }
+          return (
+            <div
+              key={event.id || index}
+              className="snap-start flex-shrink-0 w-[72vw] sm:w-[44vw] md:w-auto flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1"
+              style={{
+                backgroundColor: style.bg,
+                boxShadow: `0 8px 24px ${style.shadow}`,
+                minHeight: '300px',
+              }}
+              onClick={() => onEventSelect(event)}
+            >
+              {/* Title & subtitle */}
+              <div className="p-5 pb-3 flex-shrink-0">
+                <h3 className="text-white font-bold text-[17px] leading-snug mb-2 line-clamp-2">
+                  {event.name}
+                </h3>
+                <p className="text-white/75 text-[13px] leading-snug line-clamp-2">
+                  {subtitle}
+                </p>
+              </div>
 
-            return (
-              <motion.div
-                key={highlight.id || index}
-                initial={false}
-                animate={{ x, scale, zIndex, opacity }}
-                transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
-                className={`absolute ${isMobile ? 'w-[80%]' : 'w-[85%]'} max-w-[1000px] h-full rounded-[15px] overflow-hidden cursor-pointer ${
-                  isCenter ? 'pointer-events-auto' : 'pointer-events-auto'
-                }`}
-                onClick={() => {
-                  if (isCenter) {
-                    onEventSelect(highlight);
-                  } else {
-                    setCurrentIndex(index);
-                  }
-                }}
-              >
-                <img 
-                  src={highlight.imageUrl || undefined} 
-                  alt={highlight.name}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-                <motion.div 
-                  initial={false}
-                  animate={{ opacity: isCenter ? 1 : 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-between p-6 md:p-10"
+              {/* Cover photo frame */}
+              <div className="px-4 pb-0 flex-1 flex flex-col justify-end min-h-0">
+                <div
+                  className="rounded-t-xl overflow-hidden relative"
+                  style={{ height: '170px', background: 'rgba(0,0,0,0.2)' }}
                 >
-                  {/* Category Capsules */}
-                  <div className="flex flex-wrap gap-2 self-start">
-                    {(Array.isArray(highlight.category) ? highlight.category : [highlight.category || "Event"]).map((cat, i) => (
-                      <div 
-                        key={i} 
-                        className={isMobile 
-                          ? "text-gray-200 text-xs font-medium" 
-                          : `px-4 py-1.5 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm ${getCategoryColor(cat)}`
-                        }
-                      >
-                        {cat}
-                      </div>
-                    ))}
+                  {/* Browser dots */}
+                  <div className="absolute top-2 left-3 flex gap-1 z-10">
+                    <span className="w-2 h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.45)' }} />
+                    <span className="w-2 h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.45)' }} />
+                    <span className="w-2 h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.45)' }} />
                   </div>
-                  
-                  {/* Text content */}
-                  <div className="mb-2 max-w-3xl">
-                    <h3 className={`text-white ${isMobile ? 'text-lg mb-1' : 'text-2xl md:text-[32px] mb-3'} font-extrabold font-sans leading-[1.3] line-clamp-3`}>
-                      {highlight.name}
-                    </h3>
-                    <p className="text-gray-300 text-sm md:text-base font-medium font-sans">
-                      {highlight.venue} • {formatDisplayDate(highlight.date, highlight.endDate)}
-                    </p>
-                  </div>
-                </motion.div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-
-      {/* Pagination Dots */}
-      <div className="flex space-x-2 mt-8">
-        {highlights.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentIndex(idx)}
-            className={`h-2.5 rounded-full transition-all duration-300 ${
-              idx === safeIndex ? 'w-8 bg-primary-600' : 'w-2.5 bg-gray-200 dark:bg-gray-700'
-            }`}
-            aria-label={`Go to slide ${idx + 1}`}
-          />
-        ))}
+                  <img
+                    src={event.imageUrl || undefined}
+                    alt={event.name}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

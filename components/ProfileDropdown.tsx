@@ -62,8 +62,8 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
   };
 
   const isStaff = user.role === 'admin' || user.role === 'facilitator' || user.isAdmin === true;
-  const isAdminUser = user.role === 'admin' || user.isAdmin === true;
-  const roleLabel = isAdminUser ? 'Administrator' : (user.role === 'facilitator' ? 'Facilitator' : 'Resident');
+  const isAdminUser = user.role === 'admin' || (user.isAdmin === true && user.role !== 'facilitator');
+  const roleLabel = user.role === 'facilitator' ? 'Facilitator' : (isAdminUser ? 'Administrator' : 'Resident');
   const dashboardTitle = isAdminUser ? 'Admin Analytics' : 'Facilitator Dashboard';
 
   return (

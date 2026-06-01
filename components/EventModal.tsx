@@ -337,7 +337,20 @@ const EventModal: React.FC<EventModalProps> = ({
         {/* Category & Title */}
         <div className="space-y-3">
           <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Event Details</p>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white leading-snug">{event.name}</h2>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white leading-snug">{event.name}</h2>
+              {(event as any).subtitle && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-snug">{(event as any).subtitle}</p>
+              )}
+            </div>
+            <button
+              onClick={() => onToggleLike(event.id)}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0 mt-0.5"
+            >
+              <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-500 dark:text-gray-300'}`} />
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2 pt-1">
             {(Array.isArray(event.category) ? event.category : [event.category]).map(cat => (
               <span key={cat} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium rounded-full">
@@ -1209,7 +1222,20 @@ const EventModal: React.FC<EventModalProps> = ({
             {/* Category & Title */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Event Details</p>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white leading-snug">{event.name}</h2>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white leading-snug">{event.name}</h2>
+                  {(event as any).subtitle && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">{(event as any).subtitle}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => onToggleLike(event.id)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0 mt-0.5"
+                >
+                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-500 dark:text-gray-300'}`} />
+                </button>
+              </div>
               <div className="flex flex-wrap gap-2 pt-0.5">
                 {(Array.isArray(event.category) ? event.category : [event.category]).map(cat => (
                   <span key={cat} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium rounded-full">{cat}</span>
