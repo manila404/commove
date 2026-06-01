@@ -127,14 +127,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         setAccountError(null);
         try {
             if (showAccountModal === 'delete') {
-                if (auth.currentUser) {
-                    await auth.currentUser.delete();
-                    // Firebase auto-signs out when auth user is deleted;
-                    // onAuthStateChanged in App.tsx will update state to guest screen
-                }
-                try {
-                    await updateUserData(user.uid, { isDeleted: true, isDeactivated: true } as any);
-                } catch { /* silent — Auth account is gone */ }
+                // Mark as pending deletion — actual Auth account removal happens if they
+                // don't recover within 30 days (handled at next login via recovery prompt)
+                await updateUserData(user.uid, {
+                    pendingDeletion: true,
+                    deletionScheduledAt: Date.now(),
+                } as any);
+                await auth.signOut();
             } else if (showAccountModal === 'deactivate') {
                 await updateUserData(user.uid, { isDeactivated: true } as any);
                 // Sign out directly — bypasses the logout confirmation modal
@@ -249,7 +248,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <p className="text-xs text-primary-700 dark:text-primary-300 leading-relaxed">
-                                        <span className="font-semibold">You have 30 days to recover your account.</span> After submitting this request, contact our support team within 30 days to restore your account and data.
+                                        <span className="font-semibold">You have 30 days to recover your account.</span> After submitting this request, simply log back in within 30 days to restore your account and data.
                                     </p>
                                 </div>
                             </>

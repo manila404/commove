@@ -2073,31 +2073,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </button>
                         ))}
 
-                        {/* Right side — sort + pending */}
+                        {/* Right side — pending */}
                         <div className="ml-auto flex items-center gap-2">
-                            {/* Newest / Oldest toggle */}
-                            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full p-0.5">
-                                <button
-                                    onClick={() => { setUserSortOrder('newest'); setUserPage(1); }}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
-                                        userSortOrder === 'newest'
-                                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                                    }`}
-                                >
-                                    Newest
-                                </button>
-                                <button
-                                    onClick={() => { setUserSortOrder('oldest'); setUserPage(1); }}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
-                                        userSortOrder === 'oldest'
-                                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                                    }`}
-                                >
-                                    Oldest
-                                </button>
-                            </div>
                             {/* Pending Requests */}
                             <button
                                 onClick={() => { setShowPendingFacilitatorFilter(true); setUserPage(1); }}
@@ -2107,7 +2084,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     : 'bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20'
                                 }`}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 Pending Requests
                                 {pendingFacilitators.length > 0 && (
                                     <span className="ml-0.5 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{pendingFacilitators.length}</span>
@@ -2219,7 +2195,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             <button
                                                 onClick={() => onDeleteUser(user.uid)}
                                                 disabled={user.email === 'admincommove@gmail.com'}
-                                                className={`p-1.5 rounded-lg transition-colors border border-transparent ${user.email === 'admincommove@gmail.com' ? 'text-gray-300 cursor-not-allowed' : 'text-red-500 hover:bg-red-50 hover:border-red-100'}`}
+                                                className="hidden"
                                                 title="Delete User"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

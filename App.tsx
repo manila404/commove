@@ -132,6 +132,7 @@ const App: React.FC = () => {
     const isInitialAuthRef = useRef(true);
     // Auth & User State
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [pendingDeletionUser, setPendingDeletionUser] = useState<User | null>(null);
     const [authLoading, setAuthLoading] = useState(true);
     const [isGuest, setIsGuest] = useState(false);
     const [onboardingStep, setOnboardingStep] = useState<'preferences' | 'auth' | 'completed'>(() => {
@@ -421,6 +422,25 @@ const App: React.FC = () => {
                         if (!isInitialAuthRef.current) {
                             setActiveTab('feed');
                         }
+                    }
+
+                    // If account is pending deletion, check if window has expired
+                    if (profile.pendingDeletion) {
+                        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+                        const elapsed = Date.now() - (profile.deletionScheduledAt || 0);
+                        if (elapsed >= THIRTY_DAYS_MS) {
+                            // 30 days passed — complete deletion immediately
+                            try { await firebaseUser.delete(); } catch { /* already gone */ }
+                            await signOut(auth).catch(() => {});
+                            setAuthLoading(false);
+                            isInitialAuthRef.current = false;
+                            return;
+                        }
+                        // Still within 30 days — show recovery prompt
+                        setPendingDeletionUser(profile);
+                        setAuthLoading(false);
+                        isInitialAuthRef.current = false;
+                        return;
                     }
 
                     setCurrentUser(profile);
@@ -1735,9 +1755,62 @@ const App: React.FC = () => {
                         showTermsAndConditions ? 'Terms & Conditions' :
                             showViewAllPopular ? 'Popular Events' : null;
 
+    // ── Account Recovery Modal ────────────────────────────────────────────────
+    const handleRecoverAccount = async () => {
+        if (!pendingDeletionUser) return;
+        await updateUserData(pendingDeletionUser.uid, { pendingDeletion: false, deletionScheduledAt: null } as any);
+        const recovered = { ...pendingDeletionUser, pendingDeletion: false };
+        setCurrentUser(recovered);
+        setOnboardingStep('completed');
+        setIsGuest(false);
+        setPendingDeletionUser(null);
+    };
+
+    // "No" — sign out and let the 30-day countdown continue
+    const handleKeepDeletion = async () => {
+        setPendingDeletionUser(null);
+        await signOut(auth).catch(() => {});
+    };
+
     return (
         <div className={`h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300 font-sans ${activeTab === 'nearby' || activeOverlay ? 'overflow-hidden' : 'min-h-screen overflow-x-hidden'}`}>
             <NetworkStatusBanner />
+
+            {/* Account Recovery Prompt — shown when a user with pendingDeletion logs back in */}
+            {pendingDeletionUser && (
+                <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+                        {/* Icon */}
+                        <div className="w-14 h-14 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mx-auto">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </div>
+                        {/* Question */}
+                        <div className="text-center space-y-2">
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Recover Your Account?</h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                                Your account is scheduled for deletion. Would you like to recover it?
+                            </p>
+                        </div>
+                        {/* Yes / No */}
+                        <div className="flex gap-3 pt-1">
+                            <button
+                                onClick={handleKeepDeletion}
+                                className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold text-sm transition-colors"
+                            >
+                                No
+                            </button>
+                            <button
+                                onClick={handleRecoverAccount}
+                                className="flex-1 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm transition-colors"
+                            >
+                                Yes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <Header
                 currentUser={currentUser}
                 reminders={currentUser?.reminders || {}}

@@ -334,7 +334,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         setUserError('');
         try {
             const fetchedUsers = await getAllUsers();
-            setUsers(fetchedUsers);
+            // Deduplicate by email — if the same email has multiple Firestore docs
+            // (e.g. from repeated sign-ups during testing), only show one entry
+            const seen = new Set<string>();
+            const unique = fetchedUsers.filter(u => {
+                const key = u.email?.toLowerCase();
+                if (!key || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+            setUsers(unique);
         } catch (err: any) {
             console.error("Failed to fetch users:", err);
             setUserError('Failed to load users. Please check your connection.');

@@ -106,6 +106,8 @@ export interface User {
   viewedEventIds?: string[]; // New: Track tapped events for algorithm
   reminders?: Record<string, Reminder>;
   preferences?: string[];
+  pendingDeletion?: boolean;       // User requested deletion — show recovery prompt on next login
+  deletionScheduledAt?: number;    // Timestamp when deletion was requested (ms)
   registrationStatuses?: Record<string, { status: 'pending' | 'approved' | 'rejected'; registrationId: string }>;
   notificationSettings?: {
     pushEnabled: boolean;
