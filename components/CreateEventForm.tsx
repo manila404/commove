@@ -785,14 +785,9 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             <div className={`${card} ${formErrors.venue ? 'ring-2 ring-red-400/20 border-red-400/40' : ''}`}>
               <SectionHeader title="Location" />
               <div className="space-y-4">
-                <div>
-                  <label className={label}>Venue Name</label>
-                  <input type="text" name="venue" value={formData.venue} onChange={handleChange} onBlur={() => touch('venue')}
-                    placeholder="e.g. Activity Center" className={input} />
-                </div>
                 <div className="relative">
-                  <label className={label}>Street Address</label>
-                  <input type="text" name="street" value={locationQuery || formData.street} 
+                  <label className={label}>Address</label>
+                  <input type="text" name="street" value={locationQuery || formData.street}
                     onChange={e => {
                         setLocationQuery(e.target.value);
                         setField('street', e.target.value);
@@ -833,6 +828,11 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                       </motion.div>
                     )}
                   </AnimatePresence>
+                </div>
+                <div>
+                  <label className={label}>Venue Name</label>
+                  <input type="text" name="venue" value={formData.venue} onChange={handleChange} onBlur={() => touch('venue')}
+                    placeholder="e.g. Activity Center" className={input} />
                 </div>
                 <div>
                   <label className={label}>Location Instructions (Optional)</label>

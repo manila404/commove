@@ -1944,7 +1944,15 @@ const App: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {/* 4. Upcoming Next Week */}
+                                        {/* Highlights — directly under Categories */}
+                                        {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && highlightedDisplayEvents.length > 0 && (
+                                            <div className="mb-2">
+                                                <h2 className="text-base md:text-lg font-semibold md:font-bold text-gray-900 dark:text-white mb-4">Highlights</h2>
+                                                <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
+                                            </div>
+                                        )}
+
+                                        {/* Upcoming Next Week — under Highlights */}
                                         {!searchQuery && selectedCategory === 'All' && !selectedDateFilter && (
                                             <UpcomingNextWeek
                                                 events={getDisplayEvents}
@@ -1958,20 +1966,13 @@ const App: React.FC = () => {
                                             />
                                         )}
 
-                                        {/* 5. Trending Heading */}
+                                        {/* Recommended for You + Event List */}
                                         <div className="space-y-4">
-                                            {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && highlightedDisplayEvents.length > 0 && (
-                                                <div className="-mx-4 md:-ml-8 md:-mr-4 mb-6">
-                                                    <h2 className="px-4 md:pl-8 md:pr-4 text-xl font-bold text-gray-900 dark:text-white mb-4">Highlights</h2>
-                                                    <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
-                                                </div>
-                                            )}
                                             <h2 id="recommended-section" className="text-base md:text-lg font-semibold md:font-bold text-gray-900 dark:text-white pt-1">
                                                 {selectedDateFilter ? `Events on ${formatDisplayDate(selectedDateFilter)}` :
                                                     selectedCategory === 'All' ? 'Recommended for You' : selectedCategory}
                                             </h2>
 
-                                            {/* 5. Event List */}
                                             {areEventsLoading ? (
                                                 <div className="flex justify-center py-10"><Spinner size="lg" /></div>
                                             ) : (
