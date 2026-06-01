@@ -57,35 +57,35 @@ import {
     Flame,
     Music,
     Mic,
-    Palette,
-    Gamepad2,
     Briefcase,
-    VenetianMask,
-    Trophy,
-    Laptop,
     HeartPulse,
-    Tent,
-    Coffee,
     ChevronLeft,
     ChevronRight,
     Calendar,
-    MapPin
+    MapPin,
+    Dumbbell,
+    Heart,
+    Wrench,
+    Landmark,
+    FileText,
+    Users,
+    Bike,
 } from 'lucide-react';
 
 const CATEGORY_DATA: Record<string, { bg: string, subtitle: string, icon: React.ElementType }> = {
     'All': { bg: 'from-[#a78bfa] to-[#8b5cf6]', subtitle: 'Everything', icon: Globe },
     'Happening Now': { bg: 'from-[#f87171] to-[#ef4444]', subtitle: 'Live', icon: Flame },
-    'Concerts': { bg: 'from-[#60a5fa] to-[#3b82f6]', subtitle: 'Music', icon: Music },
-    'Conference': { bg: 'from-[#34d399] to-[#10b981]', subtitle: 'Learn', icon: Mic },
-    'Arts': { bg: 'from-[#f472b6] to-[#ec4899]', subtitle: 'Creative', icon: Palette },
-    'Gaming': { bg: 'from-[#c084fc] to-[#a855f7]', subtitle: 'Play', icon: Gamepad2 },
-    'Business': { bg: 'from-[#fbbf24] to-[#f59e0b]', subtitle: 'Network', icon: Briefcase },
-    'Cosplay': { bg: 'from-[#e879f9] to-[#d946ef]', subtitle: 'Costume', icon: VenetianMask },
-    'Competitions': { bg: 'from-[#facc15] to-[#eab308]', subtitle: 'Win', icon: Trophy },
-    'Technology': { bg: 'from-[#38bdf8] to-[#0ea5e9]', subtitle: 'Tech', icon: Laptop },
-    'Health': { bg: 'from-[#4ade80] to-[#22c55e]', subtitle: 'Wellness', icon: HeartPulse },
-    'Expo Events': { bg: 'from-[#818cf8] to-[#6366f1]', subtitle: 'Exhibits', icon: Tent },
-    'Cafe': { bg: 'from-[#fb923c] to-[#f97316]', subtitle: 'Coffee', icon: Coffee },
+    'Conference': { bg: 'from-[#60a5fa] to-[#3b82f6]', subtitle: 'Learn', icon: Mic },
+    'Sports': { bg: 'from-[#818cf8] to-[#6366f1]', subtitle: 'Active', icon: Dumbbell },
+    'Business': { bg: 'from-[#64748b] to-[#475569]', subtitle: 'Network', icon: Briefcase },
+    'Social Welfare': { bg: 'from-[#38bdf8] to-[#0ea5e9]', subtitle: 'Community', icon: Heart },
+    'Health and Wellness': { bg: 'from-[#c084fc] to-[#a855f7]', subtitle: 'Wellness', icon: HeartPulse },
+    'Concerts': { bg: 'from-[#34d399] to-[#10b981]', subtitle: 'Music', icon: Music },
+    'Workshop': { bg: 'from-[#fb923c] to-[#f97316]', subtitle: 'Skills', icon: Wrench },
+    'Government Services': { bg: 'from-[#fbbf24] to-[#f59e0b]', subtitle: 'Services', icon: Landmark },
+    'Civil Registry': { bg: 'from-[#f87171] to-[#ef4444]', subtitle: 'Records', icon: FileText },
+    'Community Services': { bg: 'from-[#2dd4bf] to-[#14b8a6]', subtitle: 'Together', icon: Users },
+    'Recreation': { bg: 'from-[#a3e635] to-[#65a30d]', subtitle: 'Fun', icon: Bike },
 };
 
 // Palette of gradient colours cycled for custom categories
@@ -1910,7 +1910,7 @@ const App: React.FC = () => {
                                             >
                                                 {CATEGORIES.map((cat, idx) => {
                                                     const predefined = CATEGORY_DATA[cat];
-                                                    const customGradient = CUSTOM_CATEGORY_GRADIENTS[Math.max(0, idx - CATEGORIES.length) % CUSTOM_CATEGORY_GRADIENTS.length];
+                                                    const customGradient = CUSTOM_CATEGORY_GRADIENTS[idx % CUSTOM_CATEGORY_GRADIENTS.length];
                                                     const data = predefined || { bg: customGradient, subtitle: 'Custom', icon: Tag };
                                                     const isSelected = selectedCategory === cat;
                                                     const Icon = data.icon;

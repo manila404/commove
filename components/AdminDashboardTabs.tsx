@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { EventType, User } from '../types';
 import { XMarkIcon, formatDisplayDate, MoreVerticalIcon } from '../constants';
 import { getEventAlerts } from '../utils/eventAlerts';
 import type { EventAlert } from '../utils/eventAlerts';
-import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon } from 'lucide-react';
+import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon, Search, X, Clock, Trash2 } from 'lucide-react';
 import AdminReports from './AdminReports';
 import { getHighlights, setHighlights } from '../services/eventService';
 import { fetchAllFeedback } from '../services/feedbackService';
@@ -84,7 +84,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     );
 
     // ── Card-level decision support micro-insight ─────────────────────────────
-    const CardInsight = ({ level, text, rec }: { level: InsightLevel; text: string; rec?: string }) => {
+    const CardInsight = ({ level, text, rec, moreInsights, onMoreDetails }: { level: InsightLevel; text: string; rec?: string; moreInsights?: Array<{ level: InsightLevel; text: string; rec?: string }>; onMoreDetails?: () => void }) => {
         const cfgMap: Record<InsightLevel, { bg: string; border: string; iconBg: string; iconText: string }> = {
             success:  { bg: 'bg-green-50 dark:bg-green-900/10',   border: 'border-green-100 dark:border-green-800/30',   iconBg: 'bg-green-100 dark:bg-green-900/30',   iconText: 'text-green-600 dark:text-green-400' },
             info:     { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400' },
@@ -100,7 +100,18 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         };
         return (
             <div className={`mt-3 rounded-lg border p-2.5 ${cfg.bg} ${cfg.border}`}>
-                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Decision Support</p>
+                <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Decision Support</p>
+                    {moreInsights && moreInsights.length > 0 && onMoreDetails && (
+                        <button
+                            onClick={onMoreDetails}
+                            className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors flex items-center gap-0.5"
+                        >
+                            More Details
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                    )}
+                </div>
                 <div className="flex gap-2 items-start">
                     <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.iconBg} ${cfg.iconText}`}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">{iconPaths[level]}</svg>
@@ -133,14 +144,76 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [eventVisibilityFilter, setEventVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
     const [eventsPage, setEventsPage] = useState(1);
     useEffect(() => { setEventsPage(1); }, [eventFilter, eventSortOrder, eventVisibilityFilter]);
+
+    // ── Events tab search bar ─────────────────────────────────────────────────
+    const [eventSearchQuery, setEventSearchQuery] = useState('');
+    const [eventSearchFocused, setEventSearchFocused] = useState(false);
+    const [eventSearchHistory, setEventSearchHistory] = useState<string[]>([]);
+    const eventSearchRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const saved = localStorage.getItem('admin_event_searches');
+        if (saved) setEventSearchHistory(JSON.parse(saved));
+    }, []);
+    useEffect(() => { setEventsPage(1); }, [eventSearchQuery]);
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (eventSearchRef.current && !eventSearchRef.current.contains(e.target as Node))
+                setEventSearchFocused(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+    const saveEventSearchHistory = (term: string) => {
+        if (!term.trim()) return;
+        const next = [term, ...eventSearchHistory.filter(h => h !== term)].slice(0, 5);
+        setEventSearchHistory(next);
+        localStorage.setItem('admin_event_searches', JSON.stringify(next));
+    };
+    const clearEventSearchHistory = () => {
+        setEventSearchHistory([]);
+        localStorage.removeItem('admin_event_searches');
+    };
     const [analyticsDrawerEvent, setAnalyticsDrawerEvent] = useState<EventType | null>(null);
     const [metricsDrawerOpen, setMetricsDrawerOpen] = useState(false);
     const [dsDrawerOpen, setDsDrawerOpen] = useState(false);
+    const [cardDetailDrawer, setCardDetailDrawer] = useState<{ title: string; insights: Array<{ level: InsightLevel; text: string; rec?: string }> } | null>(null);
+    const [cardDetailClosing, setCardDetailClosing] = useState(false);
+    const closeCardDetailDrawer = () => {
+        setCardDetailClosing(true);
+        setTimeout(() => { setCardDetailDrawer(null); setCardDetailClosing(false); }, 320);
+    };
     // User management extra state
     const [userSortOrder, setUserSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [userPage, setUserPage] = useState(1);
     const [showPendingFacilitatorFilter, setShowPendingFacilitatorFilter] = useState(false);
     const USERS_PER_PAGE = 10;
+
+    // ── User search bar ───────────────────────────────────────────────────────
+    const [userSearchFocused, setUserSearchFocused] = useState(false);
+    const [userSearchHistory, setUserSearchHistory] = useState<string[]>([]);
+    const userSearchRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const saved = localStorage.getItem('admin_user_searches');
+        if (saved) setUserSearchHistory(JSON.parse(saved));
+    }, []);
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (userSearchRef.current && !userSearchRef.current.contains(e.target as Node))
+                setUserSearchFocused(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+    const saveUserSearchHistory = (term: string) => {
+        if (!term.trim()) return;
+        const next = [term, ...userSearchHistory.filter(h => h !== term)].slice(0, 5);
+        setUserSearchHistory(next);
+        localStorage.setItem('admin_user_searches', JSON.stringify(next));
+    };
+    const clearUserSearchHistory = () => {
+        setUserSearchHistory([]);
+        localStorage.removeItem('admin_user_searches');
+    };
 
     // Role change confirmation state
     const [pendingRoleChange, setPendingRoleChange] = useState<{ user: User; newRole: 'facilitator' | 'user' } | null>(null);
@@ -828,6 +901,116 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         return { level: 'success', text: `"${top.name}" leads with ${top.participants} check-ins across ${topEventsData.length} standout events — a healthy distribution of attendance.`, rec: 'Schedule more events with formats similar to top performers to sustain community engagement.' };
     })() as CardInsightData;
 
+    // ── Extra insights for More Details drawer ────────────────────────────────
+    const monthlyTrendsMoreInsights: CardInsightData[] = (() => {
+        const result: CardInsightData[] = [];
+        const visible = realMonthlyTrends.filter(m => m.participants > 0 || m.events > 0);
+        if (visible.length === 0) return result;
+        const best = [...visible].sort((a, b) => b.participants - a.participants)[0];
+        result.push({ level: 'success', text: `Best performing month is ${best.name} with ${best.participants} check-in${best.participants !== 1 ? 's' : ''}.`, rec: 'Analyze what events ran in this month to replicate its success formula.' });
+        const monthsWithEvents = visible.filter(m => m.events > 0);
+        if (monthsWithEvents.length > 0) {
+            const avg = Math.round(monthsWithEvents.reduce((s, m) => s + (m.participants / m.events), 0) / monthsWithEvents.length);
+            result.push({ level: avg >= 5 ? 'success' : avg >= 2 ? 'info' : 'warning', text: `Average of ${avg} check-in${avg !== 1 ? 's' : ''} per event across active months.`, rec: avg < 3 ? 'Promote QR check-in more actively at event entrances to improve attendance capture.' : 'Maintain current promotion strategies that are driving per-event attendance.' });
+        }
+        const totalCheckins = visible.reduce((s, m) => s + m.participants, 0);
+        const totalEvents = visible.reduce((s, m) => s + m.events, 0);
+        result.push({ level: 'info', text: `${totalCheckins} total check-ins across ${totalEvents} event${totalEvents !== 1 ? 's' : ''} in ${visible.length} active month${visible.length !== 1 ? 's' : ''}.` });
+        if (visible.length >= 2) {
+            const worst = [...visible].sort((a, b) => a.participants - b.participants)[0];
+            if (worst.name !== best.name) result.push({ level: 'warning', text: `Lowest participation was ${worst.name} with ${worst.participants} check-in${worst.participants !== 1 ? 's' : ''}.`, rec: 'Investigate if fewer events or lower-interest topics drove the dip and adjust scheduling accordingly.' });
+        }
+        return result;
+    })();
+
+    const categoryMoreInsights: CardInsightData[] = (() => {
+        const result: CardInsightData[] = [];
+        const total = realCategoryData.reduce((s, d) => s + d.value, 0);
+        if (total === 0 || realCategoryData[0]?.name === 'No Data') return result;
+        const sorted = [...realCategoryData].sort((a, b) => b.value - a.value);
+        sorted.forEach((cat) => {
+            const pct = Math.round((cat.value / total) * 100);
+            result.push({ level: pct > 50 ? 'info' : pct < 10 ? 'warning' : 'success', text: `${cat.name}: ${cat.value} check-in${cat.value !== 1 ? 's' : ''} (${pct}% of total)`, rec: pct < 10 ? `Consider hosting more ${cat.name} events to grow participation in this underrepresented category.` : undefined });
+        });
+        const diversityScore = sorted.length >= 4 ? 'strong' : sorted.length >= 2 ? 'moderate' : 'limited';
+        result.push({ level: diversityScore === 'strong' ? 'success' : diversityScore === 'moderate' ? 'info' : 'warning', text: `Overall category portfolio diversity is ${diversityScore} — ${sorted.length} active categor${sorted.length !== 1 ? 'ies' : 'y'} represented.`, rec: diversityScore !== 'strong' ? 'Expand event variety across more categories to attract a broader resident audience.' : undefined });
+        return result;
+    })();
+
+    const newUsersMoreInsights: CardInsightData[] = (() => {
+        const result: CardInsightData[] = [];
+        if (users.length === 0) return result;
+        result.push({ level: 'info', text: `Total registered users on the platform: ${users.length} resident${users.length !== 1 ? 's' : ''}.` });
+        const withData = newUsersData.filter(m => m.users > 0);
+        if (withData.length > 0) {
+            const peak = [...withData].sort((a, b) => b.users - a.users)[0];
+            result.push({ level: 'success', text: `Peak registration month was ${peak.name} with ${peak.users} new sign-up${peak.users !== 1 ? 's' : ''}.`, rec: 'Identify promotions or events that coincided with this spike and replicate them.' });
+        }
+        if (withData.length > 1) {
+            const avg = Math.round(withData.reduce((s, m) => s + m.users, 0) / withData.length);
+            result.push({ level: avg >= 5 ? 'success' : 'info', text: `Average of ${avg} new user${avg !== 1 ? 's' : ''} per active month across ${withData.length} tracked months.`, rec: avg < 3 ? 'Consider a community-wide registration campaign to accelerate onboarding.' : undefined });
+        }
+        const participantUsers = users.filter(u => u.checkedInEventIds && u.checkedInEventIds.length > 0).length;
+        const engagePct = users.length > 0 ? Math.round((participantUsers / users.length) * 100) : 0;
+        result.push({ level: engagePct >= 50 ? 'success' : engagePct >= 20 ? 'info' : 'warning', text: `${participantUsers} of ${users.length} registered users (${engagePct}%) have checked in to at least one event.`, rec: engagePct < 30 ? 'Notify inactive users about upcoming events to convert registrations into participation.' : undefined });
+        return result;
+    })();
+
+    const genderMoreInsights: CardInsightData[] = (() => {
+        const result: CardInsightData[] = [];
+        if (realGenderData[0]?.name === 'No Data' || realGenderData.length === 0) return result;
+        const total = realGenderData.reduce((s, d) => s + d.value, 0);
+        const sorted = [...realGenderData].sort((a, b) => b.value - a.value);
+        sorted.forEach(g => {
+            const pct = Math.round((g.value / total) * 100);
+            result.push({ level: pct > 70 ? 'warning' : 'success', text: `${g.name}: ${g.value} active participant${g.value !== 1 ? 's' : ''} (${pct}%)`, rec: pct < 20 ? `Design targeted events for ${g.name.toLowerCase()} community members to improve representation.` : undefined });
+        });
+        result.push({ level: 'info', text: `Total active participants with gender profile data: ${total} resident${total !== 1 ? 's' : ''}.`, rec: total < users.length ? 'Encourage residents to complete their gender profile for more complete demographic analytics.' : undefined });
+        return result;
+    })();
+
+    const ageGroupMoreInsights: CardInsightData[] = (() => {
+        const result: CardInsightData[] = [];
+        const hasData = realAgeData.some(d => d.value > 0 && d.name !== 'Unknown');
+        if (!hasData) return result;
+        const total = realAgeData.reduce((s, d) => s + d.value, 0);
+        const sorted = [...realAgeData].filter(d => d.name !== 'Unknown' && d.value > 0).sort((a, b) => b.value - a.value);
+        const ageRecs: Record<string, string> = {
+            'Under 18': 'Ensure youth events include age-appropriate guidelines and parental awareness.',
+            '18-24': 'Prioritize technology, career development, and social events for young adults.',
+            '25-34': 'Schedule family-friendly and professional development events for working adults.',
+            '35-44': 'Consider weekend and evening slots to accommodate working parents.',
+            '45-54': 'Include wellness, financial literacy, and community service programs.',
+            '55-64': 'Health, recreation, and civic engagement events suit this demographic well.',
+            '65+': 'Offer accessible, health-focused, and social events for senior residents.',
+        };
+        sorted.forEach((group, i) => {
+            const pct = Math.round((group.value / total) * 100);
+            result.push({ level: i === 0 ? 'info' : pct < 10 ? 'warning' : 'success', text: `${group.name}: ${group.value} participant${group.value !== 1 ? 's' : ''} (${pct}%)`, rec: i === 0 ? ageRecs[group.name] : (pct < 10 ? `Host events tailored to ${group.name} residents to grow their participation.` : undefined) });
+        });
+        const unknown = realAgeData.find(d => d.name === 'Unknown');
+        if (unknown && unknown.value > 0) {
+            const pct = Math.round((unknown.value / total) * 100);
+            result.push({ level: 'warning', text: `${unknown.value} participant${unknown.value !== 1 ? 's' : ''} (${pct}%) have no birthday set — age data is incomplete.`, rec: 'Prompt users to add their birthday in their profile for accurate age-group reporting.' });
+        }
+        return result;
+    })();
+
+    const topEventsMoreInsights: CardInsightData[] = (() => {
+        const result: CardInsightData[] = [];
+        if (topEventsData[0]?.name === 'No Data' || topEventsData.every(d => d.participants === 0)) return result;
+        const totalCheckins = topEventsData.reduce((s, d) => s + d.participants, 0);
+        topEventsData.forEach((ev, i) => {
+            const share = Math.round((ev.participants / totalCheckins) * 100);
+            result.push({ level: i === 0 ? 'success' : share < 10 ? 'info' : 'success', text: `#${i + 1} ${ev.name} — ${ev.participants} check-in${ev.participants !== 1 ? 's' : ''} (${share}% of top-event total)` });
+        });
+        if (topEventsData.length > 1) {
+            const avg = Math.round(totalCheckins / topEventsData.length);
+            result.push({ level: 'info', text: `Average of ${avg} check-in${avg !== 1 ? 's' : ''} per event across the top ${topEventsData.length} performers.`, rec: 'Use top-performing event formats as templates for future event scheduling.' });
+        }
+        return result;
+    })();
+
     const renderAnalytics = () => {
         const totalViews      = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
         const totalSaves      = events.reduce((s, e) => s + safeNum(e.saveCount), 0);
@@ -865,7 +1048,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
-                    <CardInsight {...monthlyTrendsInsight} />
+                    <CardInsight {...monthlyTrendsInsight} moreInsights={monthlyTrendsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Monthly Trends', insights: [monthlyTrendsInsight, ...monthlyTrendsMoreInsights] })} />
                 </div>
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                     <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Events by Category</h3>
@@ -893,7 +1076,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <CardInsight {...categoryInsight} />
+                    <CardInsight {...categoryInsight} moreInsights={categoryMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Events by Category', insights: [categoryInsight, ...categoryMoreInsights] })} />
                 </div>
             </div>
 
@@ -910,7 +1093,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
-                <CardInsight {...newUsersInsight} />
+                <CardInsight {...newUsersInsight} moreInsights={newUsersMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights] })} />
             </div>
         </div>
         );
@@ -943,7 +1126,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <CardInsight {...genderInsight} />
+                    <CardInsight {...genderInsight} moreInsights={genderMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Gender Distribution', insights: [genderInsight, ...genderMoreInsights] })} />
                 </div>
 
                 {/* Age Distribution */}
@@ -960,7 +1143,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                    <CardInsight {...ageGroupInsight} />
+                    <CardInsight {...ageGroupInsight} moreInsights={ageGroupMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Age Groups', insights: [ageGroupInsight, ...ageGroupMoreInsights] })} />
                 </div>
             </div>
 
@@ -969,16 +1152,16 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Top Events by Attendance</h3>
                 <div className="h-64 min-h-[260px] relative">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={topEventsData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                        <BarChart data={topEventsData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }} barCategoryGap="40%">
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} dx={isMobile ? 0 : 0} />
-                            <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                            <Bar dataKey="participants" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} />
+                            <RechartsTooltip />
+                            <Bar dataKey="participants" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={28} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
-                <CardInsight {...topEventsInsight} />
+                <CardInsight {...topEventsInsight} moreInsights={topEventsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Top Events by Attendance', insights: [topEventsInsight, ...topEventsMoreInsights] })} />
             </div>
         </div>
     );
@@ -990,8 +1173,18 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             : eventVisibilityFilter === 'public' ? events.filter(e => !e.isPrivate)
             : events.filter(e => !!e.isPrivate);
 
+        const eventSearchLower = eventSearchQuery.trim().toLowerCase();
         const allFilteredSortedEvents = visibilityFilteredEvents
             .filter(event => eventFilter === 'all' ? true : event.status === eventFilter)
+            .filter(event => {
+                if (!eventSearchLower) return true;
+                const cats = Array.isArray(event.category) ? event.category : [event.category];
+                return (event.name || '').toLowerCase().includes(eventSearchLower) ||
+                    cats.some(c => (c || '').toLowerCase().includes(eventSearchLower)) ||
+                    (event.venue || '').toLowerCase().includes(eventSearchLower) ||
+                    (event.city || '').toLowerCase().includes(eventSearchLower) ||
+                    (event.description || '').toLowerCase().includes(eventSearchLower);
+            })
             .sort((a, b) => {
                 if (eventSortOrder === 'newest' || eventSortOrder === 'oldest') {
                     const tsA = (a as any).createdAt ?? 0;
@@ -1096,7 +1289,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {/* Section header — contextual to role */}
                 <div className="flex items-start justify-between mb-4 gap-3">
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white">
                             {currentUser?.role === 'facilitator' ? 'My Submitted Events' : 'Pending Approvals'}
                         </h3>
                         {currentUser?.role === 'facilitator' && (
@@ -1202,15 +1395,119 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             </div>
 
             <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 overflow-visible min-h-[400px]">
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">All Events</h3>
-                    <div className="relative">
+                {/* All Events header row */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-3">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">All Events</h3>
+                    {/* Search bar */}
+                    {(() => {
+                        const suggestions = eventSearchQuery.trim()
+                            ? events.filter(e =>
+                                (e.name || '').toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
+                                (Array.isArray(e.category) ? e.category : [e.category]).some((c: string) => (c || '').toLowerCase().includes(eventSearchQuery.toLowerCase())) ||
+                                (e.venue || '').toLowerCase().includes(eventSearchQuery.toLowerCase())
+                              ).slice(0, 4)
+                            : [];
+                        return (
+                            <div className="relative flex-1 max-w-md" ref={eventSearchRef}>
+                                <form onSubmit={e => { e.preventDefault(); saveEventSearchHistory(eventSearchQuery); setEventSearchFocused(false); }} className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Search size={14} className={eventSearchFocused ? 'text-purple-600' : 'text-gray-400 dark:text-gray-500'} />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={eventSearchQuery}
+                                        onFocus={() => setEventSearchFocused(true)}
+                                        onChange={e => setEventSearchQuery(e.target.value)}
+                                        placeholder="Search events, venues, categories..."
+                                        className={`w-full pl-8 pr-8 py-2 rounded-full text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all duration-300 ${eventSearchFocused ? 'bg-white dark:bg-gray-800 border-2 border-purple-500 ring-4 ring-purple-500/10' : 'bg-gray-100 dark:bg-gray-700 border-2 border-transparent'}`}
+                                    />
+                                    {eventSearchQuery && (
+                                        <button type="button" onClick={() => { setEventSearchQuery(''); }} className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                                            <X size={13} />
+                                        </button>
+                                    )}
+                                </form>
+                                {/* Dropdown */}
+                                {eventSearchFocused && (
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                        {/* Recent searches */}
+                                        {!eventSearchQuery && eventSearchHistory.length > 0 && (
+                                            <div className="p-4 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm font-bold text-gray-900 dark:text-white">Recent searches</span>
+                                                    <button onClick={clearEventSearchHistory} className="text-xs font-semibold text-gray-400 hover:text-red-500 dark:hover:text-red-400 flex items-center gap-1 transition-colors">
+                                                        <Trash2 size={12} /> Clear
+                                                    </button>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {eventSearchHistory.map((term, i) => (
+                                                        <button key={term + i} onClick={() => { setEventSearchQuery(term); saveEventSearchHistory(term); setEventSearchFocused(false); }} className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left">
+                                                            <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                                                                <Clock size={12} className="text-gray-500 dark:text-gray-400" />
+                                                            </div>
+                                                            <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{term}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Suggestions */}
+                                        {eventSearchQuery.trim() && (
+                                            <div className="p-4">
+                                                <span className="text-xs font-semibold text-gray-900 dark:text-white tracking-wide uppercase">Suggested Events</span>
+                                                {suggestions.length > 0 ? (
+                                                    <div className="grid grid-cols-2 gap-2 mt-3">
+                                                        {suggestions.map((event: EventType) => (
+                                                            <button key={event.id} onClick={() => { setEventSearchQuery(event.name); saveEventSearchHistory(event.name); setEventSearchFocused(false); }} className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left">
+                                                                <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-600">
+                                                                    {event.imageUrl ? (
+                                                                        <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center"><Search size={12} className="text-gray-400" /></div>
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate leading-tight">{event.name}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="py-5 text-center">
+                                                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
+                                                            <Search size={14} className="text-gray-400" />
+                                                        </div>
+                                                        <p className="text-xs font-semibold text-gray-900 dark:text-white">No events found for "{eventSearchQuery}"</p>
+                                                        <p className="text-[10px] text-gray-400 mt-0.5">Try a different keyword</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {/* See all results */}
+                                        {suggestions.length === 4 && (
+                                            <button onClick={() => { saveEventSearchHistory(eventSearchQuery); setEventSearchFocused(false); }} className="w-full py-2.5 text-gray-500 dark:text-gray-400 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-t border-gray-100 dark:border-gray-700">
+                                                See all results for "{eventSearchQuery}"
+                                            </button>
+                                        )}
+                                        {/* Empty state when no query and no history */}
+                                        {!eventSearchQuery && eventSearchHistory.length === 0 && (
+                                            <div className="p-4 text-center py-5">
+                                                <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
+                                                    <Search size={14} className="text-gray-400" />
+                                                </div>
+                                                <p className="text-xs text-gray-400 dark:text-gray-500">Search by event name, venue, or category</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+                    <div className="relative flex-shrink-0">
                         <button 
                             onClick={() => setShowSortMenu(!showSortMenu)}
-                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                         >
                             Sort by
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
                         </button>
 
                         {showSortMenu && (
@@ -1282,12 +1579,12 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 <table className="w-full min-w-[600px] text-left">
                     <thead>
                         <tr className="bg-gray-100 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400">
-                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest">Event</th>
-                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest">Date</th>
-                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest">Location</th>
-                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest text-center">Attendees</th>
-                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest text-center">Feedback</th>
-                            <th className="py-3 px-4 text-xs font-medium text-gray-400 tracking-widest text-right pr-4 min-w-[180px]">Status & Actions</th>
+                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight">Event</th>
+                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight">Date</th>
+                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight">Location</th>
+                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight text-center">Attendees</th>
+                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight text-center">Feedback</th>
+                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight text-right pr-4 min-w-[180px]">Status & Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1297,7 +1594,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             const attendeesStr = event.maxParticipants ? `${attendeeCount}/${event.maxParticipants}` : `${attendeeCount} (No Limit)`;
                             return (
                                 <tr key={event.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                                    <td className="py-4 px-4 font-medium text-gray-900 dark:text-white">
+                                    <td className="py-4 px-4 font-medium text-gray-900 dark:text-white text-sm">
                                         <div className="flex flex-col gap-1">
                                             <span>{event.name}</span>
                                             {(() => {
@@ -1311,10 +1608,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             })()}
                                         </div>
                                     </td>
-                                    <td className="py-4 px-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDisplayDate(event.date)}</td>
-                                    <td className="py-4 px-4 text-gray-500 dark:text-gray-400">
+                                    <td className="py-4 px-4 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDisplayDate(event.date)}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-500 dark:text-gray-400">
                                         <div className="flex items-center gap-1.5 min-w-[120px]">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                             <span className="truncate">{event.venue || event.city}</span>
                                         </div>
                                     </td>
@@ -1659,75 +1956,162 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
                     <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Manage Users</h3>
 
-                    {/* Search */}
-                    <div className="mb-4 relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 md:pl-4 flex items-center pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Search users by name or email..."
-                            value={userSearchQuery}
-                            onChange={(e) => { setUserSearchQuery(e.target.value); setUserPage(1); }}
-                            className="w-full pl-9 md:pl-11 pr-4 py-2.5 md:py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[15px] md:rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs md:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                        />
-                    </div>
+                    {/* Search — home-style with dropdown */}
+                    {(() => {
+                        const userSuggestions = userSearchQuery.trim()
+                            ? users.filter(u =>
+                                (u.name || '').toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                                (u.email || '').toLowerCase().includes(userSearchQuery.toLowerCase())
+                              ).slice(0, 4)
+                            : [];
+                        return (
+                            <div className="mb-4 relative" ref={userSearchRef}>
+                                <form onSubmit={e => { e.preventDefault(); saveUserSearchHistory(userSearchQuery); setUserSearchFocused(false); }} className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 md:pl-4 flex items-center pointer-events-none">
+                                        <Search size={16} className={userSearchFocused ? 'text-purple-600' : 'text-gray-400 dark:text-gray-500'} />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search users by name or email..."
+                                        value={userSearchQuery}
+                                        onFocus={() => setUserSearchFocused(true)}
+                                        onChange={e => { setUserSearchQuery(e.target.value); setUserPage(1); }}
+                                        className={`w-full pl-10 md:pl-11 pr-10 py-2.5 rounded-full text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all duration-300 ${userSearchFocused ? 'bg-white dark:bg-gray-800 border-2 border-purple-500 ring-4 ring-purple-500/10' : 'bg-gray-100 dark:bg-gray-700 border-2 border-transparent'}`}
+                                    />
+                                    {userSearchQuery && (
+                                        <button type="button" onClick={() => { setUserSearchQuery(''); setUserPage(1); }} className="absolute inset-y-0 right-3.5 md:right-4 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                                            <X size={16} />
+                                        </button>
+                                    )}
+                                </form>
+                                {/* Dropdown */}
+                                {userSearchFocused && (
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                        {/* Recent searches */}
+                                        {!userSearchQuery && userSearchHistory.length > 0 && (
+                                            <div className="p-4 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm font-bold text-gray-900 dark:text-white">Recent searches</span>
+                                                    <button onClick={clearUserSearchHistory} className="text-xs font-semibold text-gray-400 hover:text-red-500 dark:hover:text-red-400 flex items-center gap-1 transition-colors">
+                                                        <Trash2 size={12} /> Clear
+                                                    </button>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {userSearchHistory.map((term, i) => (
+                                                        <button key={term + i} onClick={() => { setUserSearchQuery(term); setUserPage(1); saveUserSearchHistory(term); setUserSearchFocused(false); }} className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left">
+                                                            <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                                                                <Clock size={12} className="text-gray-500 dark:text-gray-400" />
+                                                            </div>
+                                                            <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{term}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Suggestions */}
+                                        {userSearchQuery.trim() && (
+                                            <div className="p-4">
+                                                <span className="text-xs font-semibold text-gray-900 dark:text-white tracking-wide uppercase">Suggested Users</span>
+                                                {userSuggestions.length > 0 ? (
+                                                    <div className="grid grid-cols-2 gap-2 mt-3">
+                                                        {userSuggestions.map((u: User) => (
+                                                            <button key={u.uid} onClick={() => { setUserSearchQuery(u.name || u.email || ''); setUserPage(1); saveUserSearchHistory(u.name || u.email || ''); setUserSearchFocused(false); }} className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left">
+                                                                <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                                                                    {u.avatarUrl ? (
+                                                                        <img src={u.avatarUrl} alt={u.name || ''} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                                    ) : (
+                                                                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{(u.name || u.email || '?')[0].toUpperCase()}</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{u.name || 'No name'}</p>
+                                                                    <p className="text-[10px] text-gray-400 truncate">{u.email}</p>
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="py-5 text-center">
+                                                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
+                                                            <Search size={14} className="text-gray-400" />
+                                                        </div>
+                                                        <p className="text-xs font-semibold text-gray-900 dark:text-white">No users found for "{userSearchQuery}"</p>
+                                                        <p className="text-[10px] text-gray-400 mt-0.5">Try a different name or email</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {/* Empty hint */}
+                                        {!userSearchQuery && userSearchHistory.length === 0 && (
+                                            <div className="p-4 text-center py-5">
+                                                <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
+                                                    <Search size={14} className="text-gray-400" />
+                                                </div>
+                                                <p className="text-xs text-gray-400 dark:text-gray-500">Search by name or email address</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
-                    {/* Role Filters + Sort */}
+                    {/* Role Filters (left) + Sort & Pending (right) */}
                     <div className="flex flex-wrap gap-2 mb-4 items-center">
-                        {/* Pending Facilitator shortcut */}
-                        <button
-                            onClick={() => { setShowPendingFacilitatorFilter(true); setUserPage(1); }}
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1.5 ${
-                                showPendingFacilitatorFilter
-                                ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20'
-                                : 'bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20'
-                            }`}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Pending Requests
-                            {pendingFacilitators.length > 0 && (
-                                <span className="ml-0.5 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{pendingFacilitators.length}</span>
-                            )}
-                        </button>
-
-                        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
-
+                        {/* Role filter pills */}
                         {['all', 'admins', 'facilitators', 'users'].map((filter) => (
                             <button
                                 key={filter}
                                 onClick={() => { setShowPendingFacilitatorFilter(false); setUserFilter(filter as any); setUserPage(1); }}
-                                className={`px-4 py-1.5 rounded-full text-xs font-bold capitalize whitespace-nowrap border transition-all ${
+                                className={`px-4 py-1.5 rounded-full text-xs font-semibold capitalize whitespace-nowrap border transition-all ${
                                     !showPendingFacilitatorFilter && userFilter === filter
                                     ? 'bg-blue-600 dark:bg-blue-500 text-white border-blue-600 dark:border-blue-500 shadow-lg shadow-blue-500/20'
                                     : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                                 }`}
                             >
-                                {filter}
+                                {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
                             </button>
                         ))}
 
-                        {/* Sort */}
-                        <div className="ml-auto flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full p-0.5">
+                        {/* Right side — sort + pending */}
+                        <div className="ml-auto flex items-center gap-2">
+                            {/* Newest / Oldest toggle */}
+                            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full p-0.5">
+                                <button
+                                    onClick={() => { setUserSortOrder('newest'); setUserPage(1); }}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                                        userSortOrder === 'newest'
+                                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                    }`}
+                                >
+                                    Newest
+                                </button>
+                                <button
+                                    onClick={() => { setUserSortOrder('oldest'); setUserPage(1); }}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                                        userSortOrder === 'oldest'
+                                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                    }`}
+                                >
+                                    Oldest
+                                </button>
+                            </div>
+                            {/* Pending Requests */}
                             <button
-                                onClick={() => { setUserSortOrder('newest'); setUserPage(1); }}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-                                    userSortOrder === 'newest'
-                                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                onClick={() => { setShowPendingFacilitatorFilter(true); setUserPage(1); }}
+                                className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex items-center gap-1.5 ${
+                                    showPendingFacilitatorFilter
+                                    ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20'
+                                    : 'bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20'
                                 }`}
                             >
-                                Newest
-                            </button>
-                            <button
-                                onClick={() => { setUserSortOrder('oldest'); setUserPage(1); }}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-                                    userSortOrder === 'oldest'
-                                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                                }`}
-                            >
-                                Oldest
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                Pending Requests
+                                {pendingFacilitators.length > 0 && (
+                                    <span className="ml-0.5 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{pendingFacilitators.length}</span>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -2816,6 +3200,81 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </div>
                     </div>
                 </div>,
+                document.body
+            )}
+
+            {/* ── Card Detail More Insights Drawer (right slide-over) ──────────── */}
+            {cardDetailDrawer && typeof document !== 'undefined' && createPortal(
+                <>
+                    <style>{`@keyframes cardDetailSlideIn{from{transform:translateX(110%)}to{transform:translateX(0%)}}@keyframes cardDetailSlideOut{from{transform:translateX(0%)}to{transform:translateX(110%)}}`}</style>
+                    {/* Backdrop + positioning container */}
+                    <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 99997, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', paddingTop: '20px', paddingBottom: '20px', paddingRight: '20px', backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+                        onClick={() => closeCardDetailDrawer()}
+                    >
+                    {/* Slide panel */}
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        style={{ width: '100%', maxWidth: '480px', animation: `${cardDetailClosing ? 'cardDetailSlideOut 0.3s cubic-bezier(0.55,0,1,0.45) forwards' : 'cardDetailSlideIn 0.3s cubic-bezier(0.25,0.46,0.45,0.94) forwards'}`, display: 'flex', flexDirection: 'column', borderRadius: '15px', overflow: 'hidden' }}
+                        className="bg-white dark:bg-[#0f172a] shadow-2xl"
+                    >
+                        {/* Header */}
+                        <div className="flex-shrink-0 px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-base font-black text-gray-900 dark:text-white">Decision Support</p>
+                                <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 leading-tight truncate">{cardDetailDrawer.title}</p>
+                            </div>
+                            <button
+                                onClick={() => closeCardDetailDrawer()}
+                                className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        {/* Insights list */}
+                        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+                            {cardDetailDrawer.insights.map((insight, i) => {
+                                const cfgMap: Record<InsightLevel, { bg: string; border: string; iconBg: string; iconText: string; badge: string }> = {
+                                    success:  { bg: 'bg-green-50 dark:bg-green-900/10',   border: 'border-green-100 dark:border-green-800/30',   iconBg: 'bg-green-100 dark:bg-green-900/30',   iconText: 'text-green-600 dark:text-green-400',   badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+                                    info:     { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
+                                    warning:  { bg: 'bg-amber-50 dark:bg-amber-900/10',   border: 'border-amber-100 dark:border-amber-800/30',   iconBg: 'bg-amber-100 dark:bg-amber-900/30',   iconText: 'text-amber-600 dark:text-amber-400',   badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+                                    critical: { bg: 'bg-red-50 dark:bg-red-900/10',       border: 'border-red-100 dark:border-red-800/30',       iconBg: 'bg-red-100 dark:bg-red-900/30',       iconText: 'text-red-600 dark:text-red-400',       badge: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
+                                };
+                                const iconPathsMap: Record<InsightLevel, React.ReactNode> = {
+                                    success:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />,
+                                    info:     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
+                                    warning:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />,
+                                    critical: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />,
+                                };
+                                const cfg = cfgMap[insight.level];
+                                return (
+                                    <div key={i} className={`rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}>
+                                        {i === 0 && (
+                                            <span className={`inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-2 ${cfg.badge}`}>Primary Insight</span>
+                                        )}
+                                        <div className="flex gap-2.5 items-start">
+                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.iconBg} ${cfg.iconText}`}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">{iconPathsMap[insight.level]}</svg>
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed font-medium">{insight.text}</p>
+                                                {insight.rec && <p className="text-[11px] text-purple-600 dark:text-purple-400 leading-relaxed mt-1.5 font-medium">→ {insight.rec}</p>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex-shrink-0 px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500">{cardDetailDrawer.insights.length} insight{cardDetailDrawer.insights.length !== 1 ? 's' : ''} · {cardDetailDrawer.title}</p>
+                            <button onClick={() => closeCardDetailDrawer()} className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors">Close</button>
+                        </div>
+                    </div>
+                    </div>
+                </>,
                 document.body
             )}
         </div>

@@ -660,17 +660,17 @@ export const RECOMMENDED_VENUES: Record<string, string[]> = {
 };
 
 export const CATEGORIES = [
-  "Concerts",
   "Conference",
-  "Arts",
-  "Gaming",
+  "Sports",
   "Business",
-  "Cosplay",
-  "Competitions",
-  "Technology",
-  "Health",
-  "Expo Events",
-  "Cafe"
+  "Social Welfare",
+  "Health and Wellness",
+  "Concerts",
+  "Workshop",
+  "Government Services",
+  "Civil Registry",
+  "Community Services",
+  "Recreation",
 ];
 
 export const BARANGAY_COORDS: Record<string, { lat: number, lng: number }> = {

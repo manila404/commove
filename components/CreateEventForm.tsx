@@ -159,6 +159,51 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
   // Confirmation dialog
   const [confirmPending, setConfirmPending] = useState<'draft' | 'publish' | null>(null);
 
+  // Description rich editor
+  const descRef = useRef<HTMLTextAreaElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node))
+        setShowEmojiPicker(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+  const applyFormat = (prefix: string, suffix: string = prefix) => {
+    const el = descRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const text = formData.description;
+    const selected = text.slice(start, end);
+    const newText = text.slice(0, start) + prefix + selected + suffix + text.slice(end);
+    setField('description', newText as typeof initialFormData['description']);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + prefix.length, end + prefix.length);
+    });
+  };
+  const insertAtCursor = (str: string) => {
+    const el = descRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? formData.description.length;
+    const text = formData.description;
+    const newText = text.slice(0, start) + str + text.slice(start);
+    setField('description', newText as typeof initialFormData['description']);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + str.length, start + str.length);
+    });
+  };
+  const EMOJI_LIST = [
+    '😊','😄','😂','🥳','😍','🤩','😎','🙌','👏','👍',
+    '❤️','🔥','⭐','🌟','✨','🎉','🎊','🎈','🏆','🥇',
+    '📅','📌','📢','🔔','💡','✅','⚠️','ℹ️','📍','🌐',
+    '🎵','🎭','🎪','⚽','🏀','🎨','📸','🍕','☕','🌺',
+  ];
+
   const isAdmin = currentUser.role === 'admin';
   const isFacilitator = currentUser.role === 'facilitator';
 
@@ -461,13 +506,13 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
   // ── Styles ────────────────────────────────────────────────────────────────
   const card = "bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm p-6";
-  const input = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/25 focus:border-violet-500 transition-all";
-  const label = "block text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5";
+  const input = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-xl text-xs md:text-sm font-medium text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/25 focus:border-violet-500 transition-all";
+  const label = "block text-[11px] md:text-xs font-semibold text-gray-400 dark:text-gray-500 mb-1.5";
 
   return (
     <>
       {/* ── Page wrapper — actual max-width that fills the page ── */}
-      <div id="event-form-top" className="w-full max-w-[1200px] mx-auto px-4 lg:px-8 pt-6 pb-48 md:pb-32 animate-in fade-in duration-300" style={{scrollbarWidth:'none'}}>
+      <div id="event-form-top" className="w-full max-w-[1200px] mx-auto px-4 lg:px-8 pt-6 pb-48 md:pb-6 md:pt-14 animate-in fade-in duration-300" style={{scrollbarWidth:'none'}}>
 
         {/* ── Page title ── */}
         <div className="mb-8">
@@ -585,7 +630,59 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             {/* Description */}
             <div className={card}>
               <SectionHeader title="Description" />
-              <textarea name="description" value={formData.description}
+              {/* Formatting toolbar */}
+              <div className="flex items-center gap-0.5 mb-2 flex-wrap">
+                {/* Bold */}
+                <button type="button" title="Bold" onClick={() => applyFormat('**')}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 transition-colors text-xs font-black">
+                  B
+                </button>
+                {/* Italic */}
+                <button type="button" title="Italic" onClick={() => applyFormat('_')}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 transition-colors text-xs font-black italic">
+                  I
+                </button>
+                {/* Strikethrough */}
+                <button type="button" title="Strikethrough" onClick={() => applyFormat('~~')}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 transition-colors text-xs font-black line-through">
+                  S
+                </button>
+                <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
+                {/* Bullet list */}
+                <button type="button" title="Bullet list" onClick={() => insertAtCursor('\n• ')}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /><circle cx="1.5" cy="6" r="1.5" fill="currentColor" /><circle cx="1.5" cy="12" r="1.5" fill="currentColor" /><circle cx="1.5" cy="18" r="1.5" fill="currentColor" /></svg>
+                </button>
+                {/* Numbered list */}
+                <button type="button" title="Numbered list" onClick={() => insertAtCursor('\n1. ')}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 transition-colors text-[10px] font-bold">
+                  1≡
+                </button>
+                <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
+                {/* Emoji picker */}
+                <div className="relative" ref={emojiPickerRef}>
+                  <button type="button" title="Insert emoji" onClick={() => setShowEmojiPicker(p => !p)}
+                    className={`w-7 h-7 flex items-center justify-center rounded-lg text-base transition-colors ${showEmojiPicker ? 'bg-violet-100 dark:bg-violet-900/30' : 'hover:bg-violet-50 dark:hover:bg-violet-900/20'}`}>
+                    😊
+                  </button>
+                  {showEmojiPicker && (
+                    <div className="absolute left-0 top-full mt-1.5 z-[300] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-3 w-64">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Emojis</p>
+                      <div className="grid grid-cols-8 gap-0.5">
+                        {EMOJI_LIST.map(emoji => (
+                          <button key={emoji} type="button"
+                            onClick={() => { insertAtCursor(emoji); setShowEmojiPicker(false); }}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-base transition-colors">
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <span className="ml-auto text-[10px] text-gray-300 dark:text-gray-600 select-none">Markdown supported</span>
+              </div>
+              <textarea ref={descRef} name="description" value={formData.description}
                 onChange={handleChange} onBlur={() => touch('description')}
                 placeholder="Describe what attendees can expect, what to prepare, and any special instructions…"
                 rows={7} className={`${input} resize-none pt-3 ${formErrors.description ? 'border-red-400 ring-2 ring-red-400/20' : ''}`}
@@ -846,42 +943,69 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         </div>
       </div>
 
-      {/* ── Sticky Footer Action Bar ── */}
-      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-[5001] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 shadow-[0_-8px_32px_rgba(0,0,0,0.06)]">
-        <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-3 flex items-center gap-3 justify-between">
-          <div className="flex items-center gap-2.5">
+      {/* ── Sticky Action Bar ── */}
+      {/* Mobile: full-width bottom bar | Desktop: floating pill top-right */}
+      <div className={`fixed bottom-16 left-0 right-0 z-[5001] ${showPreview ? 'hidden' : ''} bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 shadow-[0_-8px_32px_rgba(0,0,0,0.06)] md:bottom-auto md:left-auto md:top-[72px] md:right-12 md:w-auto md:bg-white md:dark:bg-gray-900 md:border md:border-gray-200 md:dark:border-gray-700 md:rounded-[10px] md:shadow-lg md:shadow-black/8 md:backdrop-blur-none`}>
+        <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-3 flex items-center gap-3 justify-between md:max-w-none md:mx-0 md:px-3 md:py-2 md:justify-end">
+
+          {/* Mobile-only left group */}
+          <div className="flex items-center gap-2.5 md:hidden">
             {onCancelEdit && (
               <button type="button" onClick={onCancelEdit}
-                className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
                 Cancel
               </button>
             )}
             <button type="button" onClick={() => submitAction('draft')} disabled={isLoading}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/20 dark:hover:bg-violet-900/40 border border-violet-200 dark:border-violet-900/30 transition-all">
               <Save className="w-4 h-4" />
-              <span className="hidden sm:inline">Save Draft</span>
+              Save Draft
             </button>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          {/* Right group — all buttons on desktop, right side on mobile */}
+          <div className="flex items-center gap-2">
+            {/* Desktop: Cancel */}
+            {onCancelEdit && (
+              <button type="button" onClick={onCancelEdit}
+                className="hidden md:flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+                Cancel
+              </button>
+            )}
+            {/* Desktop: Save Draft */}
+            <button type="button" onClick={() => submitAction('draft')} disabled={isLoading}
+              className="hidden md:flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/20 dark:hover:bg-violet-900/40 border border-violet-200 dark:border-violet-900/30 transition-all">
+              Save Draft
+            </button>
+
+            {/* Error hint */}
             {hasErrors && (
               <span className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-red-500">
-                <AlertCircle className="w-3.5 h-3.5" />{isFacilitator ? 'Fill required fields to submit' : 'Fill required fields to publish'}
+                <AlertCircle className="w-3 h-3" />{isFacilitator ? 'Fill required fields' : 'Fill required fields'}
               </span>
             )}
+
+            {/* Preview */}
             <button type="button" onClick={() => setShowPreview(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all">
-              <Eye className="w-4 h-4" />
-              <span className="hidden sm:inline">Preview</span>
+              className="flex items-center gap-2 md:gap-0 px-4 md:px-3 py-2.5 md:py-1.5 rounded-xl md:rounded-lg text-sm md:text-xs font-bold md:font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all">
+              <Eye className="w-4 h-4 md:hidden" />
+              Preview
             </button>
+
+            {/* Publish / Submit */}
             <button type="button" onClick={() => handleSubmitClick('publish')} disabled={isLoading}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-xl transition-all
+              className={`flex items-center gap-2 md:gap-0 px-6 md:px-3 py-2.5 md:py-1.5 rounded-xl md:rounded-lg text-sm md:text-xs font-bold md:font-semibold text-white transition-all shadow-xl md:shadow-none
                 ${hasErrors
                   ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed shadow-none'
-                  : 'bg-violet-600 hover:bg-violet-700 shadow-violet-600/25 hover:-translate-y-0.5 active:scale-95'}`}
+                  : 'bg-violet-600 hover:bg-violet-700 shadow-violet-600/25 md:shadow-none hover:-translate-y-0.5 md:hover:translate-y-0 active:scale-95'}`}
             >
-              {isLoading ? (<Spinner size="sm" />) : (isScheduled ? <Clock className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />)}
-              {isLoading ? 'Processing…' : (isScheduled ? 'Schedule Event' : (eventToEdit ? 'Save Changes' : (isFacilitator ? 'Submit Event' : 'Publish Event')))}
+              {isLoading
+                ? <><Spinner size="sm" /><span className="ml-1">Processing…</span></>
+                : <>
+                    <span className="md:hidden">{isScheduled ? <Clock className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}</span>
+                    {isScheduled ? 'Schedule Event' : (eventToEdit ? 'Save Changes' : (isFacilitator ? 'Submit Event' : 'Publish Event'))}
+                  </>
+              }
             </button>
           </div>
         </div>
@@ -939,7 +1063,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
       <AnimatePresence>
         {showPreview && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-md flex items-center justify-center p-4"
+            className="fixed inset-0 z-[4500] bg-black/75 backdrop-blur-md flex items-center justify-center p-4"
             onClick={() => setShowPreview(false)}
           >
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}

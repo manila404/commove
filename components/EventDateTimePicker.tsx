@@ -170,11 +170,11 @@ const TimePanel: React.FC<TimePanelProps> = ({ value, onChange }) => {
 
   return (
     <div className="p-4">
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Select Time</p>
+      <p className="text-xs font-semibold text-gray-400 mb-3">Select Time</p>
       <div className="flex gap-2">
         {/* Hours */}
         <div className="flex-1">
-          <p className="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Hr</p>
+          <p className="text-xs font-semibold text-gray-400 mb-1.5">Hour</p>
           <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto pr-0.5 scrollbar-hide">
             {hours12.map(h => (
               <button key={h} type="button" onClick={() => update(h, min, period)}
@@ -186,7 +186,7 @@ const TimePanel: React.FC<TimePanelProps> = ({ value, onChange }) => {
         </div>
         {/* Minutes */}
         <div className="flex-1">
-          <p className="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Min</p>
+          <p className="text-xs font-semibold text-gray-400 mb-1.5">Minutes</p>
           <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto pr-0.5 scrollbar-hide">
             {minuteOptions.map(m => (
               <button key={m} type="button" onClick={() => update(h12, m, period)}
@@ -253,7 +253,7 @@ export const DateTimeRow: React.FC<DateTimeRowProps> = ({
         {/* Date trigger — grows to fill available space */}
         <button type="button"
           onClick={() => setOpenPanel(openPanel === 'date' ? null : 'date')}
-          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all flex-1 min-w-0 overflow-hidden
+          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs md:text-sm font-semibold transition-all flex-1 min-w-0 overflow-hidden
             ${openPanel === 'date'
               ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 ring-2 ring-violet-500/20'
               : date ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-violet-400'
@@ -266,7 +266,7 @@ export const DateTimeRow: React.FC<DateTimeRowProps> = ({
         {/* Time trigger — shrinks gracefully, never overflows */}
         <button type="button"
           onClick={() => setOpenPanel(openPanel === 'time' ? null : 'time')}
-          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all shrink-0 min-w-0
+          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs md:text-sm font-semibold transition-all shrink-0 min-w-0
             ${openPanel === 'time'
               ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 ring-2 ring-violet-500/20'
               : time ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-violet-400'
@@ -293,7 +293,7 @@ export const DateTimeRow: React.FC<DateTimeRowProps> = ({
             className="absolute z-[300] left-0 sm:left-[60px] top-[calc(100%+8px)] w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl shadow-black/10 overflow-hidden"
           >
             <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-100 dark:border-gray-700">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+              <span className="text-xs font-bold text-gray-500">
                 {openPanel === 'date' ? `${label} Date` : `${label} Time`}
               </span>
               <button type="button" onClick={() => setOpenPanel(null)} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -302,7 +302,7 @@ export const DateTimeRow: React.FC<DateTimeRowProps> = ({
             </div>
             {openPanel === 'date'
               ? <CalendarPanel selectedDate={date} onDateChange={(d) => { onDateChange(d); setOpenPanel('time'); }} minDate={minDate} />
-              : <TimePanel value={time} onChange={(t) => { onTimeChange(t); setOpenPanel(null); }} />
+              : <TimePanel value={time} onChange={(t) => { onTimeChange(t); }} />
             }
           </motion.div>
         )}
