@@ -1,16 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { WifiOff, Wifi, RefreshCw } from 'lucide-react';
+import { WifiOff, Wifi, RefreshCw, X } from 'lucide-react';
 import { useNetworkStatus } from '../contexts/NetworkStatusContext';
 
 const NetworkStatusBanner: React.FC = () => {
   const { status, retry } = useNetworkStatus();
+  const [dismissed, setDismissed] = useState(false);
 
-  const isVisible = status === 'offline' || status === 'slow';
+  // Re-show whenever status changes
+  useEffect(() => {
+    setDismissed(false);
+  }, [status]);
+
+  const isVisible = (status === 'offline' || status === 'slow') && !dismissed;
 
   const handleRetry = () => {
     retry();
-    // Dispatch custom event so App.tsx can re-fetch data
     window.dispatchEvent(new CustomEvent('commove:network-retry'));
   };
 
@@ -18,49 +23,55 @@ const NetworkStatusBanner: React.FC = () => {
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ y: -80, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -80, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className={`fixed top-0 left-0 right-0 z-[10000] px-4 py-3 flex items-center justify-between gap-3 shadow-lg backdrop-blur-md ${
-            status === 'offline'
-              ? 'bg-red-600/95 text-white'
-              : 'bg-amber-500/95 text-white'
-          }`}
+          initial={{ y: -60, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: -60, opacity: 0, scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] w-auto"
           role="alert"
           aria-live="assertive"
         >
-          <div className="flex items-center gap-3 min-w-0">
-            {status === 'offline' ? (
-              <WifiOff className="w-5 h-5 flex-shrink-0 animate-pulse" />
-            ) : (
-              <Wifi className="w-5 h-5 flex-shrink-0 animate-pulse" />
-            )}
+          <div className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl shadow-xl backdrop-blur-md ${
+            status === 'offline'
+              ? 'bg-red-600/95 text-white'
+              : 'bg-amber-500/95 text-white'
+          }`}>
+            {/* Icon */}
+            {status === 'offline'
+              ? <WifiOff className="w-4 h-4 flex-shrink-0 animate-pulse" />
+              : <Wifi className="w-4 h-4 flex-shrink-0 animate-pulse" />
+            }
+
+            {/* Text */}
             <div className="min-w-0">
-              <p className="text-sm font-bold leading-tight">
-                {status === 'offline'
-                  ? 'You are offline'
-                  : 'Slow connection detected'}
+              <p className="text-xs font-bold leading-tight whitespace-nowrap">
+                {status === 'offline' ? 'You are offline' : 'Slow connection'}
               </p>
-              <p className="text-xs opacity-90 leading-tight mt-0.5">
+              <p className="text-[10px] opacity-85 leading-tight whitespace-nowrap">
                 {status === 'offline'
-                  ? 'Please check your internet connection and try again.'
-                  : 'Your internet is slow. Some features may not load properly.'}
+                  ? 'Check your internet and try again.'
+                  : 'Some features may not load properly.'}
               </p>
             </div>
-          </div>
 
-          <button
-            onClick={handleRetry}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 flex-shrink-0 ${
-              status === 'offline'
-                ? 'bg-white/20 hover:bg-white/30 text-white'
-                : 'bg-white/25 hover:bg-white/35 text-white'
-            }`}
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Retry
-          </button>
+            {/* Retry */}
+            <button
+              onClick={handleRetry}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/20 hover:bg-white/30 transition-all active:scale-95 flex-shrink-0"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Retry
+            </button>
+
+            {/* Dismiss */}
+            <button
+              onClick={() => setDismissed(true)}
+              className="w-5 h-5 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-all active:scale-95 flex-shrink-0"
+              aria-label="Dismiss"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
