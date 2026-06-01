@@ -1995,10 +1995,15 @@ const App: React.FC = () => {
                                 </div>
                             )}
 
-                            {activeTab === 'feed' && isStaff && (
-                                <div key="feed-staff" className="animate-fade-in h-full min-h-0 flex flex-col px-2 md:px-0">
+                            {/* AdminPanel stays mounted so CreateEventForm state survives tab navigation */}
+                            {isStaff && currentUser && (
+                                <div
+                                    key="feed-staff"
+                                    className="h-full min-h-0 flex flex-col px-2 md:px-0"
+                                    style={{ display: activeTab === 'feed' ? 'flex' : 'none' }}
+                                >
                                     <AdminPanel
-                                        currentUser={currentUser!}
+                                        currentUser={currentUser}
                                         events={events}
                                         onEventCreated={handleEventCreated}
                                         onEventUpdated={handleEventUpdated}
