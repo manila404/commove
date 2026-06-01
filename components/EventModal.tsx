@@ -1135,7 +1135,7 @@ const EventModal: React.FC<EventModalProps> = ({
         className="fixed inset-0 bg-white dark:bg-gray-800 z-[6000] overflow-y-auto"
       >
         {/* Sticky Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="pt-safe sticky top-0 z-10 flex items-center justify-between px-4 pb-3 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
           <button
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -1222,19 +1222,11 @@ const EventModal: React.FC<EventModalProps> = ({
             {/* Category & Title */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Event Details</p>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white leading-snug">{event.name}</h2>
-                  {(event as any).subtitle && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">{(event as any).subtitle}</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => onToggleLike(event.id)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0 mt-0.5"
-                >
-                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-500 dark:text-gray-300'}`} />
-                </button>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white leading-snug">{event.name}</h2>
+                {(event as any).subtitle && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">{(event as any).subtitle}</p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2 pt-0.5">
                 {(Array.isArray(event.category) ? event.category : [event.category]).map(cat => (

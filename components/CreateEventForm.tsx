@@ -134,6 +134,22 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
   // Modals
   const [showPreview, setShowPreview] = useState(false);
+
+  // Mobile action bar — shown once user scrolls past the page title
+  const [actionBarVisible, setActionBarVisible] = useState(false);
+  const titleSentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!titleSentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (window.innerWidth >= 768) return; // desktop manages its own positioning
+        setActionBarVisible(!entry.isIntersecting);
+      },
+      { threshold: 0, rootMargin: '0px' }
+    );
+    observer.observe(titleSentinelRef.current);
+    return () => observer.disconnect();
+  }, []);
   const [successData, setSuccessData] = useState<{ type: 'one-time' | 'recurring' | 'draft' } | null>(null);
 
   // Location
@@ -522,6 +538,8 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
             Fill in the details below to schedule and publish an event for the community.
           </p>
+          {/* Sentinel: action bar slides in when this leaves the viewport */}
+          <div ref={titleSentinelRef} className="h-px" />
         </div>
 
         {/* ── 3-column desktop grid ── */}
@@ -944,70 +962,76 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
       </div>
 
       {/* ── Sticky Action Bar ── */}
-      {/* Mobile: full-width bottom bar | Desktop: floating pill top-right */}
-      <div className={`fixed bottom-16 left-0 right-0 z-[5001] ${showPreview ? 'hidden' : ''} bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 shadow-[0_-8px_32px_rgba(0,0,0,0.06)] md:bottom-auto md:left-auto md:top-[72px] md:right-12 md:w-auto md:bg-white md:dark:bg-gray-900 md:border md:border-gray-200 md:dark:border-gray-700 md:rounded-[10px] md:shadow-lg md:shadow-black/8 md:backdrop-blur-none`}>
-        <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-3 flex items-center gap-3 justify-between md:max-w-none md:mx-0 md:px-3 md:py-2 md:justify-end">
+      {/* Mobile: slides in from top on scroll-down, hides on scroll-up | Desktop: floating pill top-right */}
+      <div className={`fixed z-[5001] transition-transform duration-300 ease-in-out ${showPreview ? 'hidden' : ''}
+        top-0 left-0 right-0
+        ${actionBarVisible ? 'translate-y-[60px]' : '-translate-y-full'}
+        bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl
+        border-b border-gray-200 dark:border-gray-800
+        shadow-[0_4px_16px_rgba(0,0,0,0.06)]
+        md:translate-y-0 md:top-[72px] md:left-auto md:right-12 md:w-auto
+        md:bg-white md:dark:bg-gray-900
+        md:border md:border-gray-200 md:dark:border-gray-700
+        md:rounded-[10px] md:shadow-lg md:shadow-black/8 md:backdrop-blur-none`}>
 
-          {/* Mobile-only left group */}
-          <div className="flex items-center gap-2.5 md:hidden">
-            {onCancelEdit && (
-              <button type="button" onClick={onCancelEdit}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
-                Cancel
-              </button>
-            )}
-            <button type="button" onClick={() => submitAction('draft')} disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/20 dark:hover:bg-violet-900/40 border border-violet-200 dark:border-violet-900/30 transition-all">
-              <Save className="w-4 h-4" />
-              Save Draft
+        {/* ── Mobile: single compact row of 4 buttons ── */}
+        <div className="flex items-center gap-1.5 px-3 py-2 md:hidden">
+          {onCancelEdit && (
+            <button type="button" onClick={onCancelEdit}
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold text-gray-500 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all">
+              Cancel
             </button>
-          </div>
+          )}
+          <button type="button" onClick={() => submitAction('draft')} disabled={isLoading}
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold text-violet-600 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 transition-all">
+            <Save className="w-3 h-3 shrink-0" />
+            Draft
+          </button>
+          <button type="button" onClick={() => setShowPreview(true)}
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-all">
+            <Eye className="w-3 h-3 shrink-0" />
+            Preview
+          </button>
+          <button type="button" onClick={() => handleSubmitClick('publish')} disabled={isLoading}
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold text-white transition-all
+              ${hasErrors ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700 active:scale-95'}`}>
+            {isLoading
+              ? <Spinner size="sm" />
+              : <>{isScheduled ? <Clock className="w-3 h-3 shrink-0" /> : <CheckCircle2 className="w-3 h-3 shrink-0" />}
+                  {isScheduled ? 'Schedule' : (eventToEdit ? 'Save' : (isFacilitator ? 'Submit' : 'Publish'))}</>
+            }
+          </button>
+        </div>
 
-          {/* Right group — all buttons on desktop, right side on mobile */}
-          <div className="flex items-center gap-2">
-            {/* Desktop: Cancel */}
-            {onCancelEdit && (
-              <button type="button" onClick={onCancelEdit}
-                className="hidden md:flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
-                Cancel
-              </button>
-            )}
-            {/* Desktop: Save Draft */}
-            <button type="button" onClick={() => submitAction('draft')} disabled={isLoading}
-              className="hidden md:flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/20 dark:hover:bg-violet-900/40 border border-violet-200 dark:border-violet-900/30 transition-all">
-              Save Draft
+        {/* ── Desktop: unchanged layout ── */}
+        <div className="hidden md:flex items-center gap-2 px-3 py-2">
+          {onCancelEdit && (
+            <button type="button" onClick={onCancelEdit}
+              className="flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+              Cancel
             </button>
-
-            {/* Error hint */}
-            {hasErrors && (
-              <span className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-red-500">
-                <AlertCircle className="w-3 h-3" />{isFacilitator ? 'Fill required fields' : 'Fill required fields'}
-              </span>
-            )}
-
-            {/* Preview */}
-            <button type="button" onClick={() => setShowPreview(true)}
-              className="flex items-center gap-2 md:gap-0 px-4 md:px-3 py-2.5 md:py-1.5 rounded-xl md:rounded-lg text-sm md:text-xs font-bold md:font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all">
-              <Eye className="w-4 h-4 md:hidden" />
-              Preview
-            </button>
-
-            {/* Publish / Submit */}
-            <button type="button" onClick={() => handleSubmitClick('publish')} disabled={isLoading}
-              className={`flex items-center gap-2 md:gap-0 px-6 md:px-3 py-2.5 md:py-1.5 rounded-xl md:rounded-lg text-sm md:text-xs font-bold md:font-semibold text-white transition-all shadow-xl md:shadow-none
-                ${hasErrors
-                  ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed shadow-none'
-                  : 'bg-violet-600 hover:bg-violet-700 shadow-violet-600/25 md:shadow-none hover:-translate-y-0.5 md:hover:translate-y-0 active:scale-95'}`}
-            >
-              {isLoading
-                ? <><Spinner size="sm" /><span className="ml-1">Processing…</span></>
-                : <>
-                    <span className="md:hidden">{isScheduled ? <Clock className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}</span>
-                    {isScheduled ? 'Schedule Event' : (eventToEdit ? 'Save Changes' : (isFacilitator ? 'Submit Event' : 'Publish Event'))}
-                  </>
-              }
-            </button>
-          </div>
+          )}
+          <button type="button" onClick={() => submitAction('draft')} disabled={isLoading}
+            className="flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/20 dark:hover:bg-violet-900/40 border border-violet-200 dark:border-violet-900/30 transition-all">
+            Save Draft
+          </button>
+          {hasErrors && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-red-500">
+              <AlertCircle className="w-3 h-3" />Fill required fields
+            </span>
+          )}
+          <button type="button" onClick={() => setShowPreview(true)}
+            className="flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all">
+            Preview
+          </button>
+          <button type="button" onClick={() => handleSubmitClick('publish')} disabled={isLoading}
+            className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all
+              ${hasErrors ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700 active:scale-95'}`}>
+            {isLoading
+              ? <><Spinner size="sm" /><span className="ml-1">Processing…</span></>
+              : isScheduled ? 'Schedule Event' : (eventToEdit ? 'Save Changes' : (isFacilitator ? 'Submit Event' : 'Publish Event'))
+            }
+          </button>
         </div>
       </div>
 
