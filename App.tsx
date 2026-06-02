@@ -4,7 +4,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
 import { isOTPVerified, markOTPVerified, isSignupInProgress, isLoginInProgress, clearOTPVerified } from './services/otpService';
 import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, updateUserData, addUserViewedEvent, updateUserParticipation, getAllUsers, subscribeToUserProfile } from './services/userService';
-import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights, subscribeToHighlights } from './services/eventService';
+import { fetchEvents, subscribeToEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights, subscribeToHighlights } from './services/eventService';
 import { fetchUserFeedbackForEvent } from './services/feedbackService';
 import { getKNNRankedEvents } from './services/recommendationService'; // Import Recommendation Service
 import { incrementEventCounter } from './services/analyticsService';
@@ -626,12 +626,20 @@ const App: React.FC = () => {
         return () => unsub();
     }, []);
 
+    // Real-time events listener — replaces one-time fetch so any Firestore change
+    // (new event, status update, metric increment) propagates instantly to all open sessions.
     useEffect(() => {
-        if (currentUser?.uid || isGuest) {
-            loadEvents();
-        }
-        // Only re-fetch events when the user's identity changes (login/logout)
-        // or guest mode is toggled — NOT when savedEventIds, likedEventIds, etc. change.
+        if (!currentUser?.uid && !isGuest) return;
+        setAreEventsLoading(true);
+        const unsub = subscribeToEvents(
+            fetchedEvents => {
+                setEvents(fetchedEvents);
+                setAreEventsLoading(false);
+            },
+            () => setAreEventsLoading(false)
+        );
+        return () => unsub();
+        // Re-subscribe when user identity changes (login/logout/guest toggle)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser?.uid, isGuest]);
 

@@ -6,7 +6,7 @@ import { UserIcon, ShieldCheckIcon, ChevronLeftIcon, CalendarIcon, EnvelopeOpenI
 import CreateEventForm from './CreateEventForm';
 import AdminDashboardTabs from './AdminDashboardTabs';
 import EventModal from './EventModal';
-import { getAllUsers, updateUserRole, getEventParticipants, rejectFacilitatorRequest, deleteUser } from '../services/userService';
+import { getAllUsers, subscribeToAllUsers, updateUserRole, getEventParticipants, rejectFacilitatorRequest, deleteUser } from '../services/userService';
 import { updateEventStatus } from '../services/eventService';
 import { createNotification, notifyEventUpdated, notifyEventCancelled } from '../services/notificationService';
 import Spinner from './Spinner';
@@ -352,40 +352,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         }
     }, []);
 
+    // Real-time users listener — keeps analytics and user list in sync automatically
     useEffect(() => {
-        const published = publishedEvents.length;
-        const initData = async () => {
-            // Both admins and facilitators need user data for analytics
-            try {
-                const fetchedUsers = await getAllUsers();
-                // Deduplicate by email — same as fetchUsers()
-                const seen = new Set<string>();
-                const unique = fetchedUsers.filter(u => {
-                    const key = u.email?.toLowerCase();
-                    if (!key || seen.has(key)) return false;
-                    seen.add(key);
-                    return true;
-                });
+        const unsub = subscribeToAllUsers(
+            unique => {
                 setUsers(unique);
-                setStats({
-                    events: published,
-                    users: unique.length,
-                    pending: pendingCount
-                });
-            } catch (err) {
-                setStats(prev => ({ ...prev, events: published, pending: pendingCount }));
+                setStats(prev => ({ ...prev, users: unique.length }));
             }
-        };
-        initData();
-    }, [events, pendingCount]);
+        );
+        return () => unsub();
+    }, []);
 
+    // Keep stats event/pending counts in sync with prop changes
     useEffect(() => {
-        if (activeTab === 'users' && canManageUsers) {
-            fetchUsers();
-        } else if (activeTab === 'dashboard') {
-            fetchUsers(); // Ensure analytics have latest data
-        }
-    }, [activeTab, canManageUsers, fetchUsers]);
+        setStats(prev => ({ ...prev, events: publishedEvents.length, pending: pendingCount }));
+    }, [publishedEvents.length, pendingCount]);
 
     const handleRoleUpdate = async (userId: string, newRole: UserRole) => {
         if (!canManageUsers) return;

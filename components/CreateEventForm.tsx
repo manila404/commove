@@ -175,50 +175,8 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
   // Confirmation dialog
   const [confirmPending, setConfirmPending] = useState<'draft' | 'publish' | null>(null);
 
-  // Description rich editor
+  // Description editor
   const descRef = useRef<HTMLTextAreaElement>(null);
-  const emojiPickerRef = useRef<HTMLDivElement>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node))
-        setShowEmojiPicker(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-  const applyFormat = (prefix: string, suffix: string = prefix) => {
-    const el = descRef.current;
-    if (!el) return;
-    const start = el.selectionStart ?? 0;
-    const end = el.selectionEnd ?? 0;
-    const text = formData.description;
-    const selected = text.slice(start, end);
-    const newText = text.slice(0, start) + prefix + selected + suffix + text.slice(end);
-    setField('description', newText as typeof initialFormData['description']);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(start + prefix.length, end + prefix.length);
-    });
-  };
-  const insertAtCursor = (str: string) => {
-    const el = descRef.current;
-    if (!el) return;
-    const start = el.selectionStart ?? formData.description.length;
-    const text = formData.description;
-    const newText = text.slice(0, start) + str + text.slice(start);
-    setField('description', newText as typeof initialFormData['description']);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(start + str.length, start + str.length);
-    });
-  };
-  const EMOJI_LIST = [
-    '😊','😄','😂','🥳','😍','🤩','😎','🙌','👏','👍',
-    '❤️','🔥','⭐','🌟','✨','🎉','🎊','🎈','🏆','🥇',
-    '📅','📌','📢','🔔','💡','✅','⚠️','ℹ️','📍','🌐',
-    '🎵','🎭','🎪','⚽','🏀','🎨','📸','🍕','☕','🌺',
-  ];
 
   const isAdmin = currentUser.role === 'admin';
   const isFacilitator = currentUser.role === 'facilitator';
@@ -648,58 +606,6 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             {/* Description */}
             <div className={card}>
               <SectionHeader title="Description" />
-              {/* Formatting toolbar */}
-              <div className="flex items-center gap-0.5 mb-2 flex-wrap">
-                {/* Bold */}
-                <button type="button" title="Bold" onClick={() => applyFormat('**')}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 transition-colors text-xs font-black">
-                  B
-                </button>
-                {/* Italic */}
-                <button type="button" title="Italic" onClick={() => applyFormat('_')}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 transition-colors text-xs font-black italic">
-                  I
-                </button>
-                {/* Strikethrough */}
-                <button type="button" title="Strikethrough" onClick={() => applyFormat('~~')}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 transition-colors text-xs font-black line-through">
-                  S
-                </button>
-                <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
-                {/* Bullet list */}
-                <button type="button" title="Bullet list" onClick={() => insertAtCursor('\n• ')}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /><circle cx="1.5" cy="6" r="1.5" fill="currentColor" /><circle cx="1.5" cy="12" r="1.5" fill="currentColor" /><circle cx="1.5" cy="18" r="1.5" fill="currentColor" /></svg>
-                </button>
-                {/* Numbered list */}
-                <button type="button" title="Numbered list" onClick={() => insertAtCursor('\n1. ')}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 transition-colors text-[10px] font-bold">
-                  1≡
-                </button>
-                <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
-                {/* Emoji picker */}
-                <div className="relative" ref={emojiPickerRef}>
-                  <button type="button" title="Insert emoji" onClick={() => setShowEmojiPicker(p => !p)}
-                    className={`w-7 h-7 flex items-center justify-center rounded-lg text-base transition-colors ${showEmojiPicker ? 'bg-violet-100 dark:bg-violet-900/30' : 'hover:bg-violet-50 dark:hover:bg-violet-900/20'}`}>
-                    😊
-                  </button>
-                  {showEmojiPicker && (
-                    <div className="absolute left-0 top-full mt-1.5 z-[300] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-3 w-64">
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Emojis</p>
-                      <div className="grid grid-cols-8 gap-0.5">
-                        {EMOJI_LIST.map(emoji => (
-                          <button key={emoji} type="button"
-                            onClick={() => { insertAtCursor(emoji); setShowEmojiPicker(false); }}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-base transition-colors">
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <span className="ml-auto text-[10px] text-gray-300 dark:text-gray-600 select-none">Markdown supported</span>
-              </div>
               <textarea ref={descRef} name="description" value={formData.description}
                 onChange={handleChange} onBlur={() => touch('description')}
                 placeholder="Describe what attendees can expect, what to prepare, and any special instructions…"

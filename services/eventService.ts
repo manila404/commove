@@ -32,6 +32,17 @@ export const fetchEvents = async (): Promise<EventType[]> => {
   }
 };
 
+export const subscribeToEvents = (
+    callback: (events: EventType[]) => void,
+    onError?: (error: Error) => void
+): (() => void) => {
+    return onSnapshot(
+        eventsCollectionRef,
+        snapshot => callback(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as EventType))),
+        error => { console.error('Events listener error:', error); onError?.(error); }
+    );
+};
+
 export const fetchUserRequests = async (userId: string): Promise<EventType[]> => {
     try {
         const q = query(eventsCollectionRef, where("createdBy", "==", userId));

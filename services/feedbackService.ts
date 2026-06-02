@@ -1,5 +1,5 @@
 
-import { collection, addDoc, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import type { EventFeedback } from '../types';
 import { updateEventFeedbackStats } from './analyticsService';
@@ -49,6 +49,16 @@ export const fetchUserFeedbackForEvent = async (userId: string, eventId: string)
         console.error("Error fetching user feedback:", error);
         return null;
     }
+};
+
+export const subscribeToAllFeedback = (
+    callback: (feedback: EventFeedback[]) => void
+): (() => void) => {
+    return onSnapshot(
+        feedbackCollectionRef,
+        snapshot => callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as EventFeedback))),
+        error => console.error('Feedback listener error:', error)
+    );
 };
 
 export const fetchAllFeedback = async (): Promise<EventFeedback[]> => {

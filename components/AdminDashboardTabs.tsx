@@ -8,7 +8,8 @@ import type { EventAlert } from '../utils/eventAlerts';
 import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon, Search, X, Clock, Trash2 } from 'lucide-react';
 import AdminReports from './AdminReports';
 import { getHighlights, setHighlights } from '../services/eventService';
-import { fetchAllFeedback } from '../services/feedbackService';
+import { subscribeToAllFeedback } from '../services/feedbackService';
+import { createNotification } from '../services/notificationService';
 import { generateEventDecisionInsight, generateMonthlyDecisionSummary, generateAdminDecisionSummary, generateFacilitatorDecisionSummary } from '../services/analyticsInsightService';
 import type { CrossDomainSummary, DomainInsight, InsightDomain, InsightLevel } from '../services/analyticsInsightService';
 import type { EventFeedback } from '../types';
@@ -52,7 +53,36 @@ interface AdminDashboardTabsProps {
     onNotifyUpdate?: (event: EventType) => void;
 }
 
-const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({ 
+// Returns a stable first-seen timestamp for an insight, persisted in localStorage.
+// ─── Insight notification dedup helpers ──────────────────────────────────────
+
+const getNotifiedInsightKeys = (uid: string): Set<string> => {
+    try { const r = localStorage.getItem(`cmt_ds_notified_${uid}`); return r ? new Set(JSON.parse(r) as string[]) : new Set<string>(); }
+    catch { return new Set<string>(); }
+};
+const saveNotifiedInsightKeys = (uid: string, keys: Set<string>): void => {
+    try { localStorage.setItem(`cmt_ds_notified_${uid}`, JSON.stringify([...keys])); } catch {}
+};
+
+// ─── Insight first-seen timestamp ────────────────────────────────────────────
+// Key is based on the stable identifier only (domain/card title + insight title),
+// NOT the body text — body contains live numbers that change with data.
+const getInsightFirstSeenAt = (stableId: string): Date => {
+    let h = 5381;
+    for (let i = 0; i < stableId.length; i++) h = (((h << 5) + h) + stableId.charCodeAt(i)) & 0x7fffffff;
+    const key = `cmt_its_${h.toString(36)}`;
+    try {
+        const stored = localStorage.getItem(key);
+        if (stored) return new Date(stored);
+        const now = new Date().toISOString();
+        localStorage.setItem(key, now);
+        return new Date(now);
+    } catch {
+        return new Date();
+    }
+};
+
+const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     events, users, pendingRequests, onApprove, onReject, onEditEvent, onDeleteEvent, onViewQRCode, onViewParticipants,
     onSchedule, onPreviewEvent,
     filteredUsers, userSearchQuery, setUserSearchQuery, userFilter, setUserFilter,
@@ -182,6 +212,27 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         setCardDetailClosing(true);
         setTimeout(() => { setCardDetailDrawer(null); setCardDetailClosing(false); }, 320);
     };
+
+    // Persist card detail insights to localStorage whenever a card is opened.
+    // Key per card title + user so each card has its own independent history.
+    useEffect(() => {
+        if (!cardDetailDrawer || !currentUser?.uid) return;
+        const uid      = currentUser.uid;
+        const slug     = cardDetailDrawer.title.replace(/\s+/g, '_').toLowerCase();
+        const key      = `cmt_ch_${slug}_${uid}`;
+        type CardEntry = { level: InsightLevel; text: string; rec?: string; seenAt: string };
+        let existing: CardEntry[] = [];
+        try { const r = localStorage.getItem(key); if (r) existing = JSON.parse(r); } catch {}
+        const existingTexts = new Set(existing.map(h => h.text));
+        const now     = new Date().toISOString();
+        const added   = cardDetailDrawer.insights
+            .filter(ins => !existingTexts.has(ins.text))
+            .map(ins => ({ level: ins.level, text: ins.text, rec: ins.rec, seenAt: now }));
+        if (added.length === 0) return;
+        const updated = [...existing, ...added].slice(-150);
+        try { localStorage.setItem(key, JSON.stringify(updated)); } catch {}
+    }, [cardDetailDrawer?.title, currentUser?.uid]); // runs each time a different card is opened
+
     // User management extra state
     const [userSortOrder, setUserSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [userPage, setUserPage] = useState(1);
@@ -221,6 +272,81 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
     const [allFeedback, setAllFeedback] = useState<EventFeedback[]>([]);
     const [viewingFeedbackEvent, setViewingFeedbackEvent] = useState<EventType | null>(null);
+
+    // ── Persistent insight history ────────────────────────────────────────────
+    // Accumulates every insight ever detected for this user. Survives refresh.
+    type StoredInsight = { domain: InsightDomain; level: InsightLevel; title: string; body: string; seenAt: string };
+    const [insightHistory, setInsightHistory] = useState<StoredInsight[]>([]);
+
+    // Load history from localStorage when user identity resolves
+    useEffect(() => {
+        const uid = currentUser?.uid;
+        if (!uid) return;
+        try {
+            const raw = localStorage.getItem(`cmt_ih_${uid}`);
+            if (raw) setInsightHistory(JSON.parse(raw) as StoredInsight[]);
+        } catch {}
+    }, [currentUser?.uid]);
+
+    // ── Decision Support → Notification + History bridge ─────────────────────
+    // Runs whenever data changes. Detects NEW insights, appends them to the
+    // persistent history, and fires a Firestore notification for critical/warning.
+    const dsNotifyingRef = useRef<Set<string>>(new Set());
+
+    useEffect(() => {
+        const uid = currentUser?.uid;
+        if (!uid || events.length === 0) return;
+
+        const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
+        const insights: DomainInsight[] = isAdmin
+            ? generateAdminDecisionSummary(events, users, allFeedback).insights
+            : (() => {
+                const myEvts = events.filter(e => e.createdBy === uid);
+                const myIds  = new Set(myEvts.map(e => e.id));
+                const myFb   = allFeedback.filter(f => myIds.has(f.eventId));
+                return generateFacilitatorDecisionSummary(myEvts, myFb, uid).insights;
+            })();
+
+        const currentKeys = new Set(insights.map(ins => `${ins.domain}|${ins.title}`));
+        const prevKeys    = getNotifiedInsightKeys(uid);
+
+        // Persist current key set (drops resolved insights so they re-fire if they return)
+        saveNotifiedInsightKeys(uid, currentKeys);
+
+        // New = in current set, not in prev localStorage set, not already in-flight this session
+        const newInsights = insights.filter(ins => {
+            const k = `${ins.domain}|${ins.title}`;
+            return !prevKeys.has(k) && !dsNotifyingRef.current.has(k);
+        });
+        if (newInsights.length === 0) return;
+
+        // Mark in-flight synchronously to prevent duplicate queuing on rapid re-renders
+        newInsights.forEach(ins => dsNotifyingRef.current.add(`${ins.domain}|${ins.title}`));
+
+        // Append new insights to persistent history — skip any domain|title already stored
+        const now = new Date().toISOString();
+        const newEntries: StoredInsight[] = newInsights.map(ins => ({
+            domain: ins.domain, level: ins.level, title: ins.title, body: ins.body, seenAt: now,
+        }));
+        setInsightHistory(prev => {
+            const existingKeys = new Set(prev.map(h => `${h.domain}|${h.title}`));
+            const trulyNew = newEntries.filter(e => !existingKeys.has(`${e.domain}|${e.title}`));
+            if (trulyNew.length === 0) return prev;
+            const updated = [...prev, ...trulyNew].slice(-300);
+            try { localStorage.setItem(`cmt_ih_${uid}`, JSON.stringify(updated)); } catch {}
+            return updated;
+        });
+
+        // Fire Firestore notifications for critical and warning only
+        (async () => {
+            for (const ins of newInsights.filter(i => i.level === 'critical' || i.level === 'warning')) {
+                const prefix = ins.level === 'critical' ? 'Critical Alert' : 'Decision Support Warning';
+                try { await createNotification(uid, 'system', `${prefix}: ${ins.title}`, ins.body); }
+                catch { /* non-fatal */ }
+            }
+        })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [events, users, allFeedback, currentUser?.uid]);
 
     // Confirmation dialog state
     type ConfirmAction = { type: 'publish' | 'cancel' | 'notify'; event: EventType } | null;
@@ -323,8 +449,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             setHighlightsLoading(false);
         }).catch(() => setHighlightsLoading(false));
 
-        // Also fetch feedback
-        fetchAllFeedback().then(setAllFeedback);
+        // Real-time feedback listener
+        const unsubFeedback = subscribeToAllFeedback(setAllFeedback);
+        return () => unsubFeedback();
     }, []);
 
     const toggleHighlight = (eventId: string) => {
@@ -1083,6 +1210,38 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         return result;
     })();
 
+    // ── Card insight background auto-stacker ─────────────────────────────────
+    // Runs whenever events or users change. Persists new insights for all 6
+    // analytics cards to localStorage without requiring the cards to be opened.
+    useEffect(() => {
+        const uid = currentUser?.uid;
+        if (!uid) return;
+        const now = new Date().toISOString();
+        const cardSets = [
+            { title: 'Monthly Trends',          insights: [monthlyTrendsInsight,  ...monthlyTrendsMoreInsights]  },
+            { title: 'Events by Category',       insights: [categoryInsight,       ...categoryMoreInsights]       },
+            { title: 'New Users per Month',      insights: [newUsersInsight,       ...newUsersMoreInsights]       },
+            { title: 'Gender Distribution',      insights: [genderInsight,         ...genderMoreInsights]         },
+            { title: 'Age Groups',               insights: [ageGroupInsight,       ...ageGroupMoreInsights]       },
+            { title: 'Top Events by Attendance', insights: [topEventsInsight,      ...topEventsMoreInsights]      },
+        ];
+        cardSets.forEach(({ title, insights }) => {
+            const slug = title.replace(/\s+/g, '_').toLowerCase();
+            const key  = `cmt_ch_${slug}_${uid}`;
+            type CardEntry = { level: InsightLevel; text: string; rec?: string; seenAt: string };
+            let existing: CardEntry[] = [];
+            try { const r = localStorage.getItem(key); if (r) existing = JSON.parse(r); } catch {}
+            const existingTexts = new Set(existing.map(h => h.text));
+            const added = insights
+                .filter(ins => ins?.text && !existingTexts.has(ins.text))
+                .map(ins => ({ level: ins.level, text: ins.text, rec: ins.rec, seenAt: now }));
+            if (added.length === 0) return;
+            const updated = [...existing, ...added].slice(-150);
+            try { localStorage.setItem(key, JSON.stringify(updated)); } catch {}
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [events, users, currentUser?.uid]);
+
     const renderAnalytics = () => {
         const totalViews      = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
         const totalSaves      = events.reduce((s, e) => s + safeNum(e.saveCount), 0);
@@ -1120,7 +1279,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
-                    <CardInsight {...monthlyTrendsInsight} moreInsights={monthlyTrendsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Monthly Trends', insights: [monthlyTrendsInsight, ...monthlyTrendsMoreInsights] })} />
+                    <CardInsight {...monthlyTrendsInsight} moreInsights={monthlyTrendsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Monthly Trends', insights: [monthlyTrendsInsight, ...monthlyTrendsMoreInsights]})} />
                 </div>
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                     <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Events by Category</h3>
@@ -1148,7 +1307,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <CardInsight {...categoryInsight} moreInsights={categoryMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Events by Category', insights: [categoryInsight, ...categoryMoreInsights] })} />
+                    <CardInsight {...categoryInsight} moreInsights={categoryMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Events by Category', insights: [categoryInsight, ...categoryMoreInsights]})} />
                 </div>
             </div>
 
@@ -1171,7 +1330,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {isMobile && (
                     <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 text-center">← Swipe to see all months →</p>
                 )}
-                <CardInsight {...newUsersInsight} moreInsights={newUsersMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights] })} />
+                <CardInsight {...newUsersInsight} moreInsights={newUsersMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights]})} />
             </div>
         </div>
         );
@@ -1204,7 +1363,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <CardInsight {...genderInsight} moreInsights={genderMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Gender Distribution', insights: [genderInsight, ...genderMoreInsights] })} />
+                    <CardInsight {...genderInsight} moreInsights={genderMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Gender Distribution', insights: [genderInsight, ...genderMoreInsights]})} />
                 </div>
 
                 {/* Age Distribution */}
@@ -1221,7 +1380,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                    <CardInsight {...ageGroupInsight} moreInsights={ageGroupMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Age Groups', insights: [ageGroupInsight, ...ageGroupMoreInsights] })} />
+                    <CardInsight {...ageGroupInsight} moreInsights={ageGroupMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Age Groups', insights: [ageGroupInsight, ...ageGroupMoreInsights]})} />
                 </div>
             </div>
 
@@ -1239,7 +1398,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
-                <CardInsight {...topEventsInsight} moreInsights={topEventsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Top Events by Attendance', insights: [topEventsInsight, ...topEventsMoreInsights] })} />
+                <CardInsight {...topEventsInsight} moreInsights={topEventsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Top Events by Attendance', insights: [topEventsInsight, ...topEventsMoreInsights]})} />
             </div>
         </div>
     );
@@ -2583,29 +2742,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </svg>
                         Decision Support
-                        {(() => {
-                            const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
-                            const dss = isAdmin
-                                ? generateAdminDecisionSummary(events, users, allFeedback)
-                                : generateFacilitatorDecisionSummary(
-                                    events.filter(e => e.createdBy === currentUser?.uid),
-                                    allFeedback.filter(f => events.filter(e => e.createdBy === currentUser?.uid).some(e => e.id === f.eventId)),
-                                    currentUser?.uid ?? ''
-                                );
-                            const flagCount = dss.flags.length;
-                            const scoreColor = dss.overallScore >= 75 ? 'bg-green-500' : dss.overallScore >= 50 ? 'bg-amber-500' : 'bg-red-500';
-                            return (
-                                <span className="flex items-center gap-1.5">
-                                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${scoreColor}`} />
-                                    <span className="text-[10px] font-black text-gray-400 dark:text-gray-500">{dss.overallScore}/100</span>
-                                    {flagCount > 0 && (
-                                        <span className="ml-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
-                                            {flagCount} flag{flagCount > 1 ? 's' : ''}
-                                        </span>
-                                    )}
-                                </span>
-                            );
-                        })()}
                     </button>
                 </div>
             )}
@@ -2785,13 +2921,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             {dsDrawerOpen && typeof document !== 'undefined' && createPortal(
                 (() => {
                     const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
+                    const facilId = currentUser?.uid ?? '';
+                    const facEvents   = isAdmin ? [] : events.filter(e => e.createdBy === facilId);
+                    const facEventIds = new Set(facEvents.map(e => e.id));
+                    const facFeedback = isAdmin ? [] : allFeedback.filter(f => facEventIds.has(f.eventId));
                     const dss: CrossDomainSummary = isAdmin
                         ? generateAdminDecisionSummary(events, users, allFeedback)
-                        : generateFacilitatorDecisionSummary(
-                            events.filter(e => e.createdBy === currentUser?.uid),
-                            allFeedback.filter(f => events.filter(e => e.createdBy === currentUser?.uid).some(e => e.id === f.eventId)),
-                            currentUser?.uid ?? ''
-                        );
+                        : generateFacilitatorDecisionSummary(facEvents, facFeedback, facilId);
 
                     const domainOrder: InsightDomain[] = ['events', 'engagement', 'users', 'demographics', 'categories', 'platform'];
                     const domainLabel: Record<InsightDomain, string> = {
@@ -2822,9 +2958,23 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     const scoreColor = dss.overallScore >= 75 ? '#22c55e' : dss.overallScore >= 50 ? '#f59e0b' : '#ef4444';
                     const scoreLabel = dss.overallScore >= 75 ? 'Performing Well' : dss.overallScore >= 50 ? 'Needs Attention' : 'Action Required';
 
+                    // Merge live insights with persisted history so the list stacks over time.
+                    // Deduplicate history by domain|title (keep first occurrence) before merging.
+                    const seenKeys = new Set<string>();
+                    const dedupedHistory = insightHistory.filter(h => {
+                        const k = `${h.domain}|${h.title}`;
+                        if (seenKeys.has(k)) return false;
+                        seenKeys.add(k); return true;
+                    });
+                    const liveOnly = dss.insights.filter(ins => !seenKeys.has(`${ins.domain}|${ins.title}`));
+                    const mergedInsights: DomainInsight[] = [
+                        ...dedupedHistory.map(h => ({ domain: h.domain, level: h.level, title: h.title, body: h.body })),
+                        ...liveOnly,
+                    ];
+
                     // Group insights by domain
                     const grouped: Partial<Record<InsightDomain, typeof dss.insights>> = {};
-                    dss.insights.forEach(item => {
+                    mergedInsights.forEach(item => {
                         if (!grouped[item.domain]) grouped[item.domain] = [];
                         grouped[item.domain]!.push(item);
                     });
@@ -2854,7 +3004,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             {/* Slide panel */}
                             <div
                                 className="ds-drawer bg-white dark:bg-[#0f172a] shadow-2xl"
-                                style={{ position: 'fixed', top: 0, right: 0, height: '100%', width: '100%', maxWidth: '460px', zIndex: 99996, animation: 'dsSlideIn 0.3s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column' }}
+                                style={{ position: 'fixed', top: '20px', right: '20px', height: 'calc(100% - 40px)', width: '100%', maxWidth: '480px', zIndex: 99996, animation: 'dsSlideIn 0.3s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column', borderRadius: '15px', overflow: 'hidden' }}
                             >
                                 {/* ── Drawer Header ───────────────────────── */}
                                 <div className="pt-safe flex-shrink-0 px-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3" style={{ paddingTop: 'max(env(safe-area-inset-top,16px),16px)' }}>
@@ -2870,10 +3020,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
-                                        <div className="text-right">
-                                            <p className="text-lg font-extrabold leading-tight" style={{ color: scoreColor }}>{dss.overallScore}<span className="text-xs font-medium text-gray-400">/100</span></p>
-                                            <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: scoreColor }}>{scoreLabel}</p>
-                                        </div>
                                         <button
                                             onClick={() => setDsDrawerOpen(false)}
                                             className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors flex-shrink-0"
@@ -2929,6 +3075,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 <div className="divide-y divide-gray-50 dark:divide-gray-800/60 bg-white dark:bg-[#111827]">
                                                     {domainInsights.map((item, i) => {
                                                         const cfg = levelCfg[item.level];
+                                                        const ts = getInsightFirstSeenAt(item.domain + '|' + item.title);
+                                                        const tsLabel = ts.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+                                                            + ' · '
+                                                            + ts.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true });
                                                         return (
                                                             <div key={i} className="flex gap-3 px-4 py-3">
                                                                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.iconBg} ${cfg.iconText}`}>
@@ -2940,6 +3090,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                                         <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-snug">{item.title}</p>
                                                                     </div>
                                                                     <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">{item.body}</p>
+                                                                    <p className="text-[9px] text-gray-300 dark:text-gray-600 mt-1 leading-none">{tsLabel}</p>
                                                                 </div>
                                                             </div>
                                                         );
@@ -2978,7 +3129,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                                 {/* ── Drawer footer ────────────────────────── */}
                                 <div className="flex-shrink-0 px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/20 flex items-center justify-between">
-                                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{dss.recommendations.length} total recommendation{dss.recommendations.length !== 1 ? 's' : ''} · {dss.insights.length} insight{dss.insights.length !== 1 ? 's' : ''}</p>
+                                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{dss.recommendations.length} total recommendation{dss.recommendations.length !== 1 ? 's' : ''} · {mergedInsights.length} insight{mergedInsights.length !== 1 ? 's' : ''}</p>
                                     <button
                                         onClick={() => setDsDrawerOpen(false)}
                                         className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
@@ -3002,7 +3153,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         onClick={() => setMetricsDrawerOpen(false)}
                     />
                     <div
-                        style={{ position: 'fixed', top: 0, right: 0, height: '100%', width: '100%', maxWidth: '460px', zIndex: 99998, animation: 'slideInFromRight 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column' }}
+                        style={{ position: 'fixed', top: '20px', right: '20px', height: 'calc(100% - 40px)', width: '100%', maxWidth: '480px', zIndex: 99998, animation: 'slideInFromRight 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column', borderRadius: '15px', overflow: 'hidden' }}
                         className="bg-white dark:bg-[#0f172a] shadow-2xl"
                     >
                         {(() => {
@@ -3302,9 +3453,31 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </button>
                         </div>
 
-                        {/* Insights list */}
+                        {/* Insights list — merged from history + current live insights */}
                         <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
-                            {cardDetailDrawer.insights.map((insight, i) => {
+                            {(() => {
+                                // Load persisted history for this card
+                                type CardEntry = { level: InsightLevel; text: string; rec?: string; seenAt: string };
+                                let cardHistory: CardEntry[] = [];
+                                try {
+                                    const slug = cardDetailDrawer.title.replace(/\s+/g, '_').toLowerCase();
+                                    const raw  = localStorage.getItem(`cmt_ch_${slug}_${currentUser?.uid ?? ''}`);
+                                    if (raw) cardHistory = JSON.parse(raw);
+                                } catch {}
+                                // Deduplicate history by text
+                                const seenTexts = new Set<string>();
+                                const deduped = cardHistory.filter(h => {
+                                    if (seenTexts.has(h.text)) return false;
+                                    seenTexts.add(h.text); return true;
+                                });
+                                // Append live insights not yet in history
+                                const liveOnly = cardDetailDrawer.insights.filter(ins => !seenTexts.has(ins.text));
+                                const merged: Array<{ level: InsightLevel; text: string; rec?: string }> = [
+                                    ...deduped,
+                                    ...liveOnly,
+                                ];
+                                return merged;
+                            })().map((insight, i) => {
                                 const cfgMap: Record<InsightLevel, { bg: string; border: string; iconBg: string; iconText: string; badge: string }> = {
                                     success:  { bg: 'bg-green-50 dark:bg-green-900/10',   border: 'border-green-100 dark:border-green-800/30',   iconBg: 'bg-green-100 dark:bg-green-900/30',   iconText: 'text-green-600 dark:text-green-400',   badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
                                     info:     { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
@@ -3330,6 +3503,16 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed font-medium">{insight.text}</p>
                                                 {insight.rec && <p className="text-[11px] text-purple-600 dark:text-purple-400 leading-relaxed mt-1.5 font-medium">→ {insight.rec}</p>}
+                                                {(() => {
+                                                    const ts = getInsightFirstSeenAt(cardDetailDrawer.title + '|' + insight.text.slice(0, 40));
+                                                    return (
+                                                        <p className="text-[9px] text-gray-300 dark:text-gray-600 mt-1 leading-none">
+                                                            {ts.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                            {' · '}
+                                                            {ts.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                        </p>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     </div>
@@ -3338,6 +3521,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </div>
 
                         {/* Footer */}
+
                         <div className="flex-shrink-0 px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
                             <p className="text-[10px] text-gray-400 dark:text-gray-500">{cardDetailDrawer.insights.length} insight{cardDetailDrawer.insights.length !== 1 ? 's' : ''} · {cardDetailDrawer.title}</p>
                             <button onClick={() => closeCardDetailDrawer()} className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors">Close</button>

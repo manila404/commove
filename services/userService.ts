@@ -332,6 +332,33 @@ export const updateUserNotificationSettings = async (uid: string, settings: User
     }
 };
 
+export const subscribeToAllUsers = (
+    callback: (users: User[]) => void,
+    onError?: (error: Error) => void
+): (() => void) => {
+    const usersRef = collection(db, usersCollectionRef);
+    return onSnapshot(
+        usersRef,
+        snapshot => {
+            const seen = new Set<string>();
+            const unique = snapshot.docs
+                .map(d => ({ uid: d.id, ...d.data() } as User))
+                .filter(u => {
+                    const key = u.email?.toLowerCase();
+                    if (!key || seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+            callback(unique);
+        },
+        error => {
+            if (error.code === 'permission-denied') return;
+            console.error('Users listener error:', error);
+            onError?.(error);
+        }
+    );
+};
+
 export const getAllUsers = async (): Promise<User[]> => {
     try {
         const usersRef = collection(db, usersCollectionRef);

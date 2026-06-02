@@ -445,6 +445,7 @@ export const generateAdminDecisionSummary = (
     const insights: DomainInsight[] = [];
     const flags:    string[]        = [];
     const recs:     { domain: InsightDomain; text: string }[] = [];
+    const now = new Date();
 
     // ── Event aggregates ──────────────────────────────────────────────────────
     const totalViews      = events.reduce((s, e) => s + safeNumber(e.viewCount), 0);
@@ -458,24 +459,67 @@ export const generateAdminDecisionSummary = (
     const avgRating    = totalFbWt === 0 ? 0 :
         ratedEvts.reduce((s, e) => s + safeNumber(e.averageRating) * safeNumber(e.feedbackCount), 0) / totalFbWt;
 
+    const publishedEvts  = events.filter(e => e.status === 'published');
+    const pendingEvts    = events.filter(e => e.status === 'pending');
+    const cancelledEvts  = events.filter(e => e.status === 'cancelled');
+    const upcomingEvts   = publishedEvts.filter(e => e.date && new Date(e.date) >= now);
+    const pastEvts       = publishedEvts.filter(e => { const d = e.endDate || e.date; return d && new Date(d) < now; });
+
     const lowVisCnt    = events.filter(e => safeNumber(e.viewCount) < 10).length;
     const highRatCnt   = events.filter(e => safeNumber(e.averageRating) >= 4.5 && safeNumber(e.feedbackCount) >= 3).length;
     const lowRatCnt    = events.filter(e => safeNumber(e.averageRating) > 0 && safeNumber(e.averageRating) < 3).length;
-    const pendingEvts  = events.filter(e => e.status === 'pending');
-    const cancelledEvts = events.filter(e => e.status === 'cancelled');
+    const noFbPastCnt  = pastEvts.filter(e => safeNumber(e.checkInCount) >= 5 && safeNumber(e.feedbackCount) === 0).length;
     const lowAttEvts   = events.filter(e => { const m = calculateEventMetrics(e); return m.interested >= 5 && m.attendanceRate < 40; }).length;
 
-    const engRate = safePercentage(totalSaves + totalInterested, totalViews);
-    const attRate = safePercentage(totalCheckIns, totalInterested);
-    const fbRate  = safePercentage(totalFeedback, totalCheckIns);
+    const engRate         = safePercentage(totalSaves + totalInterested, totalViews);
+    const attRate         = safePercentage(totalCheckIns, totalInterested);
+    const fbRate          = safePercentage(totalFeedback, totalCheckIns);
+    const saveToAttRate   = safePercentage(totalCheckIns, totalSaves);
+
+    // Engagement funnel — find the stage with the biggest gap below its benchmark
+    const funnelBottleneck = (() => {
+        const stages = [
+            { label: 'Views → Saves',          rate: safePercentage(totalSaves, totalViews),      bench: 20 },
+            { label: 'Views → Interest',        rate: safePercentage(totalInterested, totalViews), bench: 20 },
+            { label: 'Interest → Attendance',   rate: attRate,                                     bench: 30 },
+            { label: 'Attendance → Feedback',   rate: fbRate,                                      bench: 15 },
+        ].filter(() => totalViews > 0);
+        return stages.sort((a, b) => (a.rate - a.bench) - (b.rate - b.bench))[0] ?? null;
+    })();
+
+    // Capacity analysis
+    const cappedEvts   = publishedEvts.filter(e => safeNumber(e.maxParticipants) > 0);
+    const nearCapacity = cappedEvts.filter(e => {
+        const cap = safeNumber(e.maxParticipants!);
+        return cap > 0 && safeNumber(e.checkInCount) / cap >= 0.8;
+    });
+    const overSubbed   = cappedEvts.filter(e => {
+        const cap = safeNumber(e.maxParticipants!);
+        return cap > 0 && safeNumber(e.interestedCount) > cap;
+    });
+
+    // Performance ranking
+    const scoredEvts = events.map(e => ({ e, m: calculateEventMetrics(e) })).sort((a, b) => b.m.performanceScore - a.m.performanceScore);
+    const topEvt     = scoredEvts.find(s => s.m.performanceScore >= 60) ?? null;
+    const bottomEvt  = scoredEvts.length > 2 ? scoredEvts[scoredEvts.length - 1] : null;
+
+    // Recurrent vs one-time performance
+    const recurrentEvts      = events.filter(e => e.isRecurrent || e.recurrenceGroupId);
+    const singleEvts         = events.filter(e => !e.isRecurrent && !e.recurrenceGroupId);
+    const recAvgCI           = recurrentEvts.length > 0 ? recurrentEvts.reduce((s, e) => s + safeNumber(e.checkInCount), 0) / recurrentEvts.length : 0;
+    const singleAvgCI        = singleEvts.length > 0 ? singleEvts.reduce((s, e) => s + safeNumber(e.checkInCount), 0) / singleEvts.length : 0;
 
     // ── Category analysis ─────────────────────────────────────────────────────
     const catCounts: Record<string, number> = {};
     const catRating: Record<string, { sum: number; wt: number }> = {};
+    const catAtt:    Record<string, { interested: number; checkIns: number }> = {};
     events.forEach(e => {
         const cats = Array.isArray(e.category) ? e.category : (e.category ? [e.category] : []);
         cats.forEach(c => {
             catCounts[c] = (catCounts[c] || 0) + 1;
+            if (!catAtt[c]) catAtt[c] = { interested: 0, checkIns: 0 };
+            catAtt[c].interested += safeNumber(e.interestedCount);
+            catAtt[c].checkIns   += safeNumber(e.checkInCount);
             if (safeNumber(e.feedbackCount) > 0 && safeNumber(e.averageRating) > 0) {
                 if (!catRating[c]) catRating[c] = { sum: 0, wt: 0 };
                 catRating[c].sum += safeNumber(e.averageRating) * safeNumber(e.feedbackCount);
@@ -490,12 +534,27 @@ export const generateAdminDecisionSummary = (
         .map(([cat, v]) => ({ cat, avg: v.sum / v.wt }))
         .sort((a, b) => b.avg - a.avg);
     const bestCat  = catAvgs[0]  ?? null;
-    const worstCat = catAvgs[catAvgs.length - 1] ?? null;
+    const worstCat = catAvgs.length > 1 ? catAvgs[catAvgs.length - 1] : null;
+
+    // Category with best attendance conversion (min 3 interested)
+    const catAttRates = Object.entries(catAtt)
+        .filter(([, v]) => v.interested >= 3)
+        .map(([cat, v]) => ({ cat, rate: safePercentage(v.checkIns, v.interested) }))
+        .sort((a, b) => b.rate - a.rate);
+    const bestAttCat = catAttRates[0] ?? null;
 
     // ── Location analysis ─────────────────────────────────────────────────────
-    const locCounts: Record<string, number> = {};
-    events.forEach(e => { const l = e.venue || e.city; if (l) locCounts[l] = (locCounts[l] || 0) + 1; });
-    const topLocation = topByCount(locCounts);
+    const locCounts:  Record<string, number> = {};
+    const cityCounts: Record<string, number> = {};
+    events.forEach(e => {
+        const l = e.venue || e.city;
+        if (l) locCounts[l] = (locCounts[l] || 0) + 1;
+        if (e.city) cityCounts[e.city] = (cityCounts[e.city] || 0) + 1;
+    });
+    const topLocation  = topByCount(locCounts);
+    const uniqueCities = Object.keys(cityCounts).length;
+    const topCity      = topByCount(cityCounts);
+    const topCityPct   = topCity ? Math.round(safePercentage(cityCounts[topCity], events.length)) : 0;
 
     // ── User analysis ─────────────────────────────────────────────────────────
     const totalUsers       = users.length;
@@ -503,6 +562,13 @@ export const generateAdminDecisionSummary = (
     const regularUsers     = users.filter(u => !u.role || u.role === 'user').length;
     const pendingFacReqs   = users.filter(u => u.facilitatorRequestStatus === 'pending').length;
     const profileComplete  = users.filter(u => u.birthday && u.sex).length;
+    const pendingDeletions = users.filter(u => u.pendingDeletion).length;
+
+    const activeUsers  = users.filter(u => (u.checkedInEventIds?.length ?? 0) > 0 || (u.interestedEventIds?.length ?? 0) > 0).length;
+    const powerUsers   = users.filter(u => (u.checkedInEventIds?.length ?? 0) >= 3).length;
+    const savedUsers   = users.filter(u => (u.savedEventIds?.length ?? 0) > 0);
+    const savedNoAttend = savedUsers.filter(u => (u.checkedInEventIds?.length ?? 0) === 0).length;
+    const savedNoAttendRate = safePercentage(savedNoAttend, savedUsers.length);
 
     // ── Demographics ──────────────────────────────────────────────────────────
     const gMap: Record<string, number> = {};
@@ -519,53 +585,133 @@ export const generateAdminDecisionSummary = (
         else if (age < 60) ageGroups.adult++;
         else               ageGroups.senior++;
     });
+    const usersWithBday = users.filter(u => u.birthday).length;
 
-    // ── Overall score ─────────────────────────────────────────────────────────
-    const visScore = events.length === 0 ? 50 : Math.round((1 - lowVisCnt / events.length) * 100);
+    // User preference vs available event categories
+    const prefCounts: Record<string, number> = {};
+    users.forEach(u => (u.preferences ?? []).forEach(p => { prefCounts[p] = (prefCounts[p] || 0) + 1; }));
+    const topPref             = topByCount(prefCounts);
+    const topPrefHasNoEvents  = topPref !== null && catCounts[topPref] === undefined;
+    const topPrefUnderserved  = topPref !== null && !topPrefHasNoEvents && safePercentage(catCounts[topPref] ?? 0, events.length) < 10 && (prefCounts[topPref] ?? 0) > 3;
+
+    // ── Overall score (6-factor) ───────────────────────────────────────────────
+    const visScore    = events.length === 0 ? 50 : Math.round((1 - lowVisCnt / events.length) * 100);
+    const divScore    = categoryCount >= 6 ? 100 : categoryCount >= 4 ? 75 : categoryCount >= 3 ? 55 : categoryCount >= 2 ? 35 : 15;
     const overallScore = Math.round(
-        visScore  * 0.20 +
-        Math.min(engRate * 2, 100) * 0.20 +
-        attRate   * 0.30 +
-        safePercentage(avgRating, 5) * 0.30
+        visScore                         * 0.15 +
+        Math.min(engRate * 2, 100)       * 0.20 +
+        attRate                          * 0.25 +
+        Math.min(fbRate * 2, 100)        * 0.10 +
+        safePercentage(avgRating, 5)     * 0.20 +
+        divScore                         * 0.10
     );
 
     // ── EVENTS domain rules ───────────────────────────────────────────────────
     if (events.length === 0) {
         insights.push({ domain: 'events', level: 'info', title: 'No Events Yet', body: 'No events have been created. Start by publishing the first community event to begin platform engagement.' });
     } else {
-        if (lowVisCnt > Math.ceil(events.length * 0.5)) {
+        // Visibility gap
+        if (lowVisCnt === events.length) {
+            insights.push({ domain: 'events', level: 'critical', title: 'All Events Have Zero Reach', body: `Every event on the platform has fewer than 10 views. No event is currently reaching residents — immediate platform-wide promotion is required.` });
+            flags.push(`${lowVisCnt}/${events.length} events critically underperforming in visibility.`);
+            recs.push({ domain: 'events', text: 'Launch a platform-wide promotion campaign (barangay announcements, social media) to improve event discovery across all listings.' });
+        } else if (lowVisCnt > Math.ceil(events.length * 0.5)) {
             insights.push({ domain: 'events', level: 'critical', title: 'Critical Visibility Gap', body: `${lowVisCnt} of ${events.length} events have fewer than 10 views. Most events are not reaching residents — a platform-wide promotion strategy is urgently needed.` });
             flags.push(`${lowVisCnt}/${events.length} events critically underperforming in visibility.`);
             recs.push({ domain: 'events', text: 'Launch a platform-wide promotion campaign (barangay announcements, social media) to improve event discovery across all listings.' });
         } else if (lowVisCnt > Math.ceil(events.length * 0.25)) {
-            insights.push({ domain: 'events', level: 'warning', title: 'Promotion Gaps Detected', body: `${lowVisCnt} events have low visibility (under 10 views). Use the Highlights feature or additional promotion channels to surface these events.` });
+            insights.push({ domain: 'events', level: 'warning', title: 'Promotion Gaps Detected', body: `${lowVisCnt} events have low visibility (under 10 views). Use the Highlights feature or additional channels to surface these events.` });
             recs.push({ domain: 'events', text: 'Use the Highlights feature to boost visibility of low-traffic events and increase resident discovery.' });
         }
-        if (highRatCnt >= 2) {
-            insights.push({ domain: 'events', level: 'success', title: 'High-Quality Events', body: `${highRatCnt} event${highRatCnt > 1 ? 's have' : ' has'} achieved excellent satisfaction (4.5+/5). These formats are strong candidates for recurring programs.` });
-            recs.push({ domain: 'events', text: `Schedule recurring editions of your top-rated events to sustain community satisfaction.` });
+
+        // Top performer spotlight
+        if (topEvt) {
+            const topMetric = topEvt.m.attendanceRate > 50
+                ? `${Math.round(topEvt.m.attendanceRate)}% attendance rate`
+                : topEvt.m.avgRating >= 4.0
+                    ? `${topEvt.m.avgRating.toFixed(1)}/5 satisfaction`
+                    : `${Math.round(topEvt.m.engagementRate)}% engagement rate`;
+            insights.push({ domain: 'events', level: 'success', title: 'Standout Event', body: `"${topEvt.e.name}" is the top-performing event (score ${topEvt.m.performanceScore}/100, ${topMetric}). Study this format and replicate it.` });
+            recs.push({ domain: 'events', text: `Use "${topEvt.e.name}" as a template — analyze its timing, description, and promotion to replicate its success in future events.` });
         }
+
+        // Bottom performer with specific issue
+        if (bottomEvt && bottomEvt.m.performanceScore < 20) {
+            const issue = bottomEvt.m.views < 10 ? `only ${bottomEvt.m.views} views` :
+                          bottomEvt.m.attendanceRate < 20 ? `${Math.round(bottomEvt.m.attendanceRate)}% attendance` :
+                          `${bottomEvt.m.avgRating.toFixed(1)}/5 satisfaction`;
+            insights.push({ domain: 'events', level: 'warning', title: 'Lowest Performing Event', body: `"${bottomEvt.e.name}" scored ${bottomEvt.m.performanceScore}/100 — the main issue was ${issue}. Address this before scheduling a repeat.` });
+            recs.push({ domain: 'events', text: `Review "${bottomEvt.e.name}" to understand what drove its poor results. Investigate venue, timing, description, or promotion gaps.` });
+        }
+
+        // High-rated events
+        if (highRatCnt >= 2) {
+            insights.push({ domain: 'events', level: 'success', title: 'High-Quality Events', body: `${highRatCnt} events have achieved excellent satisfaction (4.5+/5). These formats are strong candidates for recurring programs.` });
+            recs.push({ domain: 'events', text: 'Schedule recurring editions of your top-rated events to sustain community satisfaction.' });
+        } else if (highRatCnt === 1) {
+            const hre = ratedEvts.find(e => safeNumber(e.averageRating) >= 4.5 && safeNumber(e.feedbackCount) >= 3);
+            if (hre) insights.push({ domain: 'events', level: 'success', title: 'Standout Quality Event', body: `"${hre.name}" earned ${safeNumber(hre.averageRating).toFixed(1)}/5 — the platform's highest-rated event. Expand this format for broader community impact.` });
+        }
+
+        // Low-rated events with specifics
         if (lowRatCnt > 0) {
-            insights.push({ domain: 'events', level: 'warning', title: 'Low Satisfaction Events', body: `${lowRatCnt} event${lowRatCnt > 1 ? 's are' : ' is'} rated below 3/5. CICRD should review feedback to identify recurring issues before repeating these formats.` });
+            const worst = [...events].filter(e => safeNumber(e.averageRating) > 0 && safeNumber(e.averageRating) < 3)
+                .sort((a, b) => safeNumber(a.averageRating) - safeNumber(b.averageRating))[0];
+            const detail = lowRatCnt === 1 && worst ? ` — "${worst.name}" rated ${safeNumber(worst.averageRating).toFixed(1)}/5` : '';
+            insights.push({ domain: 'events', level: 'warning', title: 'Low Satisfaction Events', body: `${lowRatCnt} event${lowRatCnt > 1 ? 's are' : ' is'} rated below 3/5${detail}. CICRD should review feedback before repeating these formats.` });
             flags.push(`${lowRatCnt} event${lowRatCnt > 1 ? 's' : ''} rated below 3/5 — quality review recommended.`);
             recs.push({ domain: 'events', text: 'Conduct a post-mortem review of low-rated events and address venue, timing, or content concerns before the next edition.' });
         }
+
+        // Pending queue
         if (pendingEvts.length > 5) {
-            insights.push({ domain: 'events', level: 'warning', title: 'Review Queue Building Up', body: `${pendingEvts.length} events are awaiting approval. A growing queue may delay resident awareness and planning.` });
+            insights.push({ domain: 'events', level: 'warning', title: 'Review Queue Building Up', body: `${pendingEvts.length} events are awaiting approval. A growing queue delays resident awareness and may frustrate facilitators.` });
             flags.push(`${pendingEvts.length} events pending approval — review queue is backing up.`);
             recs.push({ domain: 'events', text: 'Assign a dedicated reviewer to clear the pending event queue and prevent submission delays.' });
         } else if (pendingEvts.length > 0) {
             insights.push({ domain: 'events', level: 'info', title: 'Events Awaiting Review', body: `${pendingEvts.length} event${pendingEvts.length > 1 ? 's are' : ' is'} pending approval. Timely review prevents delays in resident awareness.` });
         }
+
+        // Cancellation rate
         if (cancelledEvts.length > 0 && safePercentage(cancelledEvts.length, events.length) > 15) {
             const cr = Math.round(safePercentage(cancelledEvts.length, events.length));
-            insights.push({ domain: 'events', level: 'warning', title: 'High Cancellation Rate', body: `${cr}% of events have been cancelled. Frequent cancellations can erode resident trust in the platform.` });
+            insights.push({ domain: 'events', level: 'warning', title: 'High Cancellation Rate', body: `${cr}% of events have been cancelled. Frequent cancellations erode resident trust and reduce platform reliability.` });
             flags.push(`${cr}% event cancellation rate detected.`);
             recs.push({ domain: 'events', text: 'Implement pre-approval checklists (venue confirmation, organizer commitment) to reduce preventable cancellations.' });
         }
+
+        // Platform-wide interest-attendance gap
         if (lowAttEvts > Math.ceil(events.length * 0.3)) {
-            insights.push({ domain: 'events', level: 'warning', title: 'Widespread Interest-Attendance Gap', body: `${lowAttEvts} events show significant drop-off between interest and actual check-ins. Systemic improvements to reminders may help.` });
+            insights.push({ domain: 'events', level: 'warning', title: 'Widespread Interest-Attendance Gap', body: `${lowAttEvts} events show significant drop-off between interest and actual check-ins. Systemic reminder improvements are needed.` });
             recs.push({ domain: 'events', text: 'Implement automated 24-hour pre-event reminders for all residents who marked interest to reduce no-shows platform-wide.' });
+        }
+
+        // Capacity pressure
+        if (overSubbed.length > 0) {
+            insights.push({ domain: 'events', level: 'warning', title: 'Demand Exceeds Capacity', body: `${overSubbed.length} event${overSubbed.length > 1 ? 's have' : ' has'} more interested residents than available seats. Residents risk missing out, which can cause frustration.` });
+            flags.push(`${overSubbed.length} event${overSubbed.length > 1 ? 's' : ''} with demand exceeding capacity.`);
+            recs.push({ domain: 'events', text: 'Expand capacity or create waitlists for oversubscribed events to capture excess demand without disappointing residents.' });
+        } else if (nearCapacity.length > 0) {
+            insights.push({ domain: 'events', level: 'info', title: `${nearCapacity.length} Event${nearCapacity.length > 1 ? 's' : ''} Near Capacity`, body: `${nearCapacity.length} event${nearCapacity.length > 1 ? 's are' : ' is'} at 80%+ of maximum participants. Consider expanding seats or scheduling additional sessions.` });
+        }
+
+        // Recurrent events outperforming
+        if (recurrentEvts.length >= 2 && recAvgCI > singleAvgCI * 1.4) {
+            insights.push({ domain: 'events', level: 'success', title: 'Recurring Events Outperform', body: `Recurring events average ${recAvgCI.toFixed(1)} check-ins vs ${singleAvgCI.toFixed(1)} for one-time events — repetition builds stronger community habits.` });
+            recs.push({ domain: 'events', text: 'Convert your highest-performing one-time events into recurring programs to leverage the attendance lift that repetition provides.' });
+        }
+
+        // No upcoming events
+        if (upcomingEvts.length === 0) {
+            insights.push({ domain: 'events', level: 'warning', title: 'No Upcoming Events Scheduled', body: 'There are no published events with future dates. Without upcoming events, resident engagement and app visits will decline.' });
+            flags.push('No upcoming events — platform may go dormant.');
+            recs.push({ domain: 'events', text: 'Publish at least 2–3 upcoming events to maintain resident engagement and give users a reason to return to the platform.' });
+        }
+
+        // Past events with no feedback despite attendance
+        if (noFbPastCnt > 0) {
+            insights.push({ domain: 'events', level: 'info', title: 'Missed Feedback Opportunities', body: `${noFbPastCnt} completed event${noFbPastCnt > 1 ? 's have' : ' has'} 5+ check-ins but zero feedback. These are missed quality data points that could inform future programming.` });
+            recs.push({ domain: 'events', text: 'Send a retrospective feedback prompt to attendees of completed events with no ratings — some residents may still respond.' });
         }
     }
 
@@ -573,40 +719,59 @@ export const generateAdminDecisionSummary = (
     if (totalUsers === 0) {
         insights.push({ domain: 'users', level: 'info', title: 'No Registered Users', body: 'No users are registered yet. Resident onboarding is a critical first step for platform adoption.' });
     } else {
-        const facRatio = safePercentage(facilitators, totalUsers);
+        const facRatio   = safePercentage(facilitators, totalUsers);
+        const activeRate = safePercentage(activeUsers, regularUsers > 0 ? regularUsers : totalUsers);
+
         if (facilitators === 0) {
             insights.push({ domain: 'users', level: 'warning', title: 'No Active Facilitators', body: 'There are no approved facilitators. Facilitators are essential for creating diverse community events beyond admin-created content.' });
             recs.push({ domain: 'users', text: 'Recruit and onboard at least 3–5 community facilitators to diversify event creation across barangays.' });
         } else if (facRatio < 5) {
-            insights.push({ domain: 'users', level: 'info', title: 'Low Facilitator Ratio', body: `Only ${facilitators} facilitator${facilitators > 1 ? 's' : ''} (${Math.round(facRatio)}% of users). A larger facilitator pool increases event diversity and volume.` });
+            insights.push({ domain: 'users', level: 'info', title: 'Low Facilitator Ratio', body: `Only ${facilitators} facilitator${facilitators > 1 ? 's' : ''} (${Math.round(facRatio)}% of users). A larger pool increases event diversity and volume.` });
             recs.push({ domain: 'users', text: 'Promote the facilitator application process to engaged residents to grow the event creation pipeline.' });
+        } else {
+            insights.push({ domain: 'users', level: 'success', title: 'Healthy Facilitator Network', body: `${facilitators} approved facilitator${facilitators > 1 ? 's represent' : ' represents'} ${Math.round(facRatio)}% of users — a solid foundation for community-driven event creation.` });
         }
+
         if (pendingFacReqs > 3) {
-            insights.push({ domain: 'users', level: 'warning', title: 'Facilitator Applications Backlog', body: `${pendingFacReqs} facilitator applications are awaiting review. Delayed processing reduces applicant engagement.` });
+            insights.push({ domain: 'users', level: 'warning', title: 'Facilitator Applications Backlog', body: `${pendingFacReqs} facilitator applications are awaiting review. Delays reduce applicant motivation and slow content pipeline growth.` });
             flags.push(`${pendingFacReqs} facilitator applications pending review.`);
             recs.push({ domain: 'users', text: 'Review and process pending facilitator applications to maintain community trust and applicant motivation.' });
         } else if (pendingFacReqs > 0) {
-            insights.push({ domain: 'users', level: 'info', title: 'Facilitator Applications Pending', body: `${pendingFacReqs} application${pendingFacReqs > 1 ? 's are' : ' is'} awaiting facilitator approval. Timely processing keeps applicants engaged.` });
+            insights.push({ domain: 'users', level: 'info', title: 'Facilitator Applications Pending', body: `${pendingFacReqs} application${pendingFacReqs > 1 ? 's are' : ' is'} awaiting approval. Timely processing keeps applicants engaged.` });
         }
-        if (safePercentage(profileComplete, totalUsers) < 40) {
-            const pr = Math.round(safePercentage(profileComplete, totalUsers));
-            insights.push({ domain: 'users', level: 'info', title: 'Low Profile Completion', body: `Only ${pr}% of users have complete profiles (birthday + gender). This limits demographic analytics accuracy for planning decisions.` });
+
+        const profileRate = Math.round(safePercentage(profileComplete, totalUsers));
+        if (profileRate < 40) {
+            insights.push({ domain: 'users', level: 'info', title: 'Low Profile Completion', body: `Only ${profileRate}% of users have complete profiles (birthday + gender). This limits demographic analytics accuracy for planning decisions.` });
             recs.push({ domain: 'users', text: 'Encourage profile completion through in-app prompts to improve demographic data quality and personalization accuracy.' });
         }
-        if (regularUsers > 30 && events.length > 0) {
-            const active = users.filter(u => (u.checkedInEventIds?.length ?? 0) > 0 || (u.interestedEventIds?.length ?? 0) > 0).length;
-            const activeRate = safePercentage(active, regularUsers);
+
+        if (totalUsers >= 10) {
             if (activeRate < 20) {
-                insights.push({ domain: 'users', level: 'warning', title: 'Low User Activity Rate', body: `Only ${Math.round(activeRate)}% of residents have interacted with events. Most registered users remain passive on the platform.` });
+                insights.push({ domain: 'users', level: 'warning', title: 'Low User Activity Rate', body: `Only ${Math.round(activeRate)}% of residents have interacted with events. Most registered users remain passive — they registered but haven't engaged.` });
                 recs.push({ domain: 'users', text: 'Send periodic push notifications to re-engage passive users with upcoming events near their location.' });
             } else if (activeRate >= 50) {
-                insights.push({ domain: 'users', level: 'success', title: 'High User Activity', body: `${Math.round(activeRate)}% of residents are actively engaging with events — a strong indicator of platform adoption and community interest.` });
+                insights.push({ domain: 'users', level: 'success', title: 'High User Activity', body: `${Math.round(activeRate)}% of residents actively engage with events — a strong indicator of platform adoption and community trust.` });
             }
+
+            if (powerUsers >= 3) {
+                const powerPct = Math.round(safePercentage(powerUsers, totalUsers));
+                insights.push({ domain: 'users', level: 'success', title: 'Loyal Core Community', body: `${powerUsers} resident${powerUsers > 1 ? 's have' : ' has'} attended 3+ events (${powerPct}% of users). This loyal core signals real community value and platform stickiness.` });
+                recs.push({ domain: 'users', text: 'Recognize top attendees — priority access or exclusive event invitations can reinforce loyalty and word-of-mouth growth.' });
+            }
+
+            if (savedNoAttendRate > 60 && savedNoAttend >= 3) {
+                insights.push({ domain: 'users', level: 'warning', title: 'High Save-Without-Attending Rate', body: `${Math.round(savedNoAttendRate)}% of residents who bookmark events never check in. Intent exists but barriers — reminders, venue access, or scheduling — are preventing follow-through.` });
+                recs.push({ domain: 'users', text: 'Address barriers for residents who save events but don\'t attend — improve reminders, add venue directions, and clarify event instructions.' });
+            }
+        }
+
+        if (pendingDeletions > 0) {
+            insights.push({ domain: 'users', level: 'info', title: 'Account Deletion Requests', body: `${pendingDeletions} user${pendingDeletions > 1 ? 's have' : ' has'} requested account deletion. Monitor whether this reflects platform dissatisfaction or routine attrition.` });
         }
     }
 
     // ── DEMOGRAPHICS domain rules ─────────────────────────────────────────────
-    const usersWithBday = users.filter(u => u.birthday).length;
     if (usersWithBday < 5 && gTotal < 5) {
         insights.push({ domain: 'demographics', level: 'info', title: 'Limited Demographic Data', body: 'Insufficient birthday or gender data for demographic analysis. Encourage users to complete their profiles to enable better event planning.' });
     } else {
@@ -614,25 +779,40 @@ export const generateAdminDecisionSummary = (
             const mPct = safePercentage(maleCount, gTotal);
             const fPct = safePercentage(femaleCount, gTotal);
             if (mPct > 75) {
-                insights.push({ domain: 'demographics', level: 'warning', title: 'Gender Reach Imbalance', body: `${Math.round(mPct)}% of users are male. Events and promotion may need to better target female residents for broader community reach.` });
-                recs.push({ domain: 'demographics', text: 'Design family-oriented or skills-based programs for women to improve gender inclusivity across the platform.' });
+                insights.push({ domain: 'demographics', level: 'warning', title: 'Gender Reach Imbalance', body: `${Math.round(mPct)}% of users are male. Events and promotion need to better target female residents for broader community reach.` });
+                recs.push({ domain: 'demographics', text: 'Design family-oriented, wellness, or skills-based programs for women to improve gender inclusivity across the platform.' });
             } else if (fPct > 75) {
                 insights.push({ domain: 'demographics', level: 'warning', title: 'Gender Reach Imbalance', body: `${Math.round(fPct)}% of users are female. Include sports, career, or technology events to attract male residents and balance platform reach.` });
-                recs.push({ domain: 'demographics', text: 'Include events in categories typically preferred by male residents (sports, technology, gaming) to balance gender reach.' });
+                recs.push({ domain: 'demographics', text: 'Include events in categories typically preferred by male residents (sports, technology, livelihood) to balance gender reach.' });
             } else {
                 insights.push({ domain: 'demographics', level: 'success', title: 'Balanced Gender Reach', body: `Male (${Math.round(mPct)}%) and female (${Math.round(fPct)}%) users are well-balanced — the platform has broad gender representation across the community.` });
             }
         }
+
         if (usersWithBday >= 5) {
             const dominant = Object.entries(ageGroups).sort((a, b) => b[1] - a[1])[0];
             const domPct   = safePercentage(dominant[1], usersWithBday);
             const labels: Record<string, string> = { youth: 'Under 18', youngAdult: '18–24', adult: '25–59', senior: '60+' };
             if (domPct > 55) {
-                insights.push({ domain: 'demographics', level: 'info', title: `${labels[dominant[0]]} Dominant User Base`, body: `${Math.round(domPct)}% of users with known ages are ${labels[dominant[0]]}. Align event programming with this demographic's interests to maximize participation.` });
+                insights.push({ domain: 'demographics', level: 'info', title: `${labels[dominant[0]]} Dominant User Base`, body: `${Math.round(domPct)}% of users with known ages are in the ${labels[dominant[0]]} group. Align event programming with this demographic's interests to maximize participation.` });
                 if (dominant[0] === 'youngAdult') recs.push({ domain: 'demographics', text: 'Prioritize technology, career development, and social events to match the dominant 18–24 demographic.' });
                 if (dominant[0] === 'adult')      recs.push({ domain: 'demographics', text: 'Schedule events on weekends and evenings to accommodate the working adult demographic that dominates the platform.' });
-                if (dominant[0] === 'youth')      recs.push({ domain: 'demographics', text: 'Ensure youth-oriented events comply with age-appropriate guidelines and require parental awareness notifications.' });
+                if (dominant[0] === 'youth')      recs.push({ domain: 'demographics', text: 'Ensure youth-oriented events comply with age-appropriate guidelines and send parental awareness notifications.' });
+                if (dominant[0] === 'senior')     recs.push({ domain: 'demographics', text: 'Prioritize accessible venues, daytime scheduling, and health/wellness events for the senior-dominant user base.' });
             }
+            if (ageGroups.senior > 0 && safePercentage(ageGroups.senior, usersWithBday) >= 20) {
+                const sPct = Math.round(safePercentage(ageGroups.senior, usersWithBday));
+                insights.push({ domain: 'demographics', level: 'info', title: 'Significant Senior Presence', body: `${sPct}% of known-age users are 60+. Ensure events are physically accessible and the app experience accommodates varying digital literacy levels.` });
+            }
+        }
+
+        // Preference gap: top resident preference has no or few matching events
+        if (topPref && topPrefHasNoEvents) {
+            insights.push({ domain: 'demographics', level: 'warning', title: 'Top Preference Has No Events', body: `"${topPref}" is the most common resident preference but has zero events in this category. This unmet demand reduces platform relevance for this user group.` });
+            recs.push({ domain: 'demographics', text: `Create or commission events in the "${topPref}" category to directly serve the most common resident preference on the platform.` });
+        } else if (topPref && topPrefUnderserved) {
+            insights.push({ domain: 'demographics', level: 'info', title: 'Underserved Top Preference', body: `"${topPref}" is a top resident preference but represents under 10% of all events. Expanding programming here could meaningfully boost engagement.` });
+            recs.push({ domain: 'demographics', text: `Increase events in "${topPref}" to better serve residents who have explicitly listed this as a preference — this directly drives engagement.` });
         }
     }
 
@@ -641,90 +821,153 @@ export const generateAdminDecisionSummary = (
         insights.push({ domain: 'engagement', level: 'critical', title: 'No Event Views Recorded', body: 'Events are not being viewed by residents. Verify that events are published and accessible on the discovery feed.' });
         flags.push('Zero event views recorded — platform engagement has not started.');
     } else if (totalViews > 0) {
+        // Funnel bottleneck
+        if (funnelBottleneck && funnelBottleneck.rate < funnelBottleneck.bench && totalViews >= 10) {
+            const explainers: Record<string, string> = {
+                'Views → Saves':        'Residents browse but aren\'t bookmarking — event content or imagery may not create enough desire to save.',
+                'Views → Interest':     'Viewers aren\'t marking interest — event descriptions may lack clarity, urgency, or compelling benefits.',
+                'Interest → Attendance':'Interested residents aren\'t showing up — pre-event reminders and accessibility need attention.',
+                'Attendance → Feedback':'Attendees aren\'t submitting feedback — automated post-event prompts should be deployed.',
+            };
+            const note = explainers[funnelBottleneck.label] ?? 'A conversion gap exists in the engagement funnel.';
+            insights.push({ domain: 'engagement', level: 'info', title: `Funnel Bottleneck: ${funnelBottleneck.label}`, body: `The biggest drop-off in your funnel is at ${funnelBottleneck.label} (${Math.round(funnelBottleneck.rate)}% vs ${funnelBottleneck.bench}% benchmark). ${note}` });
+        }
+
         if (engRate >= 40) {
             insights.push({ domain: 'engagement', level: 'success', title: 'Strong Engagement Conversion', body: `${Math.round(engRate)}% of event views convert to saves or interest — residents are actively engaging, not just browsing.` });
+        } else if (engRate >= 20) {
+            insights.push({ domain: 'engagement', level: 'info', title: 'Moderate Engagement Rate', body: `${Math.round(engRate)}% of views lead to engagement — approaching the 40% benchmark. Improving event visuals and description clarity could close the gap.` });
         } else if (engRate < 15 && totalViews >= 20) {
-            insights.push({ domain: 'engagement', level: 'warning', title: 'Low Engagement Conversion', body: `Only ${Math.round(engRate)}% of views convert to engagement. Event descriptions, visuals, or relevance may need improvement.` });
-            recs.push({ domain: 'engagement', text: 'Improve event descriptions with clear benefits and compelling visuals to convert more viewers into interested participants.' });
+            insights.push({ domain: 'engagement', level: 'warning', title: 'Low Engagement Conversion', body: `Only ${Math.round(engRate)}% of views convert to engagement. Event descriptions, visuals, or relevance need improvement.` });
+            flags.push(`${Math.round(engRate)}% engagement conversion — below the 15% threshold.`);
+            recs.push({ domain: 'engagement', text: 'Improve event descriptions with clear benefits, specific activities, and compelling cover images to convert more viewers into participants.' });
         }
+
         if (totalInterested >= 10) {
             if (attRate >= 60) {
-                insights.push({ domain: 'engagement', level: 'success', title: 'Strong Attendance Conversion', body: `${Math.round(attRate)}% of interested residents checked in — effective scheduling and promotion practices are working.` });
-            } else if (attRate < 30) {
+                insights.push({ domain: 'engagement', level: 'success', title: 'Strong Attendance Conversion', body: `${Math.round(attRate)}% of interested residents checked in — effective scheduling and promotion practices are working well.` });
+            } else if (attRate >= 30) {
+                insights.push({ domain: 'engagement', level: 'info', title: 'Attendance Rate On Target', body: `${Math.round(attRate)}% of interested residents attended — meeting the 30% benchmark. Automated reminders could push this higher.` });
+            } else {
                 insights.push({ domain: 'engagement', level: 'warning', title: 'Attendance Conversion Below Target', body: `Only ${Math.round(attRate)}% of interested residents followed through and attended. A systemic drop-off between interest and attendance is occurring.` });
                 flags.push(`${Math.round(attRate)}% overall attendance conversion — below the 30% benchmark.`);
-                recs.push({ domain: 'engagement', text: 'Deploy automated pre-event push notifications 24h and 1h before events to significantly reduce no-shows.' });
+                recs.push({ domain: 'engagement', text: 'Deploy automated pre-event push notifications 24h and 1h before events to significantly reduce no-shows platform-wide.' });
             }
         }
+
+        // Save-to-attend gap
+        if (totalSaves >= 5 && saveToAttRate < 20) {
+            insights.push({ domain: 'engagement', level: 'warning', title: 'High Save-to-No-Show Rate', body: `Only ${Math.round(saveToAttRate)}% of residents who bookmarked events actually checked in. Saved events represent committed intent — better follow-up can convert them.` });
+            recs.push({ domain: 'engagement', text: 'Send targeted reminders to users who saved an event but haven\'t checked in — a well-timed nudge often converts saved interest to attendance.' });
+        }
+
         if (totalCheckIns >= 10) {
             if (fbRate < 15) {
-                insights.push({ domain: 'engagement', level: 'info', title: 'Feedback Collection Gap', body: `Only ${Math.round(fbRate)}% of attendees submit post-event feedback. Automated prompts after check-out may substantially improve this rate.` });
-                recs.push({ domain: 'engagement', text: 'Add an automated in-app feedback prompt 1 hour after event end to capture more resident ratings while experience is fresh.' });
+                insights.push({ domain: 'engagement', level: 'info', title: 'Feedback Collection Gap', body: `Only ${Math.round(fbRate)}% of attendees submit post-event feedback. Automated prompts after check-out could substantially improve this rate.` });
+                recs.push({ domain: 'engagement', text: 'Add an automated in-app feedback prompt 1 hour after event end to capture resident ratings while the experience is still fresh.' });
             } else if (fbRate >= 40) {
-                insights.push({ domain: 'engagement', level: 'success', title: 'Active Feedback Culture', body: `${Math.round(fbRate)}% of attendees submit post-event feedback — providing valuable data for continuous improvement.` });
+                insights.push({ domain: 'engagement', level: 'success', title: 'Active Feedback Culture', body: `${Math.round(fbRate)}% of attendees submit post-event feedback — providing valuable, consistent data for continuous improvement.` });
             }
         }
-        if (avgRating >= 4.0) {
+
+        if (avgRating >= 4.5) {
+            insights.push({ domain: 'engagement', level: 'success', title: 'Excellent Platform Satisfaction', body: `Platform-wide average rating is ${avgRating.toFixed(1)}/5 — residents are highly satisfied with event quality across the board.` });
+        } else if (avgRating >= 4.0) {
             insights.push({ domain: 'engagement', level: 'success', title: 'High Overall Satisfaction', body: `Platform-wide average rating is ${avgRating.toFixed(1)}/5 — residents are broadly satisfied with community event quality.` });
-        } else if (avgRating > 0 && avgRating < 3.0) {
+        } else if (avgRating >= 3.0) {
+            insights.push({ domain: 'engagement', level: 'info', title: 'Moderate Satisfaction Score', body: `Platform average of ${avgRating.toFixed(1)}/5 is acceptable but below the 4.0 target. Addressing feedback from lower-rated events could lift this meaningfully.` });
+        } else if (avgRating > 0) {
             insights.push({ domain: 'engagement', level: 'critical', title: 'Low Platform Satisfaction', body: `Platform average of ${avgRating.toFixed(1)}/5 is below acceptable levels. Quality improvements across event planning and execution are a priority.` });
             flags.push(`Platform satisfaction at ${avgRating.toFixed(1)}/5 — below the 3.0 minimum threshold.`);
-            recs.push({ domain: 'engagement', text: 'Establish minimum event quality standards and conduct organizer training to improve overall resident satisfaction scores.' });
+            recs.push({ domain: 'engagement', text: 'Establish minimum event quality standards and conduct organizer briefings to lift overall resident satisfaction scores.' });
+        }
+
+        // Category with best attendance rate
+        if (bestAttCat && bestAttCat.rate >= 50) {
+            insights.push({ domain: 'engagement', level: 'success', title: `"${bestAttCat.cat}" Drives Best Attendance`, body: `"${bestAttCat.cat}" events convert ${Math.round(bestAttCat.rate)}% of interested residents to attendees — the strongest attendance rate across all categories.` });
+            recs.push({ domain: 'engagement', text: `Prioritize "${bestAttCat.cat}" programming — this category consistently converts interest to attendance at the highest rate on the platform.` });
         }
     }
 
     // ── CATEGORIES domain rules ───────────────────────────────────────────────
     if (categoryCount <= 2 && events.length >= 5) {
-        insights.push({ domain: 'categories', level: 'warning', title: 'Limited Category Diversity', body: `Events are concentrated in only ${categoryCount} categor${categoryCount > 1 ? 'ies' : 'y'}. A narrow portfolio may limit the audience CICRD can reach.` });
-        recs.push({ domain: 'categories', text: 'Invite facilitators to create events across more categories to diversify the community event portfolio and attract different resident groups.' });
+        insights.push({ domain: 'categories', level: 'warning', title: 'Limited Category Diversity', body: `Events are concentrated in only ${categoryCount} categor${categoryCount > 1 ? 'ies' : 'y'}. A narrow portfolio limits the resident audience CICRD can reach.` });
+        recs.push({ domain: 'categories', text: 'Invite facilitators to create events across more categories to diversify the portfolio and attract different resident groups.' });
+    } else if (categoryCount >= 3 && categoryCount <= 4) {
+        insights.push({ domain: 'categories', level: 'info', title: 'Growing Category Diversity', body: `Events span ${categoryCount} categories — a moderate range. Expanding to 5+ categories would give residents more varied programming to engage with.` });
     } else if (categoryCount >= 5) {
-        insights.push({ domain: 'categories', level: 'success', title: 'Diverse Event Portfolio', body: `Events span ${categoryCount} categories — providing a wide range of options that can attract residents with varied interests.` });
+        insights.push({ domain: 'categories', level: 'success', title: 'Diverse Event Portfolio', body: `Events span ${categoryCount} categories — a wide range that can attract residents with varied interests across the community.` });
     }
+
     if (topCategory) {
         const tPct = Math.round(safePercentage(catCounts[topCategory], events.length));
-        if (tPct > 60) {
-            insights.push({ domain: 'categories', level: 'info', title: `"${topCategory}" Category Dominates`, body: `${tPct}% of all events are in the "${topCategory}" category. Strong niche presence, but broader programming may improve platform-wide reach.` });
+        if (tPct > 70) {
+            insights.push({ domain: 'categories', level: 'warning', title: `Over-Reliance on "${topCategory}"`, body: `${tPct}% of all events are in "${topCategory}". Residents interested in other topics are largely underserved, limiting platform-wide reach.` });
+            recs.push({ domain: 'categories', text: `Diversify beyond "${topCategory}" — commission or invite events in 2–3 new categories to reduce concentration and broaden community appeal.` });
+        } else if (tPct > 50) {
+            insights.push({ domain: 'categories', level: 'info', title: `"${topCategory}" Category Leads`, body: `${tPct}% of events are in "${topCategory}" — a strong niche presence. Other categories need more representation for balanced resident reach.` });
         }
     }
-    if (bestCat && bestCat.avg >= 4.0) {
-        insights.push({ domain: 'categories', level: 'success', title: `Best Category: "${bestCat.cat}"`, body: `"${bestCat.cat}" events average ${bestCat.avg.toFixed(1)}/5 — consistent high quality in this category. Prioritize it in upcoming programming cycles.` });
-        recs.push({ domain: 'categories', text: `Prioritize "${bestCat.cat}" events in the upcoming quarter based on consistent high resident satisfaction scores.` });
+
+    if (bestCat && bestCat.avg >= 4.5) {
+        insights.push({ domain: 'categories', level: 'success', title: `Top Rated: "${bestCat.cat}"`, body: `"${bestCat.cat}" events average ${bestCat.avg.toFixed(1)}/5 — the highest-rated category on the platform. Prioritize it in upcoming programming cycles.` });
+        recs.push({ domain: 'categories', text: `Expand "${bestCat.cat}" programming in the upcoming quarter — consistent high satisfaction scores make it the safest investment.` });
+    } else if (bestCat && bestCat.avg >= 4.0) {
+        insights.push({ domain: 'categories', level: 'success', title: `Best Category: "${bestCat.cat}"`, body: `"${bestCat.cat}" events average ${bestCat.avg.toFixed(1)}/5 — consistent quality supports continued programming investment in this area.` });
     }
-    if (worstCat && worstCat !== bestCat && worstCat.avg < 3.0) {
-        insights.push({ domain: 'categories', level: 'warning', title: `Underperforming Category: "${worstCat.cat}"`, body: `"${worstCat.cat}" events average ${worstCat.avg.toFixed(1)}/5. Investigate what's driving dissatisfaction before scheduling more events in this category.` });
-        recs.push({ domain: 'categories', text: `Review and redesign "${worstCat.cat}" events based on resident feedback before scheduling additional editions.` });
+
+    if (worstCat && worstCat.cat !== bestCat?.cat && worstCat.avg < 3.0) {
+        insights.push({ domain: 'categories', level: 'warning', title: `Underperforming: "${worstCat.cat}"`, body: `"${worstCat.cat}" events average ${worstCat.avg.toFixed(1)}/5. Investigate what's driving dissatisfaction before scheduling more events in this category.` });
+        recs.push({ domain: 'categories', text: `Pause and redesign "${worstCat.cat}" events based on resident feedback before scheduling additional editions.` });
     }
 
     // ── PLATFORM domain rules ─────────────────────────────────────────────────
     if (events.length > 0) {
-        const privateCount = events.filter(e => e.isPrivate).length;
-        const privateRatio = safePercentage(privateCount, events.length);
-        if (privateRatio > 60) {
-            insights.push({ domain: 'platform', level: 'warning', title: 'High Private Event Ratio', body: `${Math.round(privateRatio)}% of events require approval to join. This limits open community access and may suppress overall platform engagement.` });
-            recs.push({ domain: 'platform', text: 'Encourage facilitators to create more open (public) events to maximize community-wide access and reduce participation barriers.' });
-        }
-        const pubInterested = events.filter(e => !e.isPrivate).reduce((s, e) => s + safeNumber(e.interestedCount), 0);
-        const pubCheckIns   = events.filter(e => !e.isPrivate).reduce((s, e) => s + safeNumber(e.checkInCount), 0);
-        const qrRate = safePercentage(pubCheckIns, pubInterested);
-        if (pubInterested >= 10 && qrRate < 20) {
-            insights.push({ domain: 'platform', level: 'info', title: 'Low QR Check-In Adoption', body: `Only ${Math.round(qrRate)}% of interested residents use QR check-in at public events. Actual attendance may be significantly undercounted.` });
-            recs.push({ domain: 'platform', text: 'Promote QR check-in at event entrances and educate attendees through the app to improve attendance data accuracy.' });
-        }
+        const privateCount  = events.filter(e => e.isPrivate).length;
+        const privateRatio  = safePercentage(privateCount, events.length);
         const facilEvtCount = events.filter(e => !e.createdByAdmin && e.createdBy).length;
         const facEvtPct     = safePercentage(facilEvtCount, events.length);
+        const pubInterested = events.filter(e => !e.isPrivate).reduce((s, e) => s + safeNumber(e.interestedCount), 0);
+        const pubCheckIns   = events.filter(e => !e.isPrivate).reduce((s, e) => s + safeNumber(e.checkInCount), 0);
+        const qrRate        = safePercentage(pubCheckIns, pubInterested);
+
+        if (privateRatio > 60) {
+            insights.push({ domain: 'platform', level: 'warning', title: 'High Private Event Ratio', body: `${Math.round(privateRatio)}% of events require approval to join. This limits open community access and suppresses platform engagement.` });
+            recs.push({ domain: 'platform', text: 'Encourage facilitators to create more open (public) events to maximize community access and reduce participation barriers.' });
+        } else if (privateRatio >= 30) {
+            insights.push({ domain: 'platform', level: 'info', title: 'Mixed Public-Private Balance', body: `${Math.round(privateRatio)}% of events are private. Ensure public events are well-promoted to drive discovery for residents not in the approval pipeline.` });
+        }
+
+        if (pubInterested >= 10 && qrRate < 20) {
+            insights.push({ domain: 'platform', level: 'info', title: 'Low QR Check-In Adoption', body: `Only ${Math.round(qrRate)}% of interested public event residents use QR check-in. Actual attendance may be significantly undercounted.` });
+            recs.push({ domain: 'platform', text: 'Promote QR check-in at event entrances and educate attendees through the app to improve attendance data accuracy.' });
+        } else if (pubInterested >= 10 && qrRate >= 50) {
+            insights.push({ domain: 'platform', level: 'success', title: 'Strong QR Check-In Adoption', body: `${Math.round(qrRate)}% of interested public-event residents use QR check-in — excellent attendance data accuracy across the platform.` });
+        }
+
         if (facilitators > 0 && facEvtPct < 20) {
             insights.push({ domain: 'platform', level: 'info', title: 'Low Facilitator Event Contribution', body: `Only ${Math.round(facEvtPct)}% of events are facilitator-created. The platform relies heavily on admin-generated content.` });
             recs.push({ domain: 'platform', text: 'Provide facilitators with event templates and submission guidelines to encourage more community-driven event creation.' });
         } else if (facEvtPct >= 40) {
             insights.push({ domain: 'platform', level: 'success', title: 'Strong Facilitator Contribution', body: `${Math.round(facEvtPct)}% of events are facilitator-created — a healthy, community-driven content pipeline that reduces admin workload.` });
         }
+
+        if (uniqueCities === 1 && events.length >= 5) {
+            insights.push({ domain: 'platform', level: 'info', title: 'Single-City Coverage', body: `All events are concentrated in ${topCity ?? 'one city'}. Expanding to neighboring areas could grow the resident base and platform impact.` });
+        } else if (uniqueCities >= 3) {
+            insights.push({ domain: 'platform', level: 'success', title: 'Multi-City Reach', body: `Events span ${uniqueCities} cities or areas — good geographic distribution for broader community impact across the region.` });
+        } else if (topCityPct > 80 && uniqueCities > 1) {
+            insights.push({ domain: 'platform', level: 'info', title: 'Geographic Concentration', body: `${topCityPct}% of events are in ${topCity}. Other registered areas receive minimal programming — consider expanding event coverage.` });
+        }
     }
 
     // ── Summary ───────────────────────────────────────────────────────────────
-    const ratingLabel = avgRating >= 4.0 ? 'positively' : avgRating >= 3.0 ? 'moderately' : avgRating > 0 ? 'below expectations' : 'not yet';
+    const ratingLabel  = avgRating >= 4.0 ? 'positively' : avgRating >= 3.0 ? 'moderately' : avgRating > 0 ? 'below expectations' : 'not yet';
+    const scoreLabel   = overallScore >= 80 ? 'performing well' : overallScore >= 60 ? 'on track' : overallScore >= 40 ? 'needs attention' : 'critically underperforming';
     let summary = `CICRD overview: ${events.length} event${events.length !== 1 ? 's' : ''} across ${categoryCount} categor${categoryCount !== 1 ? 'ies' : 'y'}, ${totalUsers} registered resident${totalUsers !== 1 ? 's' : ''}, and ${totalViews.toLocaleString()} total views.`;
     if (avgRating > 0) summary += ` Community satisfaction is ${ratingLabel} at ${avgRating.toFixed(1)}/5.`;
-    summary += flags.length > 0 ? ` ${flags.length} area${flags.length > 1 ? 's require' : ' requires'} attention.` : ' Platform is performing within expected parameters.';
+    if (upcomingEvts.length > 0) summary += ` ${upcomingEvts.length} upcoming event${upcomingEvts.length > 1 ? 's' : ''} scheduled.`;
+    summary += flags.length > 0 ? ` ${flags.length} area${flags.length > 1 ? 's require' : ' requires'} attention.` : ` Platform is ${scoreLabel}.`;
 
     return {
         role: 'admin',
@@ -732,22 +975,30 @@ export const generateAdminDecisionSummary = (
         overallScore,
         topCategory,
         topLocation,
-        insights: insights.slice(0, 12),
+        insights: insights.slice(0, 14),
         flags,
-        recommendations: recs.slice(0, 8),
+        recommendations: recs.slice(0, 10),
     };
 };
 
 // ─── Facilitator scoped summary ───────────────────────────────────────────────
 
 export const generateFacilitatorDecisionSummary = (
-    myEvents:     EventType[],
-    myFeedback:   EventFeedback[],
+    rawEvents:     EventType[],
+    rawFeedback:   EventFeedback[],
     facilitatorId: string
 ): CrossDomainSummary => {
+    // ── Defensive isolation — only analyze this facilitator's own data ─────────
+    const myEvents   = facilitatorId
+        ? rawEvents.filter(e => e.createdBy === facilitatorId)
+        : rawEvents;
+    const myEventIds = new Set(myEvents.map(e => e.id));
+    const myFeedback = rawFeedback.filter(f => myEventIds.has(f.eventId));
+
     const insights: DomainInsight[] = [];
     const flags:    string[]        = [];
     const recs:     { domain: InsightDomain; text: string }[] = [];
+    const now = new Date();
 
     if (myEvents.length === 0) {
         return {
@@ -767,12 +1018,23 @@ export const generateFacilitatorDecisionSummary = (
     const totalSaves      = myEvents.reduce((s, e) => s + safeNumber(e.saveCount), 0);
     const totalInterested = myEvents.reduce((s, e) => s + safeNumber(e.interestedCount), 0);
     const totalCheckIns   = myEvents.reduce((s, e) => s + safeNumber(e.checkInCount), 0);
-    const totalFeedback   = myEvents.reduce((s, e) => s + safeNumber(e.feedbackCount), 0);
+    // Use actual feedback documents for the count — more accurate than denormalized field
+    const totalFeedback   = myFeedback.length || myEvents.reduce((s, e) => s + safeNumber(e.feedbackCount), 0);
 
-    const ratedEvts = myEvents.filter(e => safeNumber(e.feedbackCount) > 0 && safeNumber(e.averageRating) > 0);
-    const totalFbWt = ratedEvts.reduce((s, e) => s + safeNumber(e.feedbackCount), 0);
-    const avgRating = totalFbWt === 0 ? 0 :
-        ratedEvts.reduce((s, e) => s + safeNumber(e.averageRating) * safeNumber(e.feedbackCount), 0) / totalFbWt;
+    // Avg rating: prefer actual feedback documents over denormalized event fields
+    const avgRating = (() => {
+        if (myFeedback.length > 0) {
+            const sum = myFeedback.reduce((s, f) => s + safeNumber(f.rating), 0);
+            return sum / myFeedback.length;
+        }
+        const ratedEvts = myEvents.filter(e => safeNumber(e.feedbackCount) > 0 && safeNumber(e.averageRating) > 0);
+        const wt = ratedEvts.reduce((s, e) => s + safeNumber(e.feedbackCount), 0);
+        return wt === 0 ? 0 : ratedEvts.reduce((s, e) => s + safeNumber(e.averageRating) * safeNumber(e.feedbackCount), 0) / wt;
+    })();
+    // Events with at least one real review
+    const ratedEvts = myFeedback.length > 0
+        ? myEvents.filter(e => myFeedback.some(f => f.eventId === e.id))
+        : myEvents.filter(e => safeNumber(e.feedbackCount) > 0 && safeNumber(e.averageRating) > 0);
 
     const engRate = safePercentage(totalSaves + totalInterested, totalViews);
     const attRate = safePercentage(totalCheckIns, totalInterested);
@@ -781,103 +1043,206 @@ export const generateFacilitatorDecisionSummary = (
     const lowVisCnt     = myEvents.filter(e => safeNumber(e.viewCount) < 10).length;
     const pendingEvts   = myEvents.filter(e => e.status === 'pending');
     const publishedEvts = myEvents.filter(e => e.status === 'published');
+    const rejectedEvts  = myEvents.filter(e => e.status === 'rejected');
+    const upcomingEvts  = publishedEvts.filter(e => e.date && new Date(e.date) >= now);
 
-    // Scored events for best/worst
-    const scored = myEvents
-        .map(e => ({ e, m: calculateEventMetrics(e) }))
-        .sort((a, b) => b.m.performanceScore - a.m.performanceScore);
-    const best  = scored[0]  ?? null;
-    const worst = scored[scored.length - 1] ?? null;
+    // Scored events
+    const scored = myEvents.map(e => ({ e, m: calculateEventMetrics(e) })).sort((a, b) => b.m.performanceScore - a.m.performanceScore);
+    const best   = scored[0] ?? null;
+    const worst  = scored.length > 1 ? scored[scored.length - 1] : null;
+
+    // Performance trend: compare older half vs newer half (by event date)
+    const byDate     = [...myEvents].sort((a, b) => (a.date ? new Date(a.date).getTime() : 0) - (b.date ? new Date(b.date).getTime() : 0));
+    const mid        = Math.floor(byDate.length / 2);
+    const olderScore = mid > 0 ? byDate.slice(0, mid).reduce((s, e) => s + calculateEventMetrics(e).performanceScore, 0) / mid : 0;
+    const newerScore = byDate.slice(mid).length > 0 ? byDate.slice(mid).reduce((s, e) => s + calculateEventMetrics(e).performanceScore, 0) / byDate.slice(mid).length : 0;
+    const improving  = myEvents.length >= 4 && newerScore > olderScore * 1.2;
+    const declining  = myEvents.length >= 4 && newerScore < olderScore * 0.8;
 
     // Category analysis
     const catCounts: Record<string, number> = {};
+    const catPerf:   Record<string, { score: number; count: number; checkIns: number; interested: number }> = {};
     myEvents.forEach(e => {
         const cats = Array.isArray(e.category) ? e.category : (e.category ? [e.category] : []);
-        cats.forEach(c => { catCounts[c] = (catCounts[c] || 0) + 1; });
+        const m    = calculateEventMetrics(e);
+        cats.forEach(c => {
+            catCounts[c] = (catCounts[c] || 0) + 1;
+            if (!catPerf[c]) catPerf[c] = { score: 0, count: 0, checkIns: 0, interested: 0 };
+            catPerf[c].score      += m.performanceScore;
+            catPerf[c].count      += 1;
+            catPerf[c].checkIns   += m.checkIns;
+            catPerf[c].interested += m.interested;
+        });
     });
-    const topCategory = topByCount(catCounts);
+    const topCategory  = topByCount(catCounts);
+    const catRanked    = Object.entries(catPerf)
+        .map(([cat, v]) => ({ cat, avgScore: v.score / v.count, attRate: safePercentage(v.checkIns, v.interested) }))
+        .sort((a, b) => b.avgScore - a.avgScore);
+    const bestCat = catRanked[0] ?? null;
 
-    // Score
-    const visScore    = myEvents.length === 0 ? 50 : Math.round((1 - lowVisCnt / myEvents.length) * 100);
+    // Capacity analysis
+    const cappedEvts   = publishedEvts.filter(e => safeNumber(e.maxParticipants) > 0);
+    const nearCapacity = cappedEvts.filter(e => {
+        const cap = safeNumber(e.maxParticipants!);
+        return cap > 0 && safeNumber(e.checkInCount) / cap >= 0.8;
+    });
+
+    // Score (5-factor)
+    const visScore    = Math.round((1 - lowVisCnt / myEvents.length) * 100);
     const overallScore = Math.round(
-        visScore * 0.20 +
-        Math.min(engRate * 2, 100) * 0.20 +
-        attRate  * 0.35 +
-        safePercentage(avgRating, 5) * 0.25
+        visScore                         * 0.15 +
+        Math.min(engRate * 2, 100)       * 0.20 +
+        attRate                          * 0.30 +
+        Math.min(fbRate * 2, 100)        * 0.10 +
+        safePercentage(avgRating, 5)     * 0.25
     );
 
     // ── EVENTS domain ─────────────────────────────────────────────────────────
-    if (best && best.m.performanceScore >= 70) {
-        insights.push({ domain: 'events', level: 'success', title: 'Your Best Event', body: `"${best.e.name}" is your top-performing event (score ${best.m.performanceScore}/100). This format resonates well — consider scheduling a follow-up edition.` });
-        recs.push({ domain: 'events', text: `Plan a follow-up edition of "${best.e.name}" — your community responded positively to this format.` });
+
+    // Performance trend
+    if (improving) {
+        insights.push({ domain: 'events', level: 'success', title: 'Performance Improving', body: `Your recent events are outperforming earlier ones (avg score: ${Math.round(newerScore)} vs ${Math.round(olderScore)}). You're applying what works and improving your community programming.` });
+    } else if (declining) {
+        insights.push({ domain: 'events', level: 'warning', title: 'Performance Declining', body: `Recent events score lower than earlier ones (avg: ${Math.round(newerScore)} vs ${Math.round(olderScore)}). Review what changed in format, timing, venue, or promotion.` });
+        recs.push({ domain: 'events', text: 'Compare your best and worst recent events — identify the specific differences in format, timing, and promotion that drove the performance gap.' });
     }
-    if (worst && worst.m.performanceScore < 40 && myEvents.length > 1) {
-        insights.push({ domain: 'events', level: 'warning', title: 'Lowest Performing Event', body: `"${worst.e.name}" scored ${worst.m.performanceScore}/100. Review what limited its engagement — timing, promotion, or format may need adjustment.` });
-        recs.push({ domain: 'events', text: `Revisit the "${worst.e.name}" format: check if the venue, schedule, or description discouraged participation.` });
+
+    // Best event spotlight with key metric
+    if (best && best.m.performanceScore >= 60) {
+        const metric = best.m.attendanceRate > 50 ? `${Math.round(best.m.attendanceRate)}% attendance`
+                     : best.m.avgRating >= 4.0    ? `${best.m.avgRating.toFixed(1)}/5 rating`
+                     :                               `${Math.round(best.m.engagementRate)}% engagement`;
+        insights.push({ domain: 'events', level: 'success', title: 'Your Best Event', body: `"${best.e.name}" is your top performer (score ${best.m.performanceScore}/100, ${metric}). This format resonates strongly — plan a follow-up.` });
+        recs.push({ domain: 'events', text: `Schedule a follow-up edition of "${best.e.name}" — replicate the same format, timing, and promotion that made it successful.` });
     }
+
+    // Worst event with specific bottleneck
+    if (worst && worst.m.performanceScore < 30 && myEvents.length > 1) {
+        const issue = worst.m.views < 10 ? `only ${worst.m.views} views`
+                    : worst.m.attendanceRate < 20 ? `${Math.round(worst.m.attendanceRate)}% of interested residents attended`
+                    : worst.m.avgRating > 0 ? `${worst.m.avgRating.toFixed(1)}/5 satisfaction`
+                    : 'very low overall engagement';
+        insights.push({ domain: 'events', level: 'warning', title: 'Lowest Performing Event', body: `"${worst.e.name}" scored ${worst.m.performanceScore}/100 — the main issue was ${issue}. Address this before scheduling a repeat.` });
+        recs.push({ domain: 'events', text: `Review "${worst.e.name}" carefully — investigate venue suitability, scheduling, description clarity, and promotion reach before resubmitting.` });
+    }
+
+    // Visibility
     if (lowVisCnt > 0) {
-        const lvl = lowVisCnt > myEvents.length * 0.5 ? 'warning' : 'info';
-        insights.push({ domain: 'events', level: lvl, title: 'Low-Visibility Events', body: `${lowVisCnt} of your events have fewer than 10 views. Better titles, descriptions, and requesting highlights from admin can improve reach.` });
-        recs.push({ domain: 'events', text: 'Ask the admin to highlight your low-visibility events, and improve your event titles to be more searchable and descriptive.' });
+        const lvl: InsightLevel = lowVisCnt > myEvents.length * 0.5 ? 'warning' : 'info';
+        const named = myEvents.filter(e => safeNumber(e.viewCount) < 10).slice(0, 2).map(e => `"${e.name}"`).join(' and ');
+        insights.push({ domain: 'events', level: lvl, title: 'Low-Visibility Events', body: `${lowVisCnt} of your events have fewer than 10 views${lowVisCnt <= 2 ? ` (${named})` : ''}. Stronger titles, richer descriptions, and admin highlights can improve reach.` });
+        recs.push({ domain: 'events', text: 'Request admin highlights for your low-visibility events and rewrite titles to be more searchable and benefit-focused.' });
     }
+
     if (pendingEvts.length > 0) {
         insights.push({ domain: 'events', level: 'info', title: 'Events Awaiting Approval', body: `${pendingEvts.length} of your event${pendingEvts.length > 1 ? 's are' : ' is'} pending admin review. Allow 24–48 hours for processing.` });
     }
+
+    if (rejectedEvts.length > 0) {
+        insights.push({ domain: 'events', level: 'warning', title: `${rejectedEvts.length} Event${rejectedEvts.length > 1 ? 's' : ''} Rejected`, body: `${rejectedEvts.length} submission${rejectedEvts.length > 1 ? 's were' : ' was'} rejected. Review the rejection reasons and resubmit with the required corrections.` });
+        flags.push(`${rejectedEvts.length} event${rejectedEvts.length > 1 ? 's' : ''} rejected — needs resubmission.`);
+        recs.push({ domain: 'events', text: 'Check rejection reasons for declined submissions, update the flagged details, and resubmit promptly to avoid losing community momentum.' });
+    }
+
     if (publishedEvts.length === 0 && myEvents.length > 0) {
-        insights.push({ domain: 'events', level: 'warning', title: 'No Published Events', body: 'None of your events are currently live. Work with the admin to get events approved and visible to residents.' });
+        insights.push({ domain: 'events', level: 'warning', title: 'No Published Events', body: 'None of your events are currently live. Coordinate with the admin to get events approved and visible to residents.' });
+    }
+
+    if (upcomingEvts.length === 0 && publishedEvts.length > 0) {
+        insights.push({ domain: 'events', level: 'info', title: 'No Upcoming Events', body: 'You have no scheduled upcoming events. Keeping a forward calendar maintains your audience and prevents community interest from fading.' });
+        recs.push({ domain: 'events', text: 'Submit your next event soon — a regular cadence of events builds your facilitator reputation and keeps residents returning to the platform.' });
+    }
+
+    if (nearCapacity.length > 0) {
+        const names = nearCapacity.slice(0, 2).map(e => `"${e.name}"`).join(' and ');
+        insights.push({ domain: 'events', level: 'info', title: 'Events Near Capacity', body: `${nearCapacity.length <= 2 ? names : `${nearCapacity.length} events are`} at 80%+ of maximum participants. Consider requesting a capacity increase or planning a follow-up session.` });
+        recs.push({ domain: 'events', text: 'Request a capacity increase for events nearing full capacity — or plan a follow-up session to serve all interested residents.' });
     }
 
     // ── ENGAGEMENT domain ─────────────────────────────────────────────────────
     if (totalViews > 0) {
         if (engRate >= 40) {
-            insights.push({ domain: 'engagement', level: 'success', title: 'Strong Resident Interest', body: `${Math.round(engRate)}% of people viewing your events take action (save or mark interest). Your events are compelling and well-presented.` });
+            insights.push({ domain: 'engagement', level: 'success', title: 'Strong Resident Interest', body: `${Math.round(engRate)}% of people viewing your events take action (save or mark interest) — your events are compelling and well-presented.` });
+        } else if (engRate >= 20) {
+            insights.push({ domain: 'engagement', level: 'info', title: 'Moderate Engagement Rate', body: `${Math.round(engRate)}% of viewers engage further with your events. Clearer benefit statements and better cover images could push this above 40%.` });
         } else if (engRate < 15 && totalViews >= 15) {
-            insights.push({ domain: 'engagement', level: 'warning', title: 'Low Interest Conversion', body: `Only ${Math.round(engRate)}% of views lead to saves or interest. Stronger descriptions, clearer benefits, and better cover images may improve conversion.` });
-            recs.push({ domain: 'engagement', text: 'Rewrite event descriptions to clearly state what attendees will experience and gain — add specific activities and outcomes.' });
+            insights.push({ domain: 'engagement', level: 'warning', title: 'Low Interest Conversion', body: `Only ${Math.round(engRate)}% of views lead to saves or interest. Your event content or presentation may not be compelling enough to drive action.` });
+            flags.push(`${Math.round(engRate)}% engagement rate — below the 15% target.`);
+            recs.push({ domain: 'engagement', text: 'Rewrite your event descriptions to clearly state what attendees will experience, what to bring, and what they\'ll gain — specific details convert viewers to participants.' });
         }
     }
+
     if (totalInterested >= 5) {
         if (attRate >= 60) {
-            insights.push({ domain: 'engagement', level: 'success', title: 'Excellent Attendance Rate', body: `${Math.round(attRate)}% of interested residents checked in at your events — well above average. Your scheduling and venue choices are effective.` });
-        } else if (attRate < 30) {
-            insights.push({ domain: 'engagement', level: 'warning', title: 'Interest-to-Attendance Drop-Off', body: `Only ${Math.round(attRate)}% of residents who showed interest attended. Personal reminders or venue improvements may close this gap.` });
+            insights.push({ domain: 'engagement', level: 'success', title: 'Excellent Attendance Rate', body: `${Math.round(attRate)}% of interested residents checked in — well above average. Your scheduling, venue choices, and pre-event communication are effective.` });
+        } else if (attRate >= 30) {
+            insights.push({ domain: 'engagement', level: 'info', title: 'Attendance Rate On Target', body: `${Math.round(attRate)}% of interested residents attended — meeting the 30% benchmark. Personal reminders 24h before events could push this higher.` });
+        } else {
+            insights.push({ domain: 'engagement', level: 'warning', title: 'Interest-to-Attendance Drop-Off', body: `Only ${Math.round(attRate)}% of residents who showed interest attended. Barriers around timing, venue access, or awareness may be causing drop-off.` });
             flags.push(`${Math.round(attRate)}% attendance rate — below the 30% expected threshold.`);
-            recs.push({ domain: 'engagement', text: 'Message interested participants personally 24 hours before your event to confirm attendance and share exact location details.' });
+            recs.push({ domain: 'engagement', text: 'Message interested participants directly 24 hours before your event — confirm attendance, share exact location, and tell them what to expect.' });
         }
     }
-    if (totalCheckIns >= 5 && fbRate < 20) {
-        insights.push({ domain: 'engagement', level: 'info', title: 'Low Post-Event Feedback', body: `Only ${Math.round(fbRate)}% of attendees leave ratings. Verbally remind attendees to rate your event in the app before they leave.` });
-        recs.push({ domain: 'engagement', text: 'At the end of each event, verbally remind attendees to open the app and submit a rating — this significantly boosts feedback response rates.' });
+
+    if (totalCheckIns >= 5) {
+        if (fbRate >= 40) {
+            insights.push({ domain: 'engagement', level: 'success', title: 'Strong Feedback Collection', body: `${Math.round(fbRate)}% of attendees rate your events — above average. This data helps you continuously improve your programming.` });
+        } else if (fbRate < 20) {
+            insights.push({ domain: 'engagement', level: 'info', title: 'Low Post-Event Feedback', body: `Only ${Math.round(fbRate)}% of attendees leave ratings. A verbal reminder at the end of the event is the single most effective way to improve this.` });
+            recs.push({ domain: 'engagement', text: 'At event close, announce: "Please take 30 seconds to rate today\'s event in the app." This simple ask reliably doubles feedback submission rates.' });
+        }
     }
+
     if (avgRating >= 4.5 && ratedEvts.length >= 2) {
-        insights.push({ domain: 'engagement', level: 'success', title: 'Excellent Satisfaction Score', body: `Your events average ${avgRating.toFixed(1)}/5 from residents — you're consistently delivering high-quality community programming.` });
+        insights.push({ domain: 'engagement', level: 'success', title: 'Excellent Satisfaction Score', body: `Your events average ${avgRating.toFixed(1)}/5 — you're consistently delivering high-quality, well-received community programming.` });
+    } else if (avgRating >= 4.0 && ratedEvts.length >= 1) {
+        insights.push({ domain: 'engagement', level: 'success', title: 'High Satisfaction Score', body: `Your events average ${avgRating.toFixed(1)}/5 — residents are satisfied with your event quality. Keep applying what's working.` });
     } else if (avgRating > 0 && avgRating < 3.0) {
         insights.push({ domain: 'engagement', level: 'critical', title: 'Satisfaction Below Expectations', body: `Your events average ${avgRating.toFixed(1)}/5. Read the feedback comments carefully to identify the specific issues residents encountered.` });
         flags.push(`Average satisfaction of ${avgRating.toFixed(1)}/5 requires immediate attention.`);
-        recs.push({ domain: 'engagement', text: 'Read each feedback comment from your events and identify the top 3 recurring complaints — directly address these in your next event plan.' });
+        recs.push({ domain: 'engagement', text: 'Read every feedback comment and list the top 3 recurring complaints. Address each one directly in your next event plan before submitting.' });
     }
 
     // ── CATEGORIES domain ─────────────────────────────────────────────────────
+    if (bestCat && catRanked.length >= 2) {
+        insights.push({ domain: 'categories', level: 'success', title: `Strongest Category: "${bestCat.cat}"`, body: `Your "${bestCat.cat}" events score an avg of ${Math.round(bestCat.avgScore)}/100 — your best-performing category. Investing more here maximizes your community impact.` });
+        recs.push({ domain: 'categories', text: `Prioritize more "${bestCat.cat}" events — your track record in this category is your strongest driver of resident engagement and satisfaction.` });
+    }
+
     if (topCategory) {
         const tPct = Math.round(safePercentage(catCounts[topCategory], myEvents.length));
         if (tPct > 70 && myEvents.length >= 3) {
-            insights.push({ domain: 'categories', level: 'info', title: `Specializing in "${topCategory}"`, body: `${tPct}% of your events are in the ${topCategory} category. You're building expertise here — consider branching into adjacent categories for broader appeal.` });
-            recs.push({ domain: 'categories', text: `Branch out by creating 1–2 events in a new category to attract a wider resident audience beyond your "${topCategory}" base.` });
+            insights.push({ domain: 'categories', level: 'info', title: `Specializing in "${topCategory}"`, body: `${tPct}% of your events are in "${topCategory}". Deep specialization builds your reputation — branching out can attract new audience segments.` });
+            recs.push({ domain: 'categories', text: `Create 1–2 events in a new category to attract residents outside your "${topCategory}" audience and test what else the community values.` });
         }
     }
 
-    // ── PLATFORM domain (facilitator-specific) ────────────────────────────────
+    // ── PLATFORM domain ───────────────────────────────────────────────────────
     const privateRatio = safePercentage(myEvents.filter(e => e.isPrivate).length, myEvents.length);
     if (privateRatio > 70 && myEvents.length >= 3) {
-        insights.push({ domain: 'platform', level: 'info', title: 'Mostly Private Events', body: `${Math.round(privateRatio)}% of your events are private (approval required). Creating more public events can significantly expand your community reach.` });
-        recs.push({ domain: 'platform', text: 'Try creating at least one public event to measure community interest without the barrier of an approval process.' });
+        insights.push({ domain: 'platform', level: 'info', title: 'Mostly Private Events', body: `${Math.round(privateRatio)}% of your events are private (approval required). Public events remove the registration barrier and can significantly expand your reach.` });
+        recs.push({ domain: 'platform', text: 'Create at least one public event to reach residents who won\'t go through an approval process but would attend an open, accessible event.' });
+    }
+
+    // Consistency check across events
+    if (myEvents.length >= 3) {
+        const scores = scored.map(s => s.m.performanceScore);
+        const avg    = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const stdDev = Math.sqrt(scores.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / scores.length);
+        if (stdDev < 10 && avg >= 50) {
+            insights.push({ domain: 'platform', level: 'success', title: 'Consistent Performance', body: `Your events score between ${Math.round(Math.min(...scores))} and ${Math.round(Math.max(...scores))}/100 — a tight range showing you reliably deliver quality programming.` });
+        } else if (stdDev > 25) {
+            insights.push({ domain: 'platform', level: 'info', title: 'Inconsistent Results', body: `Your event scores range from ${Math.round(Math.min(...scores))} to ${Math.round(Math.max(...scores))}/100 — wide variance means some formats work much better than others for your audience.` });
+            recs.push({ domain: 'platform', text: 'Compare your highest and lowest scoring events side by side — identify what specifically differs in format, promotion, venue, or timing and standardize what works.' });
+        }
     }
 
     // ── Summary ───────────────────────────────────────────────────────────────
-    const label = overallScore >= 80 ? 'excellent' : overallScore >= 60 ? 'good' : overallScore >= 40 ? 'moderate' : 'low';
+    const label     = overallScore >= 80 ? 'excellent' : overallScore >= 60 ? 'good' : overallScore >= 40 ? 'moderate' : 'low';
+    const trendNote = improving ? ' Your performance is trending upward.' : declining ? ' Recent events show a declining trend.' : '';
     let summary = `Your ${myEvents.length} event${myEvents.length > 1 ? 's have' : ' has'} generated ${totalViews.toLocaleString()} view${totalViews !== 1 ? 's' : ''} and ${totalCheckIns} check-in${totalCheckIns !== 1 ? 's' : ''}.`;
     if (avgRating > 0) summary += ` Resident satisfaction averages ${avgRating.toFixed(1)}/5.`;
-    summary += ` Your overall performance is ${label} (${overallScore}/100).`;
+    summary += ` Overall performance is ${label} (${overallScore}/100).${trendNote}`;
     if (flags.length > 0) summary += ` ${flags.length} area${flags.length > 1 ? 's need' : ' needs'} attention.`;
 
     return {
@@ -886,8 +1251,8 @@ export const generateFacilitatorDecisionSummary = (
         overallScore,
         topCategory,
         topLocation: null,
-        insights: insights.slice(0, 10),
+        insights: insights.slice(0, 12),
         flags,
-        recommendations: recs.slice(0, 6),
+        recommendations: recs.slice(0, 8),
     };
 };
