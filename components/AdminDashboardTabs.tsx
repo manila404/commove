@@ -1153,17 +1153,23 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
             <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
                 <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">New Users per Month</h3>
-                <div className="h-64 min-h-[260px] w-full relative">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={newUsersData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }} barCategoryGap="40%">
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} dx={isMobile ? 0 : 0} />
-                            <RechartsTooltip />
-                            <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={28} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                {/* Mobile: horizontally scrollable so all 12 months are visible */}
+                <div className="overflow-x-auto md:overflow-visible" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <div className="h-64 min-h-[260px] relative" style={{ minWidth: isMobile ? '640px' : '100%', width: isMobile ? '640px' : '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={newUsersData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }} barCategoryGap="40%">
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} dy={5} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} width={36} />
+                                <RechartsTooltip />
+                                <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={28} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
+                {isMobile && (
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 text-center">← Swipe to see all months →</p>
+                )}
                 <CardInsight {...newUsersInsight} moreInsights={newUsersMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights] })} />
             </div>
         </div>

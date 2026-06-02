@@ -502,7 +502,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             `}</style>
 
             {/* Header Section */}
-            <div className="bg-primary-600 dark:bg-primary-800 p-5 rounded-2xl shadow-lg relative z-20 mx-4 mt-4 md:!mt-0">
+            <div className="bg-primary-600 dark:bg-primary-800 p-5 rounded-2xl relative z-20 mx-4 mt-4 md:!mt-0">
                 <div className="flex items-center gap-4">
                     <div className="relative group shrink-0">
                         <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-primary-600 shadow-md overflow-hidden">
@@ -599,98 +599,98 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 
 
 
-                {/* Settings Section (Always Visible) */}
-                <div className="shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-gray-800">
-                    <div>
-                        {!isGuest && (
-                            isAdminUser && onEditProfile ? (
-                                // Admin: go straight to Edit Profile
-                                <button
-                                    onClick={onEditProfile}
-                                    className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="text-gray-400">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                        </div>
-                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Edit Profile</span>
-                                    </div>
-                                    <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-                                </button>
-                            ) : (
-                                // Non-admin: Manage Account (with deactivate/delete)
-                                <button
-                                    onClick={() => setShowManageAccountPanel(true)}
-                                    className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="text-gray-400">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </div>
-                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Manage Account</span>
-                                    </div>
-                                    <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-                                </button>
-                            )
-                        )}
-                        <button onClick={toggleTheme} className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                             <div className="flex items-center gap-3">
-                                <div className="text-orange-500">
-                                    {theme === 'dark' ? <MoonIcon className="w-5 h-5" /> : <SunIcon className="w-5 h-5" />}
+                {/* Settings Section */}
+                <div className="rounded-2xl overflow-hidden bg-white dark:bg-gray-800">
+                    {!isGuest && (
+                        isAdminUser && onEditProfile ? (
+                            <button onClick={onEditProfile} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                                <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5 w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
                                 </div>
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                                    Dark Mode
-                                </span>
-                            </div>
-                            <div className={`w-11 h-6 rounded-full transition-colors duration-200 flex items-center px-1 ${theme === 'dark' ? 'bg-primary-600' : 'bg-gray-300'}`}>
-                                <div className={`w-4 h-4 bg-white rounded-full transition-transform duration-200 ${theme === 'dark' ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </div>
-                        </button>
+                                <div className="flex-1 text-left min-w-0">
+                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Edit Profile</p>
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Name, avatar, contact info</p>
+                                </div>
+                            </button>
+                        ) : (
+                            <button onClick={() => setShowManageAccountPanel(true)} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                                <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div className="flex-1 text-left min-w-0">
+                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Manage Account</p>
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Deactivate or delete account</p>
+                                </div>
+                            </button>
+                        )
+                    )}
 
-                        <button onClick={onShowMyEvents} className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                             <div className="flex items-center gap-3">
-                                <div className="text-gray-400"><BookmarkIcon className="w-5 h-5" /></div>
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">My Events</span>
-                            </div>
-                            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-                        </button>
-                        
-                        <button onClick={onShowNotificationSettings} className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                             <div className="flex items-center gap-3">
-                                <div className="text-gray-400"><BellIcon className="w-5 h-5" /></div>
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Notification Settings</span>
-                            </div>
-                            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-                        </button>
+                    <button onClick={toggleTheme} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                        <div className="w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center shrink-0 text-orange-500">
+                            {theme === 'dark' ? <MoonIcon className="w-[18px] h-[18px]" /> : <SunIcon className="w-[18px] h-[18px]" />}
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Dark Mode</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">{theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}</p>
+                        </div>
+                        <div className={`w-10 h-5.5 h-[22px] w-[40px] rounded-full transition-colors duration-200 flex items-center px-0.5 shrink-0 ${theme === 'dark' ? 'bg-primary-600' : 'bg-gray-300'}`}>
+                            <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${theme === 'dark' ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                        </div>
+                    </button>
+
+                    <button onClick={onShowMyEvents} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                        <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
+                            <BookmarkIcon className="w-[18px] h-[18px]" />
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">My Events</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Saved and attended events</p>
+                        </div>
+                    </button>
+
+                    <button onClick={onShowNotificationSettings} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                        <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
+                            <BellIcon className="w-[18px] h-[18px]" />
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Notification Settings</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Alerts, reminders, sounds</p>
+                        </div>
+                    </button>
 
 {/* Commented out Help & Support per user request
-                        <button onClick={onShowHelpSupport} className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                             <div className="flex items-center gap-3">
-                                <div className="text-gray-400"><HelpIcon className="w-5 h-5" /></div>
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Help & Support</span>
+                        <button onClick={onShowHelpSupport} className="w-full flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                            <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
+                                <HelpIcon className="w-[18px] h-[18px]" />
                             </div>
-                            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-                        </button>
+                            <div className="flex-1 text-left min-w-0">
+                                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Help & Support</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">FAQs, contact support</p>
+                            </div>
+                            </button>
                         */}
 
-                        <button onClick={onShowTermsAndConditions} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                             <div className="flex items-center gap-3">
-                                <div className="text-gray-400"><ShieldCheckIcon className="w-5 h-5" /></div>
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Terms & Conditions</span>
-                            </div>
-                            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-                        </button>
-                    </div>
+                    <button onClick={onShowTermsAndConditions} className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                        <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
+                            <ShieldCheckIcon className="w-[18px] h-[18px]" />
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Terms & Conditions</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Privacy policy, terms of use</p>
+                        </div>
+                    </button>
                 </div>
 
                 {!isGuest && (
-                    <button onClick={onLogout} className="w-full bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-red-600 dark:text-red-400 mt-6 mb-4">
-                        <span className="font-bold text-sm ml-2">Logout</span>
-                        <ArrowRightIcon className="w-5 h-5 mr-2" />
+                    <button onClick={onLogout} className="w-full bg-white dark:bg-gray-800 rounded-2xl flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors mt-4 mb-4">
+                        <div className="w-9 h-9 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0 text-red-500">
+                            <ArrowRightIcon className="w-[18px] h-[18px]" />
+                        </div>
+                        <p className="text-sm font-semibold text-red-600 dark:text-red-400">Logout</p>
                     </button>
                 )}
 
