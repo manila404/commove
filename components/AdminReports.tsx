@@ -3,12 +3,28 @@ import * as XLSX from 'xlsx-js-style';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { EventType, User } from '../types';
 
-// Cross-platform Excel download — works in desktop browsers AND Android WebView
-const downloadExcel = (buffer: ArrayBuffer, filename: string) => {
+// Cross-platform Excel download — Android WebView + desktop browsers
+const downloadExcel = async (buffer: ArrayBuffer, filename: string) => {
     const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     const blob = new Blob([buffer], { type: mimeType });
 
-    // Primary: blob URL (works on desktop + modern Android Chrome)
+    // 1. Web Share API — most reliable on Android (opens native share/save sheet)
+    if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+            const file = new File([blob], filename, { type: mimeType });
+            const canShare = navigator.canShare ? navigator.canShare({ files: [file] }) : true;
+            if (canShare) {
+                await navigator.share({ files: [file], title: filename });
+                return;
+            }
+        } catch (e: any) {
+            // AbortError = user dismissed share sheet (not a failure)
+            if (e?.name === 'AbortError') return;
+            // Otherwise fall through to next method
+        }
+    }
+
+    // 2. Blob URL — works on desktop browsers + Android Chrome
     if (window.URL && window.URL.createObjectURL) {
         try {
             const url = window.URL.createObjectURL(blob);
@@ -18,12 +34,12 @@ const downloadExcel = (buffer: ArrayBuffer, filename: string) => {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            setTimeout(() => window.URL.revokeObjectURL(url), 200);
+            setTimeout(() => window.URL.revokeObjectURL(url), 300);
             return;
         } catch { /* fall through */ }
     }
 
-    // Fallback: FileReader base64 data URI (reliable in Android WebView)
+    // 3. Base64 data URI — last resort for restrictive WebViews
     const reader = new FileReader();
     reader.onload = () => {
         const a = document.createElement('a');
@@ -203,7 +219,7 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         setAgeGroups(prev => ({ ...prev, [group]: !prev[group] }));
     };
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         const activePeriodStr = selectedPart1 ? `${selectedPart1} ${selectedPart2}` : selectedPart2;
         const activeData = reportData.find(d => d.period === activePeriodStr);
 
@@ -344,10 +360,10 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
 
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         const cleanName = activePeriodStr.replace(/[^a-zA-Z0-9]/g, '_');
-        downloadExcel(excelBuffer, `Commove_Report_${cleanName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        await downloadExcel(excelBuffer, `Commove_Report_${cleanName}_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
-    const handleEventDownload = (eventData: any, periodKey: string) => {
+    const handleEventDownload = async (eventData: any, periodKey: string) => {
         const wsData: any[][] = [];
         
         // Report Header
@@ -474,7 +490,7 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
 
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         const cleanName = eventData.event.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-        downloadExcel(excelBuffer, `Commove_Event_${cleanName}_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+        await downloadExcel(excelBuffer, `Commove_Event_${cleanName}_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
     return (
