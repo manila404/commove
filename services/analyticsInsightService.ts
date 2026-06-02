@@ -556,40 +556,48 @@ export const generateAdminDecisionSummary = (
     const topCity      = topByCount(cityCounts);
     const topCityPct   = topCity ? Math.round(safePercentage(cityCounts[topCity], events.length)) : 0;
 
-    // ── User analysis ─────────────────────────────────────────────────────────
-    const totalUsers       = users.length;
+    // ── User analysis — residents only (facilitators and admins excluded) ────────
+    const residentUsers    = users.filter(u => u.role !== 'admin' && u.role !== 'facilitator' && !u.isAdmin);
+    const totalUsers       = residentUsers.length;
     const facilitators     = users.filter(u => u.role === 'facilitator').length;
-    const regularUsers     = users.filter(u => !u.role || u.role === 'user').length;
+    const regularUsers     = residentUsers.length;
     const pendingFacReqs   = users.filter(u => u.facilitatorRequestStatus === 'pending').length;
-    const profileComplete  = users.filter(u => u.birthday && u.sex).length;
-    const pendingDeletions = users.filter(u => u.pendingDeletion).length;
+    const pendingDeletions = residentUsers.filter(u => u.pendingDeletion).length;
 
-    const activeUsers  = users.filter(u => (u.checkedInEventIds?.length ?? 0) > 0 || (u.interestedEventIds?.length ?? 0) > 0).length;
-    const powerUsers   = users.filter(u => (u.checkedInEventIds?.length ?? 0) >= 3).length;
-    const savedUsers   = users.filter(u => (u.savedEventIds?.length ?? 0) > 0);
+    // Participating residents: those who have at least one registration or check-in record
+    const participatingResidents = residentUsers.filter(u =>
+        (u.checkedInEventIds?.length ?? 0) > 0 || (u.interestedEventIds?.length ?? 0) > 0
+    );
+
+    const activeUsers  = participatingResidents.length;
+    const powerUsers   = participatingResidents.filter(u => (u.checkedInEventIds?.length ?? 0) >= 3).length;
+    const savedUsers   = participatingResidents.filter(u => (u.savedEventIds?.length ?? 0) > 0);
     const savedNoAttend = savedUsers.filter(u => (u.checkedInEventIds?.length ?? 0) === 0).length;
     const savedNoAttendRate = safePercentage(savedNoAttend, savedUsers.length);
 
-    // ── Demographics ──────────────────────────────────────────────────────────
+    // Profile completion — among participating residents only
+    const profileComplete = participatingResidents.filter(u => u.birthday && u.sex).length;
+
+    // ── Demographics — participating residents only ───────────────────────────
     const gMap: Record<string, number> = {};
-    users.forEach(u => { if (u.sex) gMap[u.sex] = (gMap[u.sex] || 0) + 1; });
+    participatingResidents.forEach(u => { if (u.sex) gMap[u.sex] = (gMap[u.sex] || 0) + 1; });
     const maleCount   = (gMap['Male'] || 0)   + (gMap['male'] || 0);
     const femaleCount = (gMap['Female'] || 0) + (gMap['female'] || 0);
     const gTotal      = maleCount + femaleCount;
 
     const ageGroups = { youth: 0, youngAdult: 0, adult: 0, senior: 0 };
-    users.filter(u => u.birthday).forEach(u => {
+    participatingResidents.filter(u => u.birthday).forEach(u => {
         const age = calcAge(u.birthday!);
         if (age < 18)      ageGroups.youth++;
         else if (age < 25) ageGroups.youngAdult++;
         else if (age < 60) ageGroups.adult++;
         else               ageGroups.senior++;
     });
-    const usersWithBday = users.filter(u => u.birthday).length;
+    const usersWithBday = participatingResidents.filter(u => u.birthday).length;
 
-    // User preference vs available event categories
+    // Preference analysis — participating residents only
     const prefCounts: Record<string, number> = {};
-    users.forEach(u => (u.preferences ?? []).forEach(p => { prefCounts[p] = (prefCounts[p] || 0) + 1; }));
+    participatingResidents.forEach(u => (u.preferences ?? []).forEach(p => { prefCounts[p] = (prefCounts[p] || 0) + 1; }));
     const topPref             = topByCount(prefCounts);
     const topPrefHasNoEvents  = topPref !== null && catCounts[topPref] === undefined;
     const topPrefUnderserved  = topPref !== null && !topPrefHasNoEvents && safePercentage(catCounts[topPref] ?? 0, events.length) < 10 && (prefCounts[topPref] ?? 0) > 3;
@@ -740,9 +748,9 @@ export const generateAdminDecisionSummary = (
             insights.push({ domain: 'users', level: 'info', title: 'Facilitator Applications Pending', body: `${pendingFacReqs} application${pendingFacReqs > 1 ? 's are' : ' is'} awaiting approval. Timely processing keeps applicants engaged.` });
         }
 
-        const profileRate = Math.round(safePercentage(profileComplete, totalUsers));
-        if (profileRate < 40) {
-            insights.push({ domain: 'users', level: 'info', title: 'Low Profile Completion', body: `Only ${profileRate}% of users have complete profiles (birthday + gender). This limits demographic analytics accuracy for planning decisions.` });
+        const profileRate = Math.round(safePercentage(profileComplete, participatingResidents.length > 0 ? participatingResidents.length : 1));
+        if (participatingResidents.length > 0 && profileRate < 40) {
+            insights.push({ domain: 'users', level: 'info', title: 'Low Profile Completion', body: `Only ${profileRate}% of actively participating residents have complete profiles (birthday + gender). This limits demographic analytics accuracy for planning decisions.` });
             recs.push({ domain: 'users', text: 'Encourage profile completion through in-app prompts to improve demographic data quality and personalization accuracy.' });
         }
 

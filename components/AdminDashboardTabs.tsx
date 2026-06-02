@@ -850,9 +850,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     };
 
     const residents = users.filter(u => u.role === 'user' || (!u.role && !u.isAdmin));
-    // Correctly calculate participants who joined at least one event in the provided events list
-    const participants = residents.filter(u => 
-        u.checkedInEventIds && u.checkedInEventIds.some(id => events.some(e => e.id === id))
+    // Participating residents: those who registered (interested) or checked in to at least one event
+    const participants = residents.filter(u =>
+        (u.checkedInEventIds && u.checkedInEventIds.some(id => events.some(e => e.id === id))) ||
+        (u.interestedEventIds && u.interestedEventIds.some(id => events.some(e => e.id === id)))
     );
 
     // 1. Monthly Trends (Check-ins and Events per month)
@@ -1016,10 +1017,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const weights = [0.08, 0.10, 0.13, 0.16, 0.53, 0, 0, 0, 0, 0, 0, 0]; // Jan-May carry all data
     const newUsersData = ALL_MONTHS.map((name, i) => {
         if (i > currentMonthIdx) return { name, users: 0 };
-        if (i < currentMonthIdx) return { name, users: Math.floor(users.length * weights[i]) };
+        if (i < currentMonthIdx) return { name, users: Math.floor(residents.length * weights[i]) };
         // current month gets the remainder so totals match
-        const allocated = weights.slice(0, i).reduce((s, w) => s + Math.floor(users.length * w), 0);
-        return { name, users: Math.max(0, users.length - allocated) };
+        const allocated = weights.slice(0, i).reduce((s, w) => s + Math.floor(residents.length * w), 0);
+        return { name, users: Math.max(0, residents.length - allocated) };
     });
 
     // ── Card-level micro-insight computations ────────────────────────────────
@@ -1049,7 +1050,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     })() as CardInsightData;
 
     const newUsersInsight: CardInsightData = (() => {
-        if (users.length === 0) return { level: 'info', text: 'No registered users yet. Resident accounts will appear as users sign up through the platform.', rec: 'Promote the platform via community announcements to drive initial registrations.' };
+        if (residents.length === 0) return { level: 'info', text: 'No registered users yet. Resident accounts will appear as users sign up through the platform.', rec: 'Promote the platform via community announcements to drive initial registrations.' };
         const current = newUsersData[currentMonthIdx];
         const prev = currentMonthIdx > 0 ? newUsersData[currentMonthIdx - 1] : null;
         if (!prev || prev.users === 0) return { level: 'info', text: `${current.users} resident${current.users !== 1 ? 's' : ''} registered this month. Building a baseline for growth tracking.`, rec: 'Promote the platform via community outreach to accelerate registrations.' };
@@ -1138,8 +1139,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
     const newUsersMoreInsights: CardInsightData[] = (() => {
         const result: CardInsightData[] = [];
-        if (users.length === 0) return result;
-        result.push({ level: 'info', text: `Total registered users on the platform: ${users.length} resident${users.length !== 1 ? 's' : ''}.` });
+        if (residents.length === 0) return result;
+        result.push({ level: 'info', text: `Total registered residents on the platform: ${residents.length} resident${residents.length !== 1 ? 's' : ''}.` });
         const withData = newUsersData.filter(m => m.users > 0);
         if (withData.length > 0) {
             const peak = [...withData].sort((a, b) => b.users - a.users)[0];
@@ -1147,11 +1148,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         }
         if (withData.length > 1) {
             const avg = Math.round(withData.reduce((s, m) => s + m.users, 0) / withData.length);
-            result.push({ level: avg >= 5 ? 'success' : 'info', text: `Average of ${avg} new user${avg !== 1 ? 's' : ''} per active month across ${withData.length} tracked months.`, rec: avg < 3 ? 'Consider a community-wide registration campaign to accelerate onboarding.' : undefined });
+            result.push({ level: avg >= 5 ? 'success' : 'info', text: `Average of ${avg} new resident${avg !== 1 ? 's' : ''} per active month across ${withData.length} tracked months.`, rec: avg < 3 ? 'Consider a community-wide registration campaign to accelerate onboarding.' : undefined });
         }
-        const participantUsers = users.filter(u => u.checkedInEventIds && u.checkedInEventIds.length > 0).length;
-        const engagePct = users.length > 0 ? Math.round((participantUsers / users.length) * 100) : 0;
-        result.push({ level: engagePct >= 50 ? 'success' : engagePct >= 20 ? 'info' : 'warning', text: `${participantUsers} of ${users.length} registered users (${engagePct}%) have checked in to at least one event.`, rec: engagePct < 30 ? 'Notify inactive users about upcoming events to convert registrations into participation.' : undefined });
+        const participantUsers = residents.filter(u =>
+            (u.checkedInEventIds && u.checkedInEventIds.length > 0) ||
+            (u.interestedEventIds && u.interestedEventIds.length > 0)
+        ).length;
+        const engagePct = residents.length > 0 ? Math.round((participantUsers / residents.length) * 100) : 0;
+        result.push({ level: engagePct >= 50 ? 'success' : engagePct >= 20 ? 'info' : 'warning', text: `${participantUsers} of ${residents.length} registered residents (${engagePct}%) have registered or checked in to at least one event.`, rec: engagePct < 30 ? 'Notify inactive residents about upcoming events to convert registrations into participation.' : undefined });
         return result;
     })();
 
@@ -1164,7 +1168,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             const pct = Math.round((g.value / total) * 100);
             result.push({ level: pct > 70 ? 'warning' : 'success', text: `${g.name}: ${g.value} active participant${g.value !== 1 ? 's' : ''} (${pct}%)`, rec: pct < 20 ? `Design targeted events for ${g.name.toLowerCase()} community members to improve representation.` : undefined });
         });
-        result.push({ level: 'info', text: `Total active participants with gender profile data: ${total} resident${total !== 1 ? 's' : ''}.`, rec: total < users.length ? 'Encourage residents to complete their gender profile for more complete demographic analytics.' : undefined });
+        result.push({ level: 'info', text: `Total active participants with gender profile data: ${total} resident${total !== 1 ? 's' : ''}.`, rec: total < residents.length ? 'Encourage residents to complete their gender profile for more complete demographic analytics.' : undefined });
         return result;
     })();
 
@@ -1826,8 +1830,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </thead>
                     <tbody>
                                 {paginatedEvents.map(event => {
-                            // Calculate real attendee count from the users list
-                            const attendeeCount = users.filter(u => u.checkedInEventIds?.includes(event.id)).length;
+                            // Use the authoritative denormalized counter from the event document
+                            const attendeeCount = safeNum(event.checkInCount);
                             const attendeesStr = event.maxParticipants ? `${attendeeCount}/${event.maxParticipants}` : `${attendeeCount} (No Limit)`;
                             return (
                                 <tr key={event.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
@@ -2635,7 +2639,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         <AdminReports events={events} users={users} />
     );
 
-    const totalUsersCount = users.length;
+    const totalUsersCount = residents.length;
     const totalEventsCount = events.length;
     const participationRate = residents.length > 0 ? Math.round((participants.length / residents.length) * 100) : 0;
     const pendingApprovalsCount = pendingRequests.length;
@@ -2834,16 +2838,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{m.label}</span>
                                                     </div>
                                                 ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Rate Bars */}
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Performance Rates</p>
-                                            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-4">
-                                                <RateBar label="Engagement Rate  (interested + check-ins) ÷ views" pct={engPct} color="bg-indigo-500" />
-                                                <RateBar label="Attendance Rate  check-ins ÷ interested" pct={attPct} color="bg-purple-500" />
-                                                <RateBar label="Feedback Rate  reviews ÷ check-ins" pct={fbPct} color="bg-orange-500" />
                                             </div>
                                         </div>
 

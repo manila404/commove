@@ -62,7 +62,9 @@ interface AdminReportsProps {
     users: User[];
 }
 
-const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
+const AdminReports: React.FC<AdminReportsProps> = ({ events, users: allUsers }) => {
+    // Exclude facilitators and admins — all participation metrics use residents only
+    const users = allUsers.filter(u => u.role !== 'admin' && u.role !== 'facilitator' && !u.isAdmin);
     const [period, setPeriod] = useState<'this_month' | 'previous_month' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
     const [ageGroups, setAgeGroups] = useState<Record<string, boolean>>({
         'Child': true,
@@ -156,7 +158,9 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         const results = Object.entries(periodGroups).map(([key, group]) => {
             const periodEvents = group.events.map(event => {
                 const eventParticipants = users.filter(user => {
-                    const hasParticipated = user.checkedInEventIds?.includes(event.id);
+                    const hasParticipated =
+                        user.checkedInEventIds?.includes(event.id) ||
+                        user.interestedEventIds?.includes(event.id);
                     if (!hasParticipated) return false;
 
                     // Apply Age Filter
