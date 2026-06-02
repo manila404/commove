@@ -3470,11 +3470,11 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     if (seenTexts.has(h.text)) return false;
                                     seenTexts.add(h.text); return true;
                                 });
-                                // Append live insights not yet in history
+                                // New insights (not yet in history) stack at top; history stays at bottom
                                 const liveOnly = cardDetailDrawer.insights.filter(ins => !seenTexts.has(ins.text));
                                 const merged: Array<{ level: InsightLevel; text: string; rec?: string }> = [
-                                    ...deduped,
                                     ...liveOnly,
+                                    ...deduped,
                                 ];
                                 return merged;
                             })().map((insight, i) => {
