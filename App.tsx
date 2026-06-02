@@ -633,7 +633,13 @@ const App: React.FC = () => {
         setAreEventsLoading(true);
         const unsub = subscribeToEvents(
             fetchedEvents => {
-                setEvents(fetchedEvents);
+                // Deduplicate by id — guards against snapshot firing mid-optimistic-update
+                const seen = new Set<string>();
+                setEvents(fetchedEvents.filter(e => {
+                    if (seen.has(e.id)) return false;
+                    seen.add(e.id);
+                    return true;
+                }));
                 setAreEventsLoading(false);
             },
             () => setAreEventsLoading(false)
@@ -1638,7 +1644,7 @@ const App: React.FC = () => {
     };
 
     const handleEventCreated = (newEvent: EventType) => {
-        setEvents(prev => [...prev, newEvent]);
+        setEvents(prev => prev.some(e => e.id === newEvent.id) ? prev : [...prev, newEvent]);
         toast.success("Event Created", { description: `${newEvent.name} has been added.` });
     };
 

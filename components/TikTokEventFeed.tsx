@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import RichText from './RichText';
 import type { EventType, DisplayEventType } from '../types';
 import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon } from '../constants';
 
@@ -86,7 +87,7 @@ const TikTokEventFeed: React.FC<TikTokEventFeedProps> = ({ events, onEventSelect
                         </div>
 
                         <p className="text-sm md:text-base text-gray-300 line-clamp-3 mb-6">
-                            {event.description}
+                            <RichText text={event.description ?? ''} />
                         </p>
 
                         <div className="flex items-center gap-4">

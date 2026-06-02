@@ -3210,30 +3210,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             </tbody>
                                         </table>
 
-                                        {/* Rate summary at the bottom */}
-                                        <div className="px-6 py-5 border-t border-gray-100 dark:border-gray-800 space-y-3">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Computed Rates</p>
-                                            {[
-                                                { label: 'Engagement Rate', formula: '(interested + check-ins) ÷ views', val: tv > 0 ? `${Math.min(100, Math.round(((ti + tc) / tv) * 100))}%` : '—', color: 'bg-indigo-500' },
-                                                { label: 'Attendance Rate', formula: 'check-ins ÷ interested',           val: ti > 0 ? `${Math.min(100, Math.round((tc / ti) * 100))}%` : '—', color: 'bg-purple-500' },
-                                            ].map(r => (
-                                                <div key={r.label}>
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <div>
-                                                            <span className="text-xs font-bold text-gray-700 dark:text-gray-200">{r.label}</span>
-                                                            <span className="text-[10px] text-gray-400 ml-1.5">{r.formula}</span>
-                                                        </div>
-                                                        <span className="text-xs font-extrabold text-gray-900 dark:text-white">{r.val}</span>
-                                                    </div>
-                                                    <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                                                        <div
-                                                            className={`h-full rounded-full ${r.color}`}
-                                                            style={{ width: r.val === '—' ? '0%' : r.val }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
                                     </div>
                                 </>
                             );

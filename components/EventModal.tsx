@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import RichText from './RichText';
 import { Image as ImageIcon, ArrowLeft, Share2, Heart, Phone, MessageCircle, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { EventType, Reminder, User } from '../types';
 import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, BellIcon, StarIcon, ShieldCheckIcon, formatDisplayDate, formatTime, CommoveLogo } from '../constants';
@@ -422,7 +423,7 @@ const EventModal: React.FC<EventModalProps> = ({
         <div className="space-y-3">
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">Description</h3>
           <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-normal text-base whitespace-pre-wrap">
-            {event.description}
+            <RichText text={event.description} />
           </p>
         </div>
 
@@ -776,7 +777,7 @@ const EventModal: React.FC<EventModalProps> = ({
       <div className="space-y-2">
         <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Description</h3>
         <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-medium text-sm md:text-base whitespace-pre-wrap">
-          {event.description}
+          <RichText text={event.description} />
         </p>
         {event.creatorUsername && (
           <p className="pt-2 text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -1340,7 +1341,7 @@ const EventModal: React.FC<EventModalProps> = ({
             {/* Description */}
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Description</h3>
-              <p className="text-gray-500 dark:text-gray-400 leading-relaxed text-sm whitespace-pre-wrap">{event.description}</p>
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed text-sm whitespace-pre-wrap"><RichText text={event.description} /></p>
               {event.creatorUsername && (
                 <p className="pt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Lead Office: {event.creatorUsername.replace(/^@/, '')}</p>
               )}
