@@ -131,6 +131,7 @@ const App: React.FC = () => {
     };
 
     const isInitialAuthRef = useRef(true);
+    const backHandlerRef = useRef<() => void>(() => {});
     // Auth & User State
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [pendingDeletionUser, setPendingDeletionUser] = useState<User | null>(null);
@@ -1034,6 +1035,38 @@ const App: React.FC = () => {
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
     }, [events]);
+
+    // 6b. Android hardware back button support
+    // Runs after every render so backHandlerRef always sees the latest state values.
+    useEffect(() => {
+        backHandlerRef.current = () => {
+            // Close non-history-backed overlays first (innermost / most modal-like wins)
+            if (showLogoutConfirm)       { setShowLogoutConfirm(false); return; }
+            if (showFeedbackModal)       { setShowFeedbackModal(null); return; }
+            if (showFacilitatorAuth)     { setShowFacilitatorAuth(false); setFacilitatorAuthInitialStep('question'); return; }
+            if (showEditProfileModal)    { setShowEditProfileModal(false); return; }
+            if (showCalendarEventsPopup) { setShowCalendarEventsPopup(false); setCalendarPopupDate(null); return; }
+            if (showViewAllUpcoming)     { setShowViewAllUpcoming(false); return; }
+            if (showProfilePanel)        { setShowProfilePanel(false); return; }
+
+            // At the root feed with nothing open — tell native to handle exit
+            const state = window.history.state;
+            if (!state || state.view === 'feed') {
+                postToNative({ type: 'BACK_AT_ROOT' });
+                return;
+            }
+
+            // History-backed view is open — pop it; existing popstate handler will close it
+            window.history.back();
+        };
+    });
+
+    // Register the global hook once; the ref keeps the closure fresh without re-registering
+    useEffect(() => {
+        if (!isInWebView()) return;
+        (window as any).__commoveHandleBack = () => backHandlerRef.current();
+        return () => { delete (window as any).__commoveHandleBack; };
+    }, []);
 
     // --- Navigation Handlers ---
 

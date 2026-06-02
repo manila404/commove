@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, Vibration } from 'react-native';
+import { StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, Vibration, BackHandler, ToastAndroid } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
@@ -42,6 +42,7 @@ async function getPermissionStatus() {
 export default function App() {
   const WEB_URL = 'https://commove.vercel.app/';
   const webviewRef = useRef(null);
+  const backPressedOnceRef = useRef(false);
 
   const postToWebView = (data) => {
     if (webviewRef.current) {
@@ -51,6 +52,19 @@ export default function App() {
   };
 
   useEffect(() => { setupAndroidChannel(); }, []);
+
+  // Intercept Android hardware back button — delegate decision to the web app
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (webviewRef.current) {
+        webviewRef.current.injectJavaScript(
+          `if (typeof window.__commoveHandleBack === 'function') { window.__commoveHandleBack(); } true;`
+        );
+      }
+      return true; // always intercept; web app calls BACK_AT_ROOT when it wants to exit
+    });
+    return () => subscription.remove();
+  }, []);
 
   const handleWebViewMessage = async (event) => {
     let data;
@@ -89,6 +103,19 @@ export default function App() {
             Vibration.vibrate(Array.isArray(data.pattern) ? data.pattern : [0, 200]);
           }
         } catch (e) { console.warn('[Commove] Haptic/vibrate failed:', e); }
+        break;
+      }
+      case 'BACK_AT_ROOT': {
+        // Double-press to exit, matching standard Android UX
+        if (backPressedOnceRef.current) {
+          BackHandler.exitApp();
+        } else {
+          backPressedOnceRef.current = true;
+          if (Platform.OS === 'android') {
+            ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+          }
+          setTimeout(() => { backPressedOnceRef.current = false; }, 2000);
+        }
         break;
       }
       default: break;
