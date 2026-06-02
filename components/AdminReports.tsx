@@ -26,6 +26,19 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
     const [selectedPart1, setSelectedPart1] = useState<string>('');
     const [selectedPart2, setSelectedPart2] = useState<string>('');
 
+    // Splits a stored address "Blk 3, Lot 5, Tirona Hwy" into block/house and street parts
+    const splitAddress = (addr: string) => {
+        if (!addr) return { blockHouse: '', street: '' };
+        const idx = addr.indexOf(', ');
+        if (idx !== -1) {
+            const first = addr.slice(0, idx);
+            if (/\d/.test(first) || /^(blk|block|lot|house|room|unit|#|apt)/i.test(first.trim())) {
+                return { blockHouse: first, street: addr.slice(idx + 2) };
+            }
+        }
+        return { blockHouse: '', street: addr };
+    };
+
     const calculateAge = (birthday?: string) => {
         if (!birthday) return null;
         const birthDate = new Date(birthday);
@@ -184,12 +197,12 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         // Summary Metrics
         const totalEvents = activeData.events.length;
         const totalParticipants = activeData.participantCount;
-        wsData.push(["Total Events:", totalEvents, "", "", "", "", "", ""]);
-        wsData.push(["Total Participants:", totalParticipants, "", "", "", "", "", ""]);
+        wsData.push(["Total Events:", totalEvents, "", "", "", "", "", "", ""]);
+        wsData.push(["Total Participants:", totalParticipants, "", "", "", "", "", "", ""]);
         wsData.push([]);
-        
+
         // Data Header
-        wsData.push(["Period", "Event", "Name", "Email", "Age", "Sex", "Contact Number", "Address"]);
+        wsData.push(["Period", "Event", "Name", "Email", "Age", "Sex", "Contact Number", "Block/House/Room No.", "Street Address"]);
 
         // Data Rows
         activeData.events.forEach(eventData => {
@@ -198,14 +211,11 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                     activeData.period,
                     eventData.event.name,
                     'No Participants',
-                    '',
-                    '',
-                    '',
-                    '',
-                    ''
+                    '', '', '', '', '', ''
                 ]);
             } else {
                 eventData.participants.forEach(p => {
+                    const { blockHouse, street } = splitAddress(p.address || '');
                     wsData.push([
                         activeData.period,
                         eventData.event.name,
@@ -214,7 +224,8 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                         calculateAge(p.birthday),
                         p.sex,
                         p.contactNumber || '',
-                        p.address || ''
+                        blockHouse,
+                        street
                     ]);
                 });
             }
@@ -232,12 +243,13 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
             { wch: 10 }, // Age
             { wch: 10 }, // Sex
             { wch: 20 }, // Contact Number
-            { wch: 40 }  // Address
+            { wch: 25 }, // Block/House/Room No.
+            { wch: 40 }  // Street Address
         ];
 
         worksheet['!merges'] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Title
-            { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }, // Generated on
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // Title
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }, // Generated on
             { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }, // Parameters Title
         ];
 
@@ -324,13 +336,13 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         wsData.push(["Time Period:", periodKey, "", "", "", "", "", ""]);
         
         const selectedAges = Object.entries(ageGroups).filter(([_, v]) => v).map(([k]) => k).join(', ') || 'None';
-        wsData.push(["Age Groups:", selectedAges, "", "", "", "", "", ""]);
-        wsData.push(["Sex:", sexFilter, "", "", "", "", "", ""]);
-        wsData.push(["Total Participants:", eventData.participants.length, "", "", "", "", "", ""]);
+        wsData.push(["Age Groups:", selectedAges, "", "", "", "", "", "", ""]);
+        wsData.push(["Sex:", sexFilter, "", "", "", "", "", "", ""]);
+        wsData.push(["Total Participants:", eventData.participants.length, "", "", "", "", "", "", ""]);
         wsData.push([]);
-        
+
         // Data Header
-        wsData.push(["Period", "Event", "Name", "Email", "Age", "Sex", "Contact Number", "Address"]);
+        wsData.push(["Period", "Event", "Name", "Email", "Age", "Sex", "Contact Number", "Block/House/Room No.", "Street Address"]);
 
         // Data Rows
         if (eventData.participants.length === 0) {
@@ -338,14 +350,11 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                 periodKey,
                 eventData.event.name,
                 'No Participants',
-                '',
-                '',
-                '',
-                '',
-                ''
+                '', '', '', '', '', ''
             ]);
         } else {
             eventData.participants.forEach((p: any) => {
+                const { blockHouse, street } = splitAddress(p.address || '');
                 wsData.push([
                     periodKey,
                     eventData.event.name,
@@ -354,7 +363,8 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                     calculateAge(p.birthday),
                     p.sex,
                     p.contactNumber || '',
-                    p.address || ''
+                    blockHouse,
+                    street
                 ]);
             });
         }
@@ -371,12 +381,13 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
             { wch: 10 }, // Age
             { wch: 10 }, // Sex
             { wch: 20 }, // Contact Number
-            { wch: 40 }  // Address
+            { wch: 25 }, // Block/House/Room No.
+            { wch: 40 }  // Street Address
         ];
 
         worksheet['!merges'] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Title
-            { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }, // Generated on
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // Title
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }, // Generated on
             { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }, // Parameters Title
         ];
 

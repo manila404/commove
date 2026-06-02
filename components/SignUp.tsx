@@ -1,5 +1,6 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { searchAddressGeoapify } from '../services/osmService';
 import { auth } from '../services/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { createUserProfile, getAdmins, isUsernameUnique } from '../services/userService';
@@ -23,9 +24,17 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
-    const [address, setAddress] = useState('');
+    // Address split
+    const [blockHouse, setBlockHouse] = useState('');
+    const [streetQuery, setStreetQuery] = useState('');
+    const [streetSuggestions, setStreetSuggestions] = useState<any[]>([]);
+    const [showStreetDrop, setShowStreetDrop] = useState(false);
+    const streetDropRef = useRef<HTMLDivElement>(null);
     const [contactNumber, setContactNumber] = useState('');
-    const [birthday, setBirthday] = useState('');
+    // Birthday as 3 selects
+    const [birthMonth, setBirthMonth] = useState('');
+    const [birthDay, setBirthDay] = useState('');
+    const [birthYear, setBirthYear] = useState('');
     const [sex, setSex] = useState('');
     const [username, setUsername] = useState('');
     const [customSex, setCustomSex] = useState('');
@@ -36,7 +45,46 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
     const [isFacilitator, setIsFacilitator] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const isSubmittingRef = useRef(false); // prevents double-submission race condition
+    const isSubmittingRef = useRef(false);
+
+    // Address autocomplete
+    useEffect(() => {
+        if (streetQuery.length < 3) { setStreetSuggestions([]); return; }
+        const t = setTimeout(async () => {
+            const r = await searchAddressGeoapify(streetQuery);
+            setStreetSuggestions(r.slice(0, 5));
+        }, 350);
+        return () => clearTimeout(t);
+    }, [streetQuery]);
+    useEffect(() => {
+        const h = (e: MouseEvent) => {
+            if (streetDropRef.current && !streetDropRef.current.contains(e.target as Node))
+                setShowStreetDrop(false);
+        };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, []);
+
+    const formatPhone = (raw: string) => {
+        const digits = raw.replace(/\D/g, '');
+        let local = digits;
+        if (local.startsWith('63')) local = local.slice(2);
+        if (local.startsWith('0')) local = local.slice(1);
+        local = local.slice(0, 10);
+        if (!local) return '';
+        if (local.length <= 3) return `+63 ${local}`;
+        if (local.length <= 6) return `+63 ${local.slice(0,3)} - ${local.slice(3)}`;
+        return `+63 ${local.slice(0,3)} - ${local.slice(3,6)} - ${local.slice(6)}`;
+    };
+
+    // Block/House/Room must contain at least one digit (e.g. "Blk 3", "Room 201", "#5")
+    const blockHouseError = blockHouse.trim().length > 0 && !/\d/.test(blockHouse)
+        ? 'Format: Blk [#] Lot [#], Room [#], House [#], or Unit [#]'
+        : '';
+
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const daysInMonth = birthMonth && birthYear ? new Date(parseInt(birthYear), parseInt(birthMonth), 0).getDate() : 31;
+    const yearOptions = Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i); // prevents double-submission race condition
     const captchaRef = useRef<CaptchaRef>(null);
     const avatarScrollRef = useRef<HTMLDivElement>(null);
     const avatarDragRef = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
@@ -110,13 +158,18 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             return;
         }
 
-        if (!address.trim()) {
-            setError("Please enter your address.");
+        if (!streetQuery.trim()) {
+            setError("Please enter your street address.");
             return;
         }
 
-        if (!birthday) {
-            setError("Please enter your birthday.");
+        if (blockHouse.trim() && !/\d/.test(blockHouse)) {
+            setError("Block/House/Room number must follow the format: Blk [#] Lot [#], Room [#], etc.");
+            return;
+        }
+
+        if (!birthMonth || !birthDay || !birthYear) {
+            setError("Please complete your birthday.");
             return;
         }
 
@@ -207,8 +260,8 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                 facilitatorRequestStatus: (isFacilitator || step === 3) ? 'pending' : undefined,
                 idUrl: finalIdUrl || idImage || undefined,
                 faceUrl: faceImage || undefined,
-                birthday: birthday,
-                address: address.trim(),
+                birthday: `${birthYear}-${String(birthMonth).padStart(2,'0')}-${String(birthDay).padStart(2,'0')}`,
+                address: blockHouse.trim() ? `${blockHouse.trim()}, ${streetQuery.trim()}` : streetQuery.trim(),
                 contactNumber: contactNumber.trim(),
                 sex: sex === 'Others' ? customSex.trim() : sex,
                 username: username.trim().startsWith('@') ? username.trim() : `@${username.trim()}`,
@@ -384,33 +437,76 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             </div>
                         </div>
 
-                        {/* Row 4: Contact Number | Address */}
+                        {/* Row 4: Contact Number | Block/House No. */}
                         <input
                             type="tel"
-                            placeholder="Contact Number (Optional)"
+                            placeholder="+63 970 - 520 - 1284"
                             value={contactNumber}
-                            onChange={(e) => setContactNumber(e.target.value)}
+                            onChange={(e) => setContactNumber(formatPhone(e.target.value))}
                             className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                         />
-                        <input
-                            type="text"
-                            placeholder="Address"
-                            value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
-                        />
-
-                        {/* Row 5: Birthday | Gender */}
-                        <div className="w-full relative">
-                            <label className="absolute -top-2 left-4 bg-white dark:bg-[#111827] px-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Birthday</label>
+                        <div className="w-full space-y-1">
                             <input
-                                type="date"
-                                value={birthday}
-                                onChange={(e) => setBirthday(e.target.value)}
+                                type="text"
+                                placeholder="Blk/House/Room No. (e.g. Blk 3, Lot 5)"
+                                value={blockHouse}
+                                onChange={(e) => setBlockHouse(e.target.value)}
+                                className={`w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none text-sm placeholder-gray-400 ${blockHouseError ? 'ring-2 ring-red-400' : 'focus:ring-2 focus:ring-primary-500'}`}
+                            />
+                            {blockHouseError && (
+                                <p className="text-xs text-red-500 pl-4 flex items-center gap-1">
+                                    <span>⚠</span> {blockHouseError}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Street Address with autocomplete — full width */}
+                        <div className="md:col-span-2 relative" ref={streetDropRef}>
+                            <input
+                                type="text"
+                                placeholder="Street Address (e.g. Tirona Highway, Bacoor City)"
+                                value={streetQuery}
+                                onChange={e => { setStreetQuery(e.target.value); setShowStreetDrop(true); }}
+                                onFocus={() => setShowStreetDrop(true)}
                                 required
                                 className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                             />
+                            {showStreetDrop && streetSuggestions.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-50 overflow-hidden">
+                                    {streetSuggestions.map((s, i) => (
+                                        <button key={i} type="button"
+                                            onClick={() => { setStreetQuery(s.address || s.formatted || ''); setShowStreetDrop(false); }}
+                                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition-colors">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{s.name || s.formatted?.split(',')[0]}</p>
+                                                <p className="text-xs text-gray-400 truncate">{s.address || s.formatted}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Row 5: Birthday (3 selects) | Gender */}
+                        <div className="w-full relative">
+                            <label className="absolute -top-2 left-4 bg-white dark:bg-[#111827] px-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Birthday</label>
+                            <div className="grid grid-cols-3 gap-2 pt-1">
+                                <select value={birthMonth} onChange={e => { setBirthMonth(e.target.value); setBirthDay(''); }}
+                                    className="w-full px-3 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm appearance-none">
+                                    <option value="">Month</option>
+                                    {MONTHS.map((m, i) => <option key={m} value={String(i+1)}>{m}</option>)}
+                                </select>
+                                <select value={birthDay} onChange={e => setBirthDay(e.target.value)}
+                                    className="w-full px-3 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm appearance-none">
+                                    <option value="">Day</option>
+                                    {Array.from({ length: daysInMonth }, (_, i) => i+1).map(d => <option key={d} value={String(d)}>{d}</option>)}
+                                </select>
+                                <select value={birthYear} onChange={e => setBirthYear(e.target.value)}
+                                    className="w-full px-3 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm appearance-none">
+                                    <option value="">Year</option>
+                                    {yearOptions.map(y => <option key={y} value={String(y)}>{y}</option>)}
+                                </select>
+                            </div>
                         </div>
                         <div className="w-full relative">
                             <label className="absolute -top-2 left-4 bg-white dark:bg-[#111827] px-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Gender</label>

@@ -358,10 +358,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             // Both admins and facilitators need user data for analytics
             try {
                 const fetchedUsers = await getAllUsers();
-                setUsers(fetchedUsers);
+                // Deduplicate by email — same as fetchUsers()
+                const seen = new Set<string>();
+                const unique = fetchedUsers.filter(u => {
+                    const key = u.email?.toLowerCase();
+                    if (!key || seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+                setUsers(unique);
                 setStats({
                     events: published,
-                    users: fetchedUsers.length,
+                    users: unique.length,
                     pending: pendingCount
                 });
             } catch (err) {

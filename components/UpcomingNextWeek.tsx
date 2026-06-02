@@ -13,12 +13,11 @@ interface UpcomingNextWeekProps {
 const UpcomingNextWeek: React.FC<UpcomingNextWeekProps> = ({ events, onEventSelect, onViewAll }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Rolling 14-day window: tomorrow → today + 14 days
+  // Rolling 14-day window: today → today + 14 days (includes live events)
   const getRollingWindow = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const start = new Date(today);
-    start.setDate(today.getDate() + 1); // starts tomorrow
+    const start = new Date(today); // include today so live events stay visible
     const end = new Date(today);
     end.setDate(today.getDate() + 14);
     end.setHours(23, 59, 59, 999);
@@ -100,7 +99,7 @@ const UpcomingNextWeek: React.FC<UpcomingNextWeekProps> = ({ events, onEventSele
               className="flex-shrink-0 w-[148px] md:w-[168px] text-left group/card active:scale-95 transition-transform"
             >
               {/* Square image */}
-              <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-2 shadow-sm">
+              <div className={`w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-2 shadow-sm ${event.isLive ? 'border-2 border-red-500/50 ring-2 ring-red-500/20' : ''}`}>
                 {event.imageUrl ? (
                   <img
                     src={event.imageUrl}

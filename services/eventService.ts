@@ -357,49 +357,72 @@ export const fetchUserRegistrations = async (userId: string): Promise<Registrati
 const HIGHLIGHTS_KEY = 'admin_highlights';
 const highlightsDocRef = () => doc(db, 'config', 'highlights');
 
-export const getHighlights = async (): Promise<string[]> => {
-    // 1. Always check localStorage first (instant, always available)
+const getLocalHighlights = (): string[] => {
     try {
         const local = localStorage.getItem(HIGHLIGHTS_KEY);
         if (local) {
             const parsed = JSON.parse(local) as string[];
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                return parsed;
-            }
+            if (Array.isArray(parsed)) return parsed;
         }
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
+    return [];
+};
 
-    // 2. Fallback: try Firestore (may be blocked by security rules)
+export const getHighlights = async (): Promise<string[]> => {
     try {
         const snap = await getDoc(highlightsDocRef());
         if (snap.exists()) {
             const ids = (snap.data().eventIds as string[]) || [];
-            // Sync back to localStorage for future fast reads
-            if (ids.length > 0) {
-                try { localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(ids)); } catch (e) { /* ignore */ }
-            }
+            try { localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(ids)); } catch { /* ignore */ }
             return ids;
         }
     } catch (e) {
-        console.warn('Firestore highlights read failed (may be rules-blocked), using localStorage only:', e);
+        console.warn('Firestore highlights read failed, using localStorage:', e);
     }
+    return getLocalHighlights();
+};
 
-    return [];
+// Real-time listener — localStorage immediately + same-tab custom event + Firestore
+export const subscribeToHighlights = (callback: (ids: string[]) => void): (() => void) => {
+    // Fire localStorage value immediately so feed is never blank on load
+    const local = getLocalHighlights();
+    if (local.length > 0) callback(local);
+
+    // Same-tab instant update when admin saves (custom event from setHighlights)
+    const onCustomEvent = (e: Event) => {
+        const ids = (e as CustomEvent<string[]>).detail;
+        if (Array.isArray(ids)) callback(ids);
+    };
+    window.addEventListener('highlights-updated', onCustomEvent);
+
+    // Firestore listener for cross-device updates
+    const unsub = onSnapshot(
+        highlightsDocRef(),
+        snap => {
+            const ids = snap.exists() ? (snap.data().eventIds as string[]) || [] : [];
+            if (ids.length > 0 || local.length === 0) {
+                try { localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(ids)); } catch { /* ignore */ }
+                callback(ids);
+            }
+        },
+        err => console.warn('Highlights Firestore listener error:', err)
+    );
+
+    return () => {
+        window.removeEventListener('highlights-updated', onCustomEvent);
+        unsub();
+    };
 };
 
 export const setHighlights = async (eventIds: string[]): Promise<void> => {
-    const ids = eventIds.slice(0, 5);
+    // 1. Save to localStorage immediately — always works
+    try { localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(eventIds)); } catch { /* ignore */ }
 
-    // 1. Save to localStorage immediately — always succeeds
-    try {
-        localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(ids));
-    } catch (e) {
-        console.error('Failed to save highlights to localStorage:', e);
-        throw new Error('Could not save highlights locally.');
-    }
+    // 2. Notify same-tab listeners immediately (doesn't wait for Firestore)
+    try { window.dispatchEvent(new CustomEvent('highlights-updated', { detail: eventIds })); } catch { /* ignore */ }
 
-    // 2. Attempt Firestore sync in background (don't block or throw)
-    setDoc(highlightsDocRef(), { eventIds: ids }, { merge: true })
-        .catch(e => console.warn('Firestore highlights sync failed (non-critical):', e));
+    // 3. Sync to Firestore for cross-device updates (non-blocking)
+    setDoc(highlightsDocRef(), { eventIds }, { merge: true })
+        .catch(e => console.warn('Firestore highlights sync failed (highlights saved locally):', e));
 };
 

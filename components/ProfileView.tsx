@@ -42,6 +42,7 @@ interface ProfileViewProps {
     toggleTheme: () => void;
     onUserUpdate: (updatedUser: User) => void;
     onProfileCardClick?: () => void;
+    onEditProfile?: () => void;
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({ 
@@ -60,6 +61,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     toggleTheme,
     onUserUpdate,
     onProfileCardClick,
+    onEditProfile,
 }) => {
     const [isChangingAvatar, setIsChangingAvatar] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
@@ -601,20 +603,39 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 <div className="shadow-sm rounded-2xl overflow-hidden bg-white dark:bg-gray-800">
                     <div>
                         {!isGuest && (
-                            <button
-                                onClick={() => setShowManageAccountPanel(true)}
-                                className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="text-gray-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
+                            isAdminUser && onEditProfile ? (
+                                // Admin: go straight to Edit Profile
+                                <button
+                                    onClick={onEditProfile}
+                                    className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-gray-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </div>
+                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Edit Profile</span>
                                     </div>
-                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Manage Account</span>
-                                </div>
-                                <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-                            </button>
+                                    <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                                </button>
+                            ) : (
+                                // Non-admin: Manage Account (with deactivate/delete)
+                                <button
+                                    onClick={() => setShowManageAccountPanel(true)}
+                                    className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-gray-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Manage Account</span>
+                                    </div>
+                                    <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                                </button>
+                            )
                         )}
                         <button onClick={toggleTheme} className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                              <div className="flex items-center gap-3">

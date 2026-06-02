@@ -91,7 +91,7 @@ const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
               {title && (
-                  <span className="text-lg md:text-xl font-bold text-gray-800 dark:text-white ml-2">
+                  <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-white ml-2">
                     {title}
                   </span>
               )}

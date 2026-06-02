@@ -63,6 +63,10 @@ const EventModal: React.FC<EventModalProps> = ({
   const [liveApprovedCount, setLiveApprovedCount] = useState<number>(event.approvedCount ?? 0);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const openLightbox = (idx: number) => { setLightboxIndex(idx); setLightboxOpen(true); };
 
   const allPhotos = [event.imageUrl, ...(event.additionalImageUrls || [])].filter(Boolean);
 
@@ -273,8 +277,9 @@ const EventModal: React.FC<EventModalProps> = ({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="relative z-[1] w-full h-full object-contain"
+            className="relative z-[1] w-full h-full object-contain cursor-zoom-in"
             referrerPolicy="no-referrer"
+            onClick={() => openLightbox(activePhotoIndex)}
           />
         </AnimatePresence>
 
@@ -1093,35 +1098,100 @@ const EventModal: React.FC<EventModalProps> = ({
     </motion.div>
   );
 
+  // Shared lightbox — used by both desktop and mobile
+  const lightbox = (
+    <AnimatePresence>
+      {lightboxOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-md" />
+          <button
+            onClick={() => setLightboxOpen(false)}
+            className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <motion.img
+            key={lightboxIndex}
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.2 }}
+            src={allPhotos[lightboxIndex] || undefined}
+            alt={`${event.name} - ${lightboxIndex + 1}`}
+            className="relative z-10 max-w-[92vw] max-h-[85vh] object-contain rounded-xl shadow-2xl"
+            referrerPolicy="no-referrer"
+            onClick={e => e.stopPropagation()}
+          />
+          {allPhotos.length > 1 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLightboxIndex(i => (i - 1 + allPhotos.length) % allPhotos.length); }}
+              className="absolute left-4 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          )}
+          {allPhotos.length > 1 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLightboxIndex(i => (i + 1) % allPhotos.length); }}
+              className="absolute right-4 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          )}
+          {allPhotos.length > 1 && (
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+              {allPhotos.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={e => { e.stopPropagation(); setLightboxIndex(i); }}
+                  className={`h-2 rounded-full transition-all ${i === lightboxIndex ? 'w-6 bg-white' : 'w-2 bg-white/40 hover:bg-white/70'}`}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   if (!isMobile) {
     return (
-      <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[6000] p-4 md:p-24"
-        onClick={onClose}
-      >
-        <div className="relative w-full max-w-2xl">
-          <button
-            onClick={onClose}
-            className="absolute top-0 -right-14 bg-white/10 hover:bg-white/20 text-white rounded-full p-2.5 transition-all z-[7000] shadow-lg border border-white/5"
-          >
-            <X className="h-6 w-6" />
-          </button>
+      <>
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[6000] p-4 md:p-24"
+          onClick={onClose}
+        >
+          <div className="relative w-full max-w-2xl">
+            <button
+              onClick={onClose}
+              className="absolute top-0 -right-14 bg-white/10 hover:bg-white/20 text-white rounded-full p-2.5 transition-all z-[7000] shadow-lg border border-white/5"
+            >
+              <X className="h-6 w-6" />
+            </button>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white dark:bg-gray-800 rounded-[10px] shadow-2xl w-full max-h-[95vh] overflow-y-auto relative custom-scrollbar"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {renderDesktopContent()}
-          </motion.div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-gray-800 rounded-[10px] shadow-2xl w-full max-h-[95vh] overflow-y-auto relative custom-scrollbar"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {renderDesktopContent()}
+            </motion.div>
+          </div>
+
+          <AnimatePresence>
+            {showReminderModal && renderReminderModal()}
+          </AnimatePresence>
         </div>
-
-        <AnimatePresence>
-          {showReminderModal && renderReminderModal()}
-        </AnimatePresence>
-      </div>
+        {lightbox}
+      </>
     );
   }
 
@@ -1171,8 +1241,9 @@ const EventModal: React.FC<EventModalProps> = ({
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="relative z-[1] w-full h-full object-contain"
+                  className="relative z-[1] w-full h-full object-contain cursor-zoom-in"
                   referrerPolicy="no-referrer"
+                  onClick={() => openLightbox(activePhotoIndex)}
                 />
               </AnimatePresence>
 
@@ -1466,6 +1537,7 @@ const EventModal: React.FC<EventModalProps> = ({
       <AnimatePresence>
         {showReminderModal && renderReminderModal()}
       </AnimatePresence>
+      {lightbox}
     </>
   );
 };

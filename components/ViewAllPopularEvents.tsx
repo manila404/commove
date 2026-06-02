@@ -153,7 +153,7 @@ const ViewAllPopularEvents: React.FC<ViewAllPopularEventsProps> = ({
   }, [events, search]);
 
   return (
-    <div className="min-h-screen bg-[#FDFDFF] dark:bg-gray-950 transition-colors duration-300 pb-32">
+    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300 pb-32 pt-4">
       <style>{`
         @keyframes timelinePulse {
           0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
@@ -165,65 +165,60 @@ const ViewAllPopularEvents: React.FC<ViewAllPopularEventsProps> = ({
         }
       `}</style>
 
-      {/* ── HERO SECTION ────────────────────────────────────────────────────── */}
-      <section className="w-full px-3 sm:px-4 md:px-6 pt-3 md:pt-4 mb-8">
-        <div className="relative rounded-[15px] border border-gray-100/20 dark:border-white/5 overflow-hidden min-h-[280px] md:min-h-[320px] flex items-end max-w-[1600px] mx-auto group/hero">
-          <img
-            src="/bacoor_hero.jpg"
-            alt="Bacoor City"
-            className="absolute inset-0 w-full h-full object-cover object-center group-hover/hero:scale-105 transition-transform duration-[20s] ease-out"
-          />
-          <div
-            className="absolute inset-0 z-[1]"
-            style={{
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              WebkitMaskImage: 'linear-gradient(to right, black 0%, black 40%, transparent 80%, transparent 100%)',
-              maskImage: 'linear-gradient(to right, black 0%, black 40%, transparent 80%, transparent 100%)',
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/40 to-transparent z-[2]" />
 
-          <div className="relative z-10 w-full px-8 md:px-14 pb-10 md:pb-12 pt-24 max-w-4xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary-500/20 backdrop-blur-md rounded-full border border-primary-400/30 mb-4">
-              <div className="w-1.5 h-1.5 bg-primary-400 rounded-full animate-pulse" />
-              <span className="text-[10px] font-black text-primary-100 uppercase tracking-widest">Trending Now</span>
-            </div>
-            <h1 className="text-4xl md:text-6xl leading-[1] font-black mb-4 tracking-tighter text-white">
-              Discover <br />
-              <span className="bg-gradient-to-r from-primary-400 via-indigo-400 to-primary-300 bg-clip-text text-transparent">
-                BACOOR
-              </span>
-            </h1>
-            <p className="text-white/60 text-sm md:text-base max-w-md leading-relaxed font-semibold">
-              Your gateway to the most anticipated <br className="hidden md:block" /> city gatherings and local festivities.
+      {/* ── Glassy Banner ── */}
+      <div className="px-3 sm:px-4 md:px-6 mb-8 max-w-[1600px] mx-auto">
+        <div
+          className="relative rounded-2xl overflow-hidden px-8 py-7"
+          style={{ background: 'linear-gradient(135deg, #c084fc 0%, #e879f9 35%, #f0abfc 60%, #93c5fd 100%)' }}
+        >
+          {/* Glassy floating circles */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute w-40 h-40 rounded-full top-[-30px] left-[30%]"
+              style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.25)' }} />
+            <div className="absolute w-24 h-24 rounded-full top-[10px] left-[48%]"
+              style={{ background: 'rgba(167,139,250,0.35)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.2)' }} />
+            <div className="absolute w-52 h-52 rounded-full top-[-40px] right-[-20px]"
+              style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.2)' }} />
+            <div className="absolute w-20 h-20 rounded-full bottom-[-15px] right-[18%]"
+              style={{ background: 'rgba(196,181,253,0.4)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.25)' }} />
+            <div className="absolute w-14 h-14 rounded-full top-[20px] right-[35%]"
+              style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.3)' }} />
+          </div>
+          {/* Text */}
+          <div className="relative z-10">
+            <h2 className="text-xl md:text-2xl font-bold text-white leading-tight">
+              Popular Events
+            </h2>
+            <p className="text-white/80 text-sm mt-1 max-w-md">
+              The most liked, saved, and talked-about events in Bacoor — curated by the community.
             </p>
           </div>
         </div>
-      </section>
+      </div>
 
       <div className="max-w-2xl mx-auto px-4">
         {/* ── TIMELINE ──────────────────────────────────────────────── */}
         <div className="relative">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
-            <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Events
             </h2>
 
-            <div className="relative group/search">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within/search:text-primary-500 transition-colors" />
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Find an event..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2.5 bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-primary-500/10 w-full md:w-64 transition-all shadow-sm border outline-none"
+                className="pl-9 pr-4 py-2.5 bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-primary-400 dark:focus:border-primary-600 rounded-full text-sm text-gray-800 dark:text-white placeholder-gray-400 outline-none w-56 md:w-72 transition-all"
               />
             </div>
           </div>
 
           {groupedEvents.length === 0 ? (
-            <div className="text-center py-20 bg-gray-50/50 dark:bg-gray-900/50 rounded-[2.5rem] border-2 border-dashed border-gray-100 dark:border-gray-800">
+            <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-[2.5rem] border-2 border-dashed border-gray-100 dark:border-gray-800">
               <p className="text-sm text-gray-400 font-black italic tracking-wide uppercase opacity-60">No events discovered yet</p>
             </div>
           ) : (

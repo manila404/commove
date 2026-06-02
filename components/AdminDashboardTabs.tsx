@@ -300,10 +300,20 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [highlightsSaved, setHighlightsSaved] = useState(false);
     const [highlightsShowModal, setHighlightsShowModal] = useState(false);
     const [highlightSearch, setHighlightSearch] = useState('');
+    const [highlightSearchFocused, setHighlightSearchFocused] = useState(false);
+    const highlightSearchRef = useRef<HTMLDivElement>(null);
     const [highlightVisFilter, setHighlightVisFilter] = useState<'all' | 'public' | 'private'>('all');
     const [highlightPage, setHighlightPage] = useState(1);
     const HIGHLIGHTS_PER_PAGE = 10;
     useEffect(() => { setHighlightPage(1); }, [highlightSearch, highlightVisFilter]);
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (highlightSearchRef.current && !highlightSearchRef.current.contains(e.target as Node))
+                setHighlightSearchFocused(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     // Load highlights ONCE on mount so saved selections always persist
     React.useEffect(() => {
@@ -318,11 +328,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     }, []);
 
     const toggleHighlight = (eventId: string) => {
-        setHighlightIds(prev => {
-            if (prev.includes(eventId)) return prev.filter(id => id !== eventId);
-            if (prev.length >= 5) return prev; // max 5
-            return [...prev, eventId];
-        });
+        setHighlightIds(prev =>
+            prev.includes(eventId) ? prev.filter(id => id !== eventId) : [...prev, eventId]
+        );
         setHighlightsSaved(false);
     };
 
@@ -415,15 +423,15 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 <div className="flex items-start justify-between">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white">Feed Highlights</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Select up to 5 events to feature at the top of the resident feed.</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Select any number of events to feature at the top of the resident feed.</p>
                     </div>
                     <button
                         onClick={saveHighlights}
                         disabled={highlightsSaving}
-                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg ${
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                             highlightsSaved
-                                ? 'bg-green-600 text-white shadow-green-500/20'
-                                : 'bg-[#8b5cf6] text-white shadow-purple-500/20 hover:bg-[#7c3aed] active:scale-95'
+                                ? 'bg-green-600 text-white'
+                                : 'bg-primary-600 hover:bg-primary-700 text-white'
                         } disabled:opacity-60`}
                     >
                         {highlightsSaving ? 'Saving…' : highlightsSaved ? '✓ Saved!' : 'Save Highlights'}
@@ -436,10 +444,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         <h4 className="text-sm font-bold text-gray-900 dark:text-white">
                             Selected Highlights
                             <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${
-                                highlightIds.length === 5
+                                highlightIds.length > 0
                                     ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                                     : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                            }`}>{highlightIds.length}/5</span>
+                            }`}>{highlightIds.length}</span>
                         </h4>
                         {highlightIds.length > 0 && (
                             <button
@@ -510,34 +518,99 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                 {/* Event picker */}
                 <div className="bg-white dark:bg-[#111827] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                        <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">All Published Events</h4>
-                            <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                                {(['all', 'public', 'private'] as const).map(v => (
-                                    <button
-                                        key={v}
-                                        onClick={() => setHighlightVisFilter(v)}
-                                        className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${
-                                            highlightVisFilter === v
-                                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                                        }`}
-                                    >
-                                        {v}
+                    <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 space-y-3">
+                        {/* Title */}
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-white">All Published Events</h4>
+
+                        {/* Search bar with dropdown — same as Users tab */}
+                        <div className="relative" ref={highlightSearchRef}>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <Search size={16} className={highlightSearchFocused ? 'text-purple-600' : 'text-gray-400 dark:text-gray-500'} />
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search events by name or venue..."
+                                    value={highlightSearch}
+                                    onFocus={() => setHighlightSearchFocused(true)}
+                                    onChange={e => { setHighlightSearch(e.target.value); setHighlightPage(1); }}
+                                    className={`w-full pl-10 pr-10 py-2.5 rounded-full text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all duration-300 ${
+                                        highlightSearchFocused
+                                            ? 'bg-white dark:bg-gray-800 border-2 border-purple-500 ring-4 ring-purple-500/10'
+                                            : 'bg-gray-100 dark:bg-gray-700 border-2 border-transparent'
+                                    }`}
+                                />
+                                {highlightSearch && (
+                                    <button type="button" onClick={() => { setHighlightSearch(''); setHighlightPage(1); }} className="absolute inset-y-0 right-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                                        <X size={16} />
                                     </button>
-                                ))}
+                                )}
                             </div>
+
+                            {/* Dropdown suggestions */}
+                            {highlightSearchFocused && highlightSearch.trim() && (() => {
+                                const suggestions = events
+                                    .filter(e => e.status === 'published')
+                                    .filter(e =>
+                                        e.name.toLowerCase().includes(highlightSearch.toLowerCase()) ||
+                                        (e.venue || '').toLowerCase().includes(highlightSearch.toLowerCase())
+                                    )
+                                    .slice(0, 4);
+                                return (
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="p-4">
+                                            <span className="text-xs font-semibold text-gray-900 dark:text-white tracking-wide uppercase">Suggested Events</span>
+                                            {suggestions.length > 0 ? (
+                                                <div className="grid grid-cols-2 gap-2 mt-3">
+                                                    {suggestions.map(ev => (
+                                                        <button
+                                                            key={ev.id}
+                                                            onClick={() => { toggleHighlight(ev.id); setHighlightSearch(ev.name); setHighlightSearchFocused(false); }}
+                                                            className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left"
+                                                        >
+                                                            <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-600">
+                                                                {ev.imageUrl
+                                                                    ? <img src={ev.imageUrl} alt={ev.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                                    : <span className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-500">{ev.name[0]}</span>
+                                                                }
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{ev.name}</p>
+                                                                <p className="text-[10px] text-gray-400 truncate">{ev.venue || ev.city}</p>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="py-5 text-center">
+                                                    <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
+                                                        <Search size={14} className="text-gray-400" />
+                                                    </div>
+                                                    <p className="text-xs font-semibold text-gray-900 dark:text-white">No events found for "{highlightSearch}"</p>
+                                                    <p className="text-[10px] text-gray-400 mt-0.5">Try a different name or venue</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
-                        <div className="relative">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                            <input
-                                type="text"
-                                placeholder="Search events…"
-                                value={highlightSearch}
-                                onChange={e => setHighlightSearch(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            />
+
+                        {/* Filter pills — same style as Users tab */}
+                        <div className="flex items-center gap-2">
+                            {(['all', 'public', 'private'] as const).map(v => (
+                                <button
+                                    key={v}
+                                    onClick={() => { setHighlightVisFilter(v); setHighlightPage(1); }}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                                        highlightVisFilter === v
+                                            ? 'bg-primary-600 text-white border-primary-600'
+                                            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
@@ -548,7 +621,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             paginatedHighlights.map(event => {
                                 const isSelected = highlightIds.includes(event.id);
                                 const rank = highlightIds.indexOf(event.id) + 1;
-                                const maxReached = highlightIds.length >= 5 && !isSelected;
+                                const maxReached = false;
                                 return (
                                     <button
                                         key={event.id}
@@ -641,9 +714,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                 {highlightIds.length > 0 && (
                     <p className="text-xs text-gray-400 text-center">
-                        {5 - highlightIds.length > 0
-                            ? `${5 - highlightIds.length} more slot${5 - highlightIds.length !== 1 ? 's' : ''} available`
-                            : 'Maximum 5 highlights selected. Remove one to add another.'}
+                        {highlightIds.length} event{highlightIds.length !== 1 ? 's' : ''} selected
                     </p>
                 )}
             </div>
@@ -2065,7 +2136,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 onClick={() => { setShowPendingFacilitatorFilter(false); setUserFilter(filter as any); setUserPage(1); }}
                                 className={`px-4 py-1.5 rounded-full text-xs font-semibold capitalize whitespace-nowrap border transition-all ${
                                     !showPendingFacilitatorFilter && userFilter === filter
-                                    ? 'bg-blue-600 dark:bg-blue-500 text-white border-blue-600 dark:border-blue-500 shadow-lg shadow-blue-500/20'
+                                    ? 'bg-[#8b5cf6] text-white border-[#8b5cf6]'
                                     : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                                 }`}
                             >

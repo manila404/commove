@@ -4,7 +4,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
 import { isOTPVerified, isSignupInProgress, isLoginInProgress } from './services/otpService';
 import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, updateUserData, addUserViewedEvent, updateUserParticipation, getAllUsers, subscribeToUserProfile } from './services/userService';
-import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights } from './services/eventService';
+import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights, subscribeToHighlights } from './services/eventService';
 import { fetchUserFeedbackForEvent } from './services/feedbackService';
 import { getKNNRankedEvents } from './services/recommendationService'; // Import Recommendation Service
 import { incrementEventCounter } from './services/analyticsService';
@@ -47,6 +47,7 @@ import PermissionManager from './components/PermissionManager';
 import PopularEvents from './components/PopularEvents';
 import UpcomingNextWeek from './components/UpcomingNextWeek';
 import ViewAllPopularEvents from './components/ViewAllPopularEvents';
+import ViewAllUpcomingEvents from './components/ViewAllUpcomingEvents';
 import DateEventsModal from './components/DateEventsModal';
 import EventFeedbackModal from './components/EventFeedbackModal';
 import NetworkStatusBanner from './components/NetworkStatusBanner';
@@ -162,11 +163,20 @@ const App: React.FC = () => {
         return () => clearInterval(timer);
     }, []);
 
-    // Sticky search bar — runs every render so ref is always current
+    // Sticky search bar + category pills — runs every render so refs are always current
     useEffect(() => {
         const el = outerContainerRef.current;
         if (!el) return;
-        const handler = () => setIsSearchSticky(el.scrollTop > 130);
+        const handler = () => {
+            setIsSearchSticky(el.scrollTop > 130);
+            // Show category pills once the Categories sentinel scrolls above the container top
+            const sentinel = categoriesSentinelRef.current;
+            if (sentinel) {
+                const containerRect = el.getBoundingClientRect();
+                const sentinelRect = sentinel.getBoundingClientRect();
+                setIsCategoriesHidden(sentinelRect.top < containerRect.top);
+            }
+        };
         el.addEventListener('scroll', handler, { passive: true });
         return () => el.removeEventListener('scroll', handler);
     });
@@ -222,6 +232,8 @@ const App: React.FC = () => {
     });
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [isSearchSticky, setIsSearchSticky] = useState(false);
+    const [isCategoriesHidden, setIsCategoriesHidden] = useState(false);
+    const categoriesSentinelRef = useRef<HTMLDivElement>(null);
     const outerContainerRef = useRef<HTMLDivElement>(null);
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
     const [showPermissionManager, setShowPermissionManager] = useState(false);
@@ -238,6 +250,7 @@ const App: React.FC = () => {
     const [showViewAllPopular, setShowViewAllPopular] = useState(() => {
         try { return window.history.state?.view === 'popular-events'; } catch { return false; }
     });
+    const [showViewAllUpcoming, setShowViewAllUpcoming] = useState(false);
 
     // Location State
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy?: number }>({
@@ -541,16 +554,12 @@ const App: React.FC = () => {
         return () => window.removeEventListener('customCategoriesUpdated', handleCustomCatUpdate);
     }, []);
 
-    // 4. Fetch Events
+    // 4. Fetch Events (highlights come from the real-time listener below)
     const loadEvents = useCallback(async () => {
         setAreEventsLoading(true);
         try {
-            const [fetchedEvents, ids] = await Promise.all([
-                withRetry(() => fetchEvents(), 2, 1500),
-                withRetry(() => getHighlights(), 2, 1500),
-            ]);
+            const fetchedEvents = await withRetry(() => fetchEvents(), 2, 1500);
             setEvents(fetchedEvents);
-            setHighlightIds(ids);
         } catch (error) {
             console.error("Failed to load events", error);
             toast.error(getFriendlyErrorMessage(error), {
@@ -559,6 +568,12 @@ const App: React.FC = () => {
         } finally {
             setAreEventsLoading(false);
         }
+    }, []);
+
+    // Real-time highlights listener — keeps all devices in sync automatically
+    useEffect(() => {
+        const unsub = subscribeToHighlights(ids => setHighlightIds(ids));
+        return () => unsub();
     }, []);
 
     useEffect(() => {
@@ -1060,6 +1075,7 @@ const App: React.FC = () => {
         setShowFacilitatorAuth(false);
         setShowLogoutConfirm(false);
         setShowViewAllPopular(false);
+        setShowViewAllUpcoming(false);
 
         // 2. Safely synchronize the URL/History WITHOUT using history.back()
         // history.back() is dangerous because it can exit the app entirely if the user refreshed
@@ -1095,6 +1111,8 @@ const App: React.FC = () => {
         } catch (e) { }
         setShowViewAllPopular(true);
     };
+
+    const handleOpenViewAllUpcoming = () => setShowViewAllUpcoming(true);
 
     const handleOpenPermitDashboard = () => {
         try {
@@ -1753,7 +1771,8 @@ const App: React.FC = () => {
                 showNotificationSettings ? 'Notification Settings' :
                     showHelpSupport ? 'Help & Support' :
                         showTermsAndConditions ? 'Terms & Conditions' :
-                            showViewAllPopular ? 'Popular Events' : null;
+                            showViewAllPopular ? 'Popular Events' :
+                            showViewAllUpcoming ? 'Upcoming Events' : null;
 
     // ── Account Recovery Modal ────────────────────────────────────────────────
     const handleRecoverAccount = async () => {
@@ -1845,6 +1864,13 @@ const App: React.FC = () => {
                             onEventSelect={handleOpenEvent}
                         />
                     )}
+                    {showViewAllUpcoming && (
+                        <ViewAllUpcomingEvents
+                            events={getDisplayEvents}
+                            onEventSelect={handleOpenEvent}
+                            onToggleSave={handleToggleSaveEvent}
+                        />
+                    )}
                 </main>
             ) : (
                 <>
@@ -1881,19 +1907,106 @@ const App: React.FC = () => {
                                             </div>
                                         </div>
                                     )}
+                                    {/* Mobile sticky bar — search + filters + category pills */}
+                                    <AnimatePresence>
+                                        {isSearchSticky && (
+                                            <motion.div
+                                                key="mobile-sticky-bar"
+                                                initial={{ opacity: 0, y: -14 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -14 }}
+                                                transition={{ duration: 0.22, ease: 'easeOut' }}
+                                                className="md:hidden fixed top-[60px] left-0 right-0 z-[200] bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm"
+                                            >
+                                                {/* Row 1: Search + All + Happening Now */}
+                                                <div className="flex items-center gap-2 px-3 pt-2 pb-1.5">
+                                                    <div className="flex-1">
+                                                        <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
+                                                    </div>
+                                                    <div className="flex gap-1.5 flex-shrink-0">
+                                                        <button onClick={() => setSelectedCategory('All')} className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}>All</button>
+                                                        <button onClick={() => setSelectedCategory('Happening Now')} className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse flex-shrink-0`}></span>
+                                                            Now
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                {/* Row 2: Category pills — only after Categories section scrolls away */}
+                                                <AnimatePresence>
+                                                    {isCategoriesHidden && (
+                                                        <motion.div
+                                                            key="mobile-cat-pills"
+                                                            initial={{ opacity: 0, y: -8 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            exit={{ opacity: 0, y: -8 }}
+                                                            transition={{ duration: 0.18, ease: 'easeOut' }}
+                                                            className="flex gap-2 overflow-x-auto px-3 pb-2 no-scrollbar"
+                                                        >
+                                                            {CATEGORIES.map((cat, idx) => {
+                                                                const predefined = CATEGORY_DATA[cat];
+                                                                const bg = predefined ? predefined.bg : CUSTOM_CATEGORY_GRADIENTS[idx % CUSTOM_CATEGORY_GRADIENTS.length];
+                                                                const isSelected = selectedCategory === cat;
+                                                                return (
+                                                                    <button
+                                                                        key={cat}
+                                                                        onClick={() => setSelectedCategory(cat)}
+                                                                        className={`flex-shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold transition-all bg-gradient-to-br ${bg} text-white ${isSelected ? 'ring-2 ring-offset-1 ring-white/80 scale-105' : 'opacity-80 hover:opacity-100'}`}
+                                                                    >
+                                                                        {cat}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
                                     {/* Sticky bar — desktop only, fixed below header when scrolled past heading */}
                                     {isSearchSticky && (
-                                        <div className="hidden md:flex fixed top-16 left-20 right-4 z-[200] items-center gap-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm pl-8 pr-4 py-2.5">
-                                            <div className="flex-1">
-                                                <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
+                                        <div className="hidden md:block fixed top-16 left-20 right-4 z-[200] bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm">
+                                            {/* Row 1: Search + quick filters */}
+                                            <div className="flex items-center gap-3 pl-8 pr-4 py-2.5">
+                                                <div className="flex-1">
+                                                    <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
+                                                </div>
+                                                <div className="flex gap-2 flex-shrink-0">
+                                                    <button onClick={() => setSelectedCategory('All')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>All</button>
+                                                    <button onClick={() => setSelectedCategory('Happening Now')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse`}></span>
+                                                        Happening Now
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex gap-2 flex-shrink-0">
-                                                <button onClick={() => setSelectedCategory('All')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>All</button>
-                                                <button onClick={() => setSelectedCategory('Happening Now')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse`}></span>
-                                                    Happening Now
-                                                </button>
-                                            </div>
+                                            {/* Row 2: Category pills — slides in/out after Categories section scrolls away */}
+                                            <AnimatePresence>
+                                                {isCategoriesHidden && (
+                                                    <motion.div
+                                                        key="sticky-cat-pills"
+                                                        initial={{ opacity: 0, y: -12 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -12 }}
+                                                        transition={{ duration: 0.22, ease: 'easeOut' }}
+                                                        className="flex gap-2 overflow-x-auto pl-8 pr-4 pb-2.5 no-scrollbar"
+                                                    >
+                                                        {CATEGORIES.map((cat, idx) => {
+                                                            const predefined = CATEGORY_DATA[cat];
+                                                            const bg = predefined ? predefined.bg : CUSTOM_CATEGORY_GRADIENTS[idx % CUSTOM_CATEGORY_GRADIENTS.length];
+                                                            const isSelected = selectedCategory === cat;
+                                                            return (
+                                                                <button
+                                                                    key={cat}
+                                                                    onClick={() => setSelectedCategory(cat)}
+                                                                    className={`flex-shrink-0 px-3.5 py-1 rounded-full text-xs font-semibold transition-all bg-gradient-to-br ${bg} text-white ${isSelected ? 'ring-2 ring-offset-1 ring-white/80 scale-105' : 'opacity-80 hover:opacity-100'}`}
+                                                                >
+                                                                    {cat}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     )}
 
@@ -2016,13 +2129,12 @@ const App: React.FC = () => {
                                                 })}
                                             </div>
                                         </div>
+                                        {/* Sentinel — category pills show in sticky bar only after this exits view */}
+                                        <div ref={categoriesSentinelRef} className="h-px" />
 
                                         {/* Highlights — directly under Categories */}
                                         {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && highlightedDisplayEvents.length > 0 && (
-                                            <div className="mb-2">
-                                                <h2 className="text-base md:text-lg font-semibold md:font-bold text-gray-900 dark:text-white mb-4">Highlights</h2>
-                                                <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
-                                            </div>
+                                            <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
                                         )}
 
                                         {/* Upcoming Next Week — under Highlights */}
@@ -2030,12 +2142,7 @@ const App: React.FC = () => {
                                             <UpcomingNextWeek
                                                 events={getDisplayEvents}
                                                 onEventSelect={handleOpenEvent}
-                                                onViewAll={() => {
-                                                    setSelectedCategory('All');
-                                                    setTimeout(() => {
-                                                        document.getElementById('recommended-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                    }, 50);
-                                                }}
+                                                onViewAll={handleOpenViewAllUpcoming}
                                             />
                                         )}
 
@@ -2249,6 +2356,10 @@ const App: React.FC = () => {
                                     toggleTheme={toggleTheme}
                                     onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
                                     onProfileCardClick={() => {
+                                        setShowProfilePanel(false);
+                                        setShowEditProfileModal(true);
+                                    }}
+                                    onEditProfile={() => {
                                         setShowProfilePanel(false);
                                         setShowEditProfileModal(true);
                                     }}

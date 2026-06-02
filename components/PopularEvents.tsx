@@ -76,11 +76,21 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
                       {event.imageUrl
                         ? <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         : <div className="w-full h-full flex items-center justify-center text-primary-400"><Calendar size={24} /></div>}
+                      {event.isLive && (
+                        <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">
-                        {formatShortDate(event.date)}{event.startTime && <span className="ml-1">{formatTime(event.startTime)}</span>}
-                      </p>
+                      {event.isLive ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-red-500 uppercase tracking-wide mb-1">
+                          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                          Happening Now
+                        </span>
+                      ) : (
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">
+                          {formatShortDate(event.date)}{event.startTime && <span className="ml-1">{formatTime(event.startTime)}</span>}
+                        </p>
+                      )}
                       <h3 className="text-sm font-extrabold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1 group-hover:text-primary-600 transition-colors">{event.name}</h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">{event.venue}</p>
                     </div>
@@ -102,9 +112,19 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
                 {event.imageUrl
                   ? <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   : <div className="w-full h-full flex items-center justify-center bg-primary-50 dark:bg-primary-900/20 text-primary-500"><Calendar size={24} /></div>}
+                {event.isLive && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">{formatShortDate(event.date)}</p>
+                {event.isLive ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-red-500 uppercase tracking-wide mb-1">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                    Happening Now
+                  </span>
+                ) : (
+                  <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">{formatShortDate(event.date)}</p>
+                )}
                 <h3 className="text-sm font-extrabold text-gray-900 dark:text-white line-clamp-2 mb-1 group-hover:text-primary-600 transition-colors leading-snug">{event.name}</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{event.venue}</p>
               </div>
