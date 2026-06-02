@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { isOTPVerified, isSignupInProgress, isLoginInProgress } from './services/otpService';
+import { isOTPVerified, isSignupInProgress, isLoginInProgress, clearOTPVerified } from './services/otpService';
 import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, updateUserData, addUserViewedEvent, updateUserParticipation, getAllUsers, subscribeToUserProfile } from './services/userService';
 import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights, subscribeToHighlights } from './services/eventService';
 import { fetchUserFeedbackForEvent } from './services/feedbackService';
@@ -163,6 +163,17 @@ const App: React.FC = () => {
         return () => clearInterval(timer);
     }, []);
 
+    // Measure actual header height so mobile sticky bar sits right below it
+    useEffect(() => {
+        const measure = () => {
+            const h = document.querySelector('header');
+            if (h) setHeaderHeight(h.offsetHeight);
+        };
+        measure();
+        window.addEventListener('resize', measure);
+        return () => window.removeEventListener('resize', measure);
+    }, []);
+
     // Sticky search bar + category pills — runs every render so refs are always current
     useEffect(() => {
         const el = outerContainerRef.current;
@@ -233,6 +244,7 @@ const App: React.FC = () => {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [isSearchSticky, setIsSearchSticky] = useState(false);
     const [isCategoriesHidden, setIsCategoriesHidden] = useState(false);
+    const [headerHeight, setHeaderHeight] = useState(60);
     const categoriesSentinelRef = useRef<HTMLDivElement>(null);
     const outerContainerRef = useRef<HTMLDivElement>(null);
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -1297,6 +1309,8 @@ const App: React.FC = () => {
     };
 
     const confirmLogout = async () => {
+        // Clear the persisted OTP flag so a fresh OTP is required on next login
+        if (currentUser?.uid) clearOTPVerified(currentUser.uid);
         await signOut(auth);
         setCurrentUser(null);
         try {
@@ -1916,7 +1930,8 @@ const App: React.FC = () => {
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: -14 }}
                                                 transition={{ duration: 0.22, ease: 'easeOut' }}
-                                                className="md:hidden fixed top-[60px] left-0 right-0 z-[200] bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm"
+                                                className="md:hidden fixed left-0 right-0 z-[200] bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm"
+                                                style={{ top: headerHeight }}
                                             >
                                                 {/* Row 1: Search + All + Happening Now */}
                                                 <div className="flex items-center gap-2 px-3 pt-2 pb-1.5">

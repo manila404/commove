@@ -1,12 +1,13 @@
 const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_ATTEMPTS  = 5;
 
-// ─── Session OTP-verification tracking ───────────────────────────────────────
-// sessionStorage is cleared when the tab is closed, so every new browser
-// session must go through OTP even if Firebase has a persisted auth token.
+// ─── Persistent OTP-verification tracking ────────────────────────────────────
+// localStorage persists across app restarts / WebView backgrounding so the
+// user stays logged in when they minimize and reopen the app on Android.
 
-export const markOTPVerified      = (uid: string) => sessionStorage.setItem(`otp_ok_${uid}`, '1');
-export const isOTPVerified        = (uid: string) => sessionStorage.getItem(`otp_ok_${uid}`) === '1';
+export const markOTPVerified  = (uid: string) => localStorage.setItem(`otp_ok_${uid}`, '1');
+export const isOTPVerified    = (uid: string) => localStorage.getItem(`otp_ok_${uid}`) === '1';
+export const clearOTPVerified = (uid: string) => localStorage.removeItem(`otp_ok_${uid}`);
 
 // Signup in progress — set before createUserWithEmailAndPassword so the
 // auth gate doesn't sign the new user out before we can set the verified flag.
