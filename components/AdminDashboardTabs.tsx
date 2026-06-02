@@ -2832,7 +2832,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                     return (
                         <>
-                            <style>{`@keyframes dsSlideIn{from{transform:translateX(100%)}to{transform:translateX(0%)}}`}</style>
+                            <style>{`
+                                @keyframes dsSlideIn{from{transform:translateX(100%)}to{transform:translateX(0%)}}
+                                @keyframes dsSlideUp{from{transform:translateY(100%)}to{transform:translateY(0%)}}
+                                @media(max-width:767px){
+                                    .ds-drawer{top:auto!important;bottom:0!important;right:0!important;height:92%!important;max-width:100%!important;border-radius:20px 20px 0 0!important;animation:dsSlideUp 0.35s cubic-bezier(0.25,0.46,0.45,0.94) forwards!important;}
+                                }
+                            `}</style>
                             {/* Backdrop */}
                             <div
                                 style={{ position: 'fixed', inset: 0, zIndex: 99995, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)' }}
@@ -2840,11 +2846,11 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             />
                             {/* Slide panel */}
                             <div
+                                className="ds-drawer bg-white dark:bg-[#0f172a] shadow-2xl"
                                 style={{ position: 'fixed', top: 0, right: 0, height: '100%', width: '100%', maxWidth: '460px', zIndex: 99996, animation: 'dsSlideIn 0.3s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column' }}
-                                className="bg-white dark:bg-[#0f172a] shadow-2xl"
                             >
                                 {/* ── Drawer Header ───────────────────────── */}
-                                <div className="flex-shrink-0 px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                                <div className="pt-safe flex-shrink-0 px-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3" style={{ paddingTop: 'max(env(safe-area-inset-top,16px),16px)' }}>
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${scoreColor}20` }}>
                                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke={scoreColor} strokeWidth={2}>
@@ -3253,7 +3259,17 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             {/* ── Card Detail More Insights Drawer (right slide-over) ──────────── */}
             {cardDetailDrawer && typeof document !== 'undefined' && createPortal(
                 <>
-                    <style>{`@keyframes cardDetailSlideIn{from{transform:translateX(110%)}to{transform:translateX(0%)}}@keyframes cardDetailSlideOut{from{transform:translateX(0%)}to{transform:translateX(110%)}}`}</style>
+                    <style>{`
+                        @keyframes cardDetailSlideIn{from{transform:translateX(110%)}to{transform:translateX(0%)}}
+                        @keyframes cardDetailSlideOut{from{transform:translateX(0%)}to{transform:translateX(110%)}}
+                        @keyframes cardDetailSlideUp{from{transform:translateY(100%)}to{transform:translateY(0%)}}
+                        @keyframes cardDetailSlideDown{from{transform:translateY(0%)}to{transform:translateY(100%)}}
+                        @media(max-width:767px){
+                            .card-detail-drawer{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;max-width:100%!important;height:90%!important;border-radius:20px 20px 0 0!important;}
+                            .card-detail-drawer.entering{animation:cardDetailSlideUp 0.35s cubic-bezier(0.25,0.46,0.45,0.94) forwards!important;}
+                            .card-detail-drawer.leaving{animation:cardDetailSlideDown 0.3s cubic-bezier(0.55,0,1,0.45) forwards!important;}
+                        }
+                    `}</style>
                     {/* Backdrop + positioning container */}
                     <div
                         style={{ position: 'fixed', inset: 0, zIndex: 99997, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', paddingTop: '20px', paddingBottom: '20px', paddingRight: '20px', backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
@@ -3262,11 +3278,11 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     {/* Slide panel */}
                     <div
                         onClick={e => e.stopPropagation()}
+                        className={`card-detail-drawer ${cardDetailClosing ? 'leaving' : 'entering'} bg-white dark:bg-[#0f172a] shadow-2xl`}
                         style={{ width: '100%', maxWidth: '480px', animation: `${cardDetailClosing ? 'cardDetailSlideOut 0.3s cubic-bezier(0.55,0,1,0.45) forwards' : 'cardDetailSlideIn 0.3s cubic-bezier(0.25,0.46,0.45,0.94) forwards'}`, display: 'flex', flexDirection: 'column', borderRadius: '15px', overflow: 'hidden' }}
-                        className="bg-white dark:bg-[#0f172a] shadow-2xl"
                     >
                         {/* Header */}
-                        <div className="flex-shrink-0 px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                        <div className="flex-shrink-0 px-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3" style={{ paddingTop: 'max(env(safe-area-inset-top,16px),16px)' }}>
                             <div className="min-w-0">
                                 <p className="text-base font-black text-gray-900 dark:text-white">Decision Support</p>
                                 <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 leading-tight truncate">{cardDetailDrawer.title}</p>
