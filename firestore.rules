@@ -105,5 +105,13 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update, delete: if isStaff();
     }
+
+    // ─── App Config (highlights, etc.) ────────────────────────────────────────
+    // Any user may read config docs; only admins may write them.
+
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

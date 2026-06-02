@@ -328,20 +328,21 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     }, []);
 
     const toggleHighlight = (eventId: string) => {
-        setHighlightIds(prev =>
-            prev.includes(eventId) ? prev.filter(id => id !== eventId) : [...prev, eventId]
-        );
+        const newIds = highlightIds.includes(eventId)
+            ? highlightIds.filter(id => id !== eventId)
+            : [...highlightIds, eventId];
+        setHighlightIds(newIds);
+        setHighlights(newIds);   // persist immediately
         setHighlightsSaved(false);
     };
 
     const moveHighlight = (index: number, dir: -1 | 1) => {
-        setHighlightIds(prev => {
-            const arr = [...prev];
-            const newIdx = index + dir;
-            if (newIdx < 0 || newIdx >= arr.length) return arr;
-            [arr[index], arr[newIdx]] = [arr[newIdx], arr[index]];
-            return arr;
-        });
+        const arr = [...highlightIds];
+        const newIdx = index + dir;
+        if (newIdx < 0 || newIdx >= arr.length) return;
+        [arr[index], arr[newIdx]] = [arr[newIdx], arr[index]];
+        setHighlightIds(arr);
+        setHighlights(arr);      // persist immediately
         setHighlightsSaved(false);
     };
 
@@ -451,7 +452,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </h4>
                         {highlightIds.length > 0 && (
                             <button
-                                onClick={() => { setHighlightIds([]); setHighlightsSaved(false); }}
+                                onClick={() => { setHighlightIds([]); setHighlights([]); setHighlightsSaved(false); }}
                                 className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors"
                             >
                                 Clear all
