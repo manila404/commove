@@ -658,6 +658,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                         </div>
                     </button>
 
+                    {!isStaff && (
                     <button onClick={onShowMyEvents} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                         <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
                             <BookmarkIcon className="w-[18px] h-[18px]" />
@@ -667,6 +668,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Saved and attended events</p>
                         </div>
                     </button>
+                    )}
 
                     <button onClick={onShowNotificationSettings} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                         <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
