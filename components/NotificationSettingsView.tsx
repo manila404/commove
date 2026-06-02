@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BellIcon } from '../constants';
 import { User } from '../types';
 import { updateUserNotificationSettings } from '../services/userService';
@@ -27,10 +27,22 @@ const ToggleSwitch = ({ label, description, checked, onChange }: {
 const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ currentUser, onBack }) => {
   const { permissions, requestNotifications } = usePermissions();
   const [settings, setSettings] = useState(currentUser?.notificationSettings || {
-    pushEnabled: true, emailEnabled: false, upcomingReminders: true, newEvents: false,
-    quietHoursEnabled: false, quietHoursStart: '22:00', quietHoursEnd: '07:00',
-    emailFrequency: 'instant', vibrationEnabled: true,
+    pushEnabled: true,
+    emailEnabled: false,
+    upcomingReminders: true,
+    newEvents: false,
+    quietHoursEnabled: false,
+    quietHoursStart: '22:00',
+    quietHoursEnd: '07:00',
+    emailFrequency: 'instant',
+    vibrationEnabled: true,
   });
+  // Notify native layer when notification settings change (push/vibration)
+  useEffect(() => {
+    if (isInWebView()) {
+      postToNative({ type: 'UPDATE_NOTIFICATION_SETTINGS', settings });
+    }
+  }, [settings]);
   const [isTesting, setIsTesting] = useState(false);
 
   const updateSettings = async (newSettings: any) => {
@@ -49,6 +61,11 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ cur
     const newEnabled = !settings[key as keyof typeof settings];
     const newSettings = { ...settings, [key]: newEnabled };
     updateSettings(newSettings);
+
+    // When push setting changes, inform native (if disabling, we still notify)
+    if (key === 'pushEnabled' && isInWebView()) {
+      postToNative({ type: 'SET_PUSH_ENABLED', enabled: newEnabled });
+    }
 
     // Fire real haptic/vibration when the vibration toggle is turned ON
     if (key === 'vibrationEnabled' && newEnabled) {
