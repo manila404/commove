@@ -1284,11 +1284,19 @@ const App: React.FC = () => {
             setIsGuest(false);
             return;
         }
+        if (currentUser.role === 'admin' || currentUser.role === 'facilitator') {
+            showAlert(
+                'Residents Only',
+                'The QR Code scanner is only available for Resident accounts. Please log in as a Resident user to access this feature.',
+                'info'
+            );
+            return;
+        }
         try {
             window.history.pushState({ view: 'scanner' }, '');
         } catch (e) { }
         setShowQRScanner(true);
-    }, [currentUser]);
+    }, [currentUser, showAlert]);
 
     const handleOpenProfile = useCallback(() => {
         setShowProfilePanel(prev => !prev);
@@ -2440,7 +2448,7 @@ const App: React.FC = () => {
                                     onEventSelect={handleOpenEvent}
                                     onToggleSave={handleToggleSaveEvent}
                                     savedEventIds={currentUser?.savedEventIds || []}
-                                    onOpenScanner={() => setShowQRScanner(true)}
+                                    onOpenScanner={handleOpenScanner}
                                 />
                             )}
 
