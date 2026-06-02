@@ -63,12 +63,13 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
         <div className="relative w-full h-full bg-gray-100 dark:bg-gray-900 border-l border-gray-100 dark:border-gray-800">
             {/* Map Background */}
             <div className="absolute inset-0 z-0">
-                <InteractiveMap 
-                    userLocation={userLocation} 
-                    events={allMapEvents} 
-                    isLocationLive={isLocationLive} 
-                    className="w-full h-full" 
-                    filterPastEvents={true} 
+                <InteractiveMap
+                    userLocation={userLocation}
+                    events={allMapEvents}
+                    isLocationLive={isLocationLive}
+                    className="w-full h-full"
+                    filterPastEvents={true}
+                    onEventSelect={onEventSelect}
                 />
             </div>
 
@@ -113,7 +114,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                         </button>
                     </div>
                     
-                    <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                    <div className="p-4 pb-28 overflow-y-auto flex-1 custom-scrollbar space-y-4">
                         {listEvents.length > 0 ? (
                             listEvents.map((event) => (
                                 <div 

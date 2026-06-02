@@ -13,6 +13,7 @@ interface InteractiveMapProps {
   centerOnEvent?: { lat: number; lng: number };
   filterPastEvents?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
+  onEventSelect?: (event: EventType) => void;
 }
 
 // Local Icons for Zoom controls
@@ -35,7 +36,8 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
   className = "relative w-full aspect-[5/4] rounded-lg overflow-hidden border-2 border-gray-300 dark:border-gray-600 shadow-inner z-0",
   centerOnEvent,
   filterPastEvents = false,
-  onMapClick
+  onMapClick,
+  onEventSelect
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -114,6 +116,20 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
            setBearing(map.getBearing());
         });
       }
+
+      // Wire "View Event" button clicks from popup HTML to onEventSelect
+      map.on('popupopen', (e: any) => {
+        const container = e.popup.getElement();
+        if (!container) return;
+        const btn = container.querySelector('[data-view-event]');
+        if (btn && onEventSelect) {
+          btn.addEventListener('click', () => {
+            const eventId = btn.getAttribute('data-view-event');
+            const matched = (events as EventType[]).find((ev: EventType) => ev.id === eventId);
+            if (matched) { onEventSelect(matched); map.closePopup(); }
+          });
+        }
+      });
 
       mapRef.current = map;
       setIsMapReady(true);
@@ -329,7 +345,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
         })();
 
         const popupContent = `
-            <div class="min-w-[200px] p-1 font-sans">
+            <div class="min-w-[200px] p-1 font-sans" data-event-id="${event.id}">
               <h3 class="font-bold text-primary-700 text-base m-0 leading-tight">${event.name}</h3>
               <div class="flex items-center mt-2 text-xs text-gray-600 font-semibold">
                  <span>📅 ${formattedDate}</span>
@@ -340,6 +356,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
               <div class="mt-2 flex flex-wrap gap-1">
                 ${categories.map(cat => `<span class="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full border border-gray-200">${cat}</span>`).join('')}
               </div>
+              ${onEventSelect ? `<button data-view-event="${event.id}" style="margin-top:10px;width:100%;padding:6px 0;background:#8b5cf6;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">View Event</button>` : ''}
             </div>
         `;
 
