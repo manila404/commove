@@ -118,16 +118,16 @@ const ViewAllUpcomingEvents: React.FC<ViewAllUpcomingEventsProps> = ({
                 className="flex-shrink-0 text-left group/card active:scale-95 transition-transform"
               >
                 {/* Square image — identical to strip */}
-                <div className={`w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-2 shadow-sm ${event.isLive ? 'border-2 border-red-500/50 ring-2 ring-red-500/20' : ''}`}>
+                <div className={`w-full h-0 pb-[100%] relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-2 shadow-sm ${event.isLive ? 'border-2 border-red-500/50 ring-2 ring-red-500/20' : ''}`}>
                   {event.imageUrl ? (
                     <img
                       src={event.imageUrl}
                       alt={event.name}
-                      className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300"
+                      className="absolute inset-0 w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-300 dark:text-gray-600">
                       <ImageIcon size={36} />
                     </div>
                   )}

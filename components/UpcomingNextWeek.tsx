@@ -99,7 +99,7 @@ const UpcomingNextWeek: React.FC<UpcomingNextWeekProps> = ({ events, onEventSele
               className="flex-shrink-0 w-[148px] md:w-[168px] text-left group/card active:scale-95 transition-transform"
             >
               {/* Square image */}
-              <div className={`w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-2 shadow-sm ${event.isLive ? 'border-2 border-red-500/50 ring-2 ring-red-500/20' : ''}`}>
+              <div className={`w-full h-[148px] md:h-[168px] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-2 shadow-sm ${event.isLive ? 'border-2 border-red-500/50 ring-2 ring-red-500/20' : ''}`}>
                 {event.imageUrl ? (
                   <img
                     src={event.imageUrl}

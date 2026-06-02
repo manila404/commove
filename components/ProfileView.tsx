@@ -394,50 +394,50 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
                 {/* Options */}
                 <div className="flex-1 px-4 pt-5 pb-6 bg-white dark:bg-gray-900">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden">
                         {onProfileCardClick && (
                             <button
                                 onClick={() => { setShowManageAccountPanel(false); onProfileCardClick(); }}
-                                className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                                className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="text-gray-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                        </svg>
-                                    </div>
-                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Edit Profile</span>
+                                <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
                                 </div>
-                                <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                                <div className="flex-1 text-left min-w-0">
+                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Edit Profile</p>
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Name, avatar, contact info</p>
+                                </div>
                             </button>
                         )}
                         <button
                             onClick={() => setShowAccountWarning('deactivate')}
-                            className="w-full flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                            className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
                         >
-                            <div className="flex items-center gap-3">
-                                <div className="text-gray-400">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                    </svg>
-                                </div>
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Deactivate Account</span>
+                            <div className="w-9 h-9 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center shrink-0 text-amber-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                </svg>
                             </div>
-                            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                            <div className="flex-1 text-left min-w-0">
+                                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Deactivate Account</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Temporarily hide your profile</p>
+                            </div>
                         </button>
                         <button
                             onClick={() => setShowAccountWarning('delete')}
-                            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                            className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
                         >
-                            <div className="flex items-center gap-3">
-                                <div className="text-gray-400">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </div>
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Delete Account</span>
+                            <div className="w-9 h-9 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0 text-red-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
                             </div>
-                            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                            <div className="flex-1 text-left min-w-0">
+                                <p className="text-sm font-semibold text-red-600 dark:text-red-400">Delete Account</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Permanently remove your account</p>
+                            </div>
                         </button>
                     </div>
                 </div>
