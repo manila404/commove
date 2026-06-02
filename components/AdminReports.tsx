@@ -558,7 +558,7 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                 ) : (
                     <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
                         {/* Custom Dropdown Header */}
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border-b border-gray-100 dark:border-gray-700 gap-4 bg-white dark:bg-gray-800">
+                        <div className="flex flex-col gap-3 p-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 sm:flex-row sm:justify-between sm:items-center sm:gap-4">
                             <div className="flex items-center gap-2">
                                 {period !== 'yearly' && (
                                     <select 
@@ -604,16 +604,21 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
                                 }
 
                                 return activeData.events.map(eventData => (
-                                    <div key={eventData.event.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                                        <h5 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
-                                            {eventData.event.name} <span className="text-gray-500 font-normal text-xs ml-2">({eventData.participants.length} Participants)</span>
-                                        </h5>
-                                        <button 
+                                    <div key={eventData.event.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-2 md:flex-row md:justify-between md:items-center">
+                                        <div className="min-w-0">
+                                            <h5 className="font-semibold text-gray-800 dark:text-gray-200 text-sm leading-snug">
+                                                {eventData.event.name}
+                                            </h5>
+                                            <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5">
+                                                {eventData.participants.length} Participant{eventData.participants.length !== 1 ? 's' : ''}
+                                            </p>
+                                        </div>
+                                        <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleEventDownload(eventData, activeData.period);
                                             }}
-                                            className="text-xs bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400 dark:hover:bg-primary-900/50 px-3 py-1.5 rounded-lg font-medium transition-colors shrink-0"
+                                            className="w-full md:w-auto text-xs bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg font-medium transition-colors shrink-0 active:scale-95"
                                         >
                                             Download Excel
                                         </button>
