@@ -103,9 +103,17 @@ export const updateUserData = async (uid: string, data: Partial<User>): Promise<
     try {
         const userDocRef = doc(db, usersCollectionRef, uid);
         const cleanedData = sanitizeUserData(data);
-        // Use updateDoc (not setDoc+merge) so Firestore rules always evaluate this
-        // as an 'update' — setDoc+merge can ambiguously trigger 'create' evaluation.
-        await updateDoc(userDocRef, cleanedData);
+        // Try updateDoc first (unambiguous 'update' in Firestore rules).
+        // Fall back to setDoc+merge if the document doesn't exist yet.
+        try {
+            await updateDoc(userDocRef, cleanedData);
+        } catch (e: any) {
+            if (e?.code === 'not-found' || e?.message?.includes('No document to update')) {
+                await setDoc(userDocRef, cleanedData, { merge: true });
+            } else {
+                throw e;
+            }
+        }
     } catch (error) {
         console.error("Error updating user data:", error);
         throw error;

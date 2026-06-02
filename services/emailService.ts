@@ -27,8 +27,10 @@ export const sendOTPEmail = async (
             PUBLIC_KEY
         );
         return true;
-    } catch (err) {
+    } catch (err: any) {
         console.error('[EmailJS] Failed to send OTP:', err);
+        console.error('[EmailJS] Status:', err?.status, '| Text:', err?.text);
+        console.error('[EmailJS] Service:', SERVICE_ID, '| Template:', TEMPLATE_ID);
         return false;
     }
 };

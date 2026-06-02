@@ -83,7 +83,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
             if (!sent) {
                 clearLoginInProgress();
                 await signOut(auth);
-                setError('Failed to send verification code. Please try again.');
+                setError('Failed to send verification code. Check that your email is correct and try again. If the problem persists, contact support.');
                 captchaRef.current?.reset();
                 setIsLoading(false);
                 return;
