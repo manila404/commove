@@ -13,7 +13,7 @@ import { Tag } from 'lucide-react';
 import type { User, EventType, DisplayEventType, Reminder, AppNotification } from './types';
 import { createNotification, subscribeToNotifications, hasNotification } from './services/notificationService';
 import { useAlert } from './contexts/AlertContext';
-import { usePermissions } from './contexts/PermissionContext';
+import { usePermissions, isInWebView, postToNative } from './contexts/PermissionContext';
 import { useNetworkStatus } from './contexts/NetworkStatusContext';
 import { withRetry, getFriendlyErrorMessage } from './utils/networkUtils';
 import { toast } from 'sonner';
@@ -704,8 +704,14 @@ const App: React.FC = () => {
                                     ).catch(console.error);
                                 }
 
-                                // Browser push notification for the admin
-                                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                                // Push notification for the admin
+                                if (isInWebView()) {
+                                    postToNative({
+                                        type: 'SEND_NOTIFICATION',
+                                        title: 'Scheduled Event Published',
+                                        body: `"${event.name}" is now live!`
+                                    });
+                                } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                                     try {
                                         new Notification('Scheduled Event Published', {
                                             body: `"${event.name}" is now live!`,
@@ -765,7 +771,13 @@ const App: React.FC = () => {
                             hasNotification(currentUser.uid, 'reminder', event.id, `Reminder: ${event.name}`).then(exists => {
                                 if (exists) return;
 
-                                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                                if (isInWebView()) {
+                                    postToNative({
+                                        type: 'SEND_NOTIFICATION',
+                                        title: `Reminder: ${event.name}`,
+                                        body: `Starting soon at ${event.venue}`
+                                    });
+                                } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                                     try {
                                         new Notification(`Reminder: ${event.name}`, {
                                             body: `Starting soon at ${event.venue}`,
@@ -815,7 +827,13 @@ const App: React.FC = () => {
                         hasNotification(currentUser.uid, 'event_upcoming', event.id).then(exists => {
                             if (exists) return;
 
-                            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                            if (isInWebView()) {
+                                postToNative({
+                                    type: 'SEND_NOTIFICATION',
+                                    title: `Upcoming Event: ${event.name}`,
+                                    body: `Starts in 1 hour at ${event.venue}`
+                                });
+                            } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                                 try {
                                     new Notification(`Upcoming Event: ${event.name}`, {
                                         body: `Starts in 1 hour at ${event.venue}`,
@@ -865,7 +883,13 @@ const App: React.FC = () => {
                         hasNotification(currentUser.uid, 'event_tomorrow', event.id).then(exists => {
                             if (exists) return;
 
-                            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                            if (isInWebView()) {
+                                postToNative({
+                                    type: 'SEND_NOTIFICATION',
+                                    title: `Happening Tomorrow: ${event.name}`,
+                                    body: `Don't forget! ${event.name} is tomorrow.`
+                                });
+                            } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                                 try {
                                     new Notification(`Happening Tomorrow: ${event.name}`, {
                                         body: `Don't forget! ${event.name} is tomorrow.`,
@@ -1461,7 +1485,13 @@ const App: React.FC = () => {
         setTimeout(() => {
             if (!notifiedCustomReminders.current.has(eventId)) {
                 notifiedCustomReminders.current.add(eventId);
-                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                if (isInWebView()) {
+                    postToNative({
+                        type: 'SEND_NOTIFICATION',
+                        title: `Reminder: ${event.name}`,
+                        body: `Starting ${reminderLabel} at ${event.venue}`
+                    });
+                } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                     try {
                         new Notification(`Reminder: ${event.name}`, {
                             body: `Starting ${reminderLabel} at ${event.venue}`,

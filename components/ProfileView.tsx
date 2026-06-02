@@ -695,59 +695,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 )}
 
             </div>
-
-            {/* Deactivate / Delete Confirmation Modal */}
-            {showAccountModal && (
-                <div className="fixed inset-0 z-[6000] flex items-end sm:items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !isProcessingAccount && setShowAccountModal(null)} />
-                    <div className="relative w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-                        <div className={`p-5 ${showAccountModal === 'delete' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${showAccountModal === 'delete' ? 'bg-red-100 dark:bg-red-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
-                                {showAccountModal === 'delete' ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                    </svg>
-                                )}
-                            </div>
-                            <h3 className={`text-base font-bold ${showAccountModal === 'delete' ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
-                                {showAccountModal === 'delete' ? 'Delete Account' : 'Deactivate Account'}
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                {showAccountModal === 'delete'
-                                    ? 'This will permanently delete your account and all your data. This action cannot be undone.'
-                                    : 'Your account will be disabled. You can reactivate it by contacting support or logging in again.'
-                                }
-                            </p>
-                        </div>
-                        {accountError && (
-                            <div className="px-5 pt-3">
-                                <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-2">{accountError}</p>
-                            </div>
-                        )}
-                        <div className="p-5 flex flex-col gap-2">
-                            <button
-                                onClick={showAccountModal === 'delete' ? handleDeleteAccount : handleDeactivate}
-                                disabled={isProcessingAccount}
-                                className={`w-full py-3 rounded-xl font-bold text-sm text-white transition-opacity flex items-center justify-center gap-2 ${showAccountModal === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'} disabled:opacity-60`}
-                            >
-                                {isProcessingAccount && <Spinner size="sm" />}
-                                {showAccountModal === 'delete' ? 'Yes, Delete My Account' : 'Yes, Deactivate My Account'}
-                            </button>
-                            <button
-                                onClick={() => setShowAccountModal(null)}
-                                disabled={isProcessingAccount}
-                                className="w-full py-3 rounded-xl font-bold text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-60"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

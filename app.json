@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "3ddceecc-1a1d-4740-b525-472c320fa468"
+      }
+    },
+    "android": {
+      "package": "com.manila404.commove"
+    }
+  }
+}

@@ -1230,7 +1230,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                                 </div>
                             ) : (() => {
                                 const getAge = (u: User) => {
-                                    if (u.age != null) return u.age;
+                                    if ((u as any).age != null) return (u as any).age;
                                     if (u.birthday) {
                                         const birth = new Date(u.birthday);
                                         const now = new Date();
@@ -1247,7 +1247,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                                     return 'Senior';
                                 };
                                 const filtered = participants.filter(p => {
-                                    const sexVal = (p.user.sex || p.user.gender || '').trim();
+                                    const sexVal = (p.user.sex || (p.user as any).gender || '').trim();
                                     const sexMatch = participantSexFilter === 'All' ? true
                                         : participantSexFilter === 'Others' ? !['male','female'].includes(sexVal.toLowerCase()) && sexVal !== ''
                                         : sexVal.toLowerCase() === participantSexFilter.toLowerCase();
@@ -1266,7 +1266,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                                     <div className="space-y-3">
                                         {sorted.map((p, idx) => {
                                             const age = getAge(p.user);
-                                            const sex = p.user.sex || p.user.gender;
+                                            const sex = p.user.sex || (p.user as any).gender;
                                             return (
                                                 <div key={p.user.uid || idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-[15px] border border-gray-100 dark:border-gray-700">
                                                     <div className="flex items-center gap-3">
