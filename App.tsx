@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { isOTPVerified, isSignupInProgress, isLoginInProgress, clearOTPVerified } from './services/otpService';
+import { isOTPVerified, markOTPVerified, isSignupInProgress, isLoginInProgress, clearOTPVerified } from './services/otpService';
 import { getUserProfile, updateUserPreferences, updateUserSavedEvents, updateUserLikes, updateUserReminders, updateUserRole, updateUserData, addUserViewedEvent, updateUserParticipation, getAllUsers, subscribeToUserProfile } from './services/userService';
 import { fetchEvents, deleteEvent, updateEvent, updateEventStatus, getHighlights, subscribeToHighlights } from './services/eventService';
 import { fetchUserFeedbackForEvent } from './services/feedbackService';
@@ -377,12 +377,27 @@ const App: React.FC = () => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 // ── OTP gate ─────────────────────────────────────────────────
-                // Allow if OTP was verified this session OR signup is mid-flight.
-                // Any other persisted Firebase session that hasn't gone through
-                // OTP (e.g. a new browser tab) is signed out immediately.
+                // Allow if OTP was already verified, signup/login is in flight,
+                // OR if the user is returning (has an existing Firestore profile).
+                // Android WebView can clear localStorage when the process is killed,
+                // so we restore the verified flag for legitimate returning users
+                // rather than signing them out.
                 if (!isOTPVerified(firebaseUser.uid) && !isSignupInProgress() && !isLoginInProgress()) {
-                    await signOut(auth);
-                    return;
+                    try {
+                        const existingProfile = await getUserProfile(firebaseUser.uid);
+                        if (existingProfile) {
+                            // Returning user — their session was legitimately persisted.
+                            // Re-mark as verified so the gate passes going forward.
+                            markOTPVerified(firebaseUser.uid);
+                        } else {
+                            // No profile — unknown session, sign out for security.
+                            await signOut(auth);
+                            return;
+                        }
+                    } catch {
+                        // If Firestore check fails, be lenient and let the user through
+                        markOTPVerified(firebaseUser.uid);
+                    }
                 }
                 // ─────────────────────────────────────────────────────────────
                 try {
