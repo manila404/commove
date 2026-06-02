@@ -111,6 +111,7 @@ export default function App() {
         mediaPlaybackRequiresUserAction={false}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
+        injectedJavaScriptBeforeContentLoaded={`window.__commoveNative = true; true;`}
         onMessage={handleWebViewMessage}
         renderLoading={() => (
           <View style={styles.loadingContainer}>

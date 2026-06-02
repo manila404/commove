@@ -1,7 +1,7 @@
 
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBEKNCfxB7-vPjzIDgCLC1xlNXdBbrTNp8",
@@ -13,7 +13,8 @@ const firebaseConfig = {
   measurementId: "G-TEHJMYVKQP"
 };
 
-const app = initializeApp(firebaseConfig);
+// Guard against duplicate initialization during Vite HMR
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Auth with explicit local persistence and fallback
 const auth = getAuth(app);
@@ -22,7 +23,14 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
     setPersistence(auth, inMemoryPersistence);
 });
 
-// Initialize Firestore
-const db = getFirestore(app);
+// Use IndexedDB-backed persistent cache to prevent Firestore watch-stream assertion
+// errors (INTERNAL ASSERTION FAILED: Unexpected state) in Firebase SDK 10–12.
+// Falls back to the default in-memory instance if already initialized (HMR).
+let db;
+try {
+    db = initializeFirestore(app, { localCache: persistentLocalCache() });
+} catch {
+    db = getFirestore(app);
+}
 
 export { app, auth, db };

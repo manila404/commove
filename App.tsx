@@ -561,10 +561,32 @@ const App: React.FC = () => {
     }, [currentUser?.role, activeTab]); // Re-fetch occasionally when tab changes
 
     // 3.5 Global Notification Subscription
+    const seenNotifIdsRef = useRef<Set<string>>(new Set());
+    const isFirstNotifLoadRef = useRef(true);
+
     useEffect(() => {
         if (!currentUser?.uid) return;
+        seenNotifIdsRef.current = new Set();
+        isFirstNotifLoadRef.current = true;
+
         const unsub = subscribeToNotifications(currentUser.uid, (notifs) => {
             setUnreadNotificationCount(notifs.filter(n => !n.isRead).length);
+
+            if (isFirstNotifLoadRef.current) {
+                // Populate seen IDs on initial load without firing notifications
+                notifs.forEach(n => seenNotifIdsRef.current.add(n.id));
+                isFirstNotifLoadRef.current = false;
+                return;
+            }
+
+            // Detect and fire native bar notifications for newly added docs
+            const newNotifs = notifs.filter(n => !seenNotifIdsRef.current.has(n.id));
+            newNotifs.forEach(n => {
+                seenNotifIdsRef.current.add(n.id);
+                if (isInWebView()) {
+                    postToNative({ type: 'SEND_NOTIFICATION', title: n.title, body: n.body });
+                }
+            });
         });
         return () => unsub();
     }, [currentUser?.uid]);

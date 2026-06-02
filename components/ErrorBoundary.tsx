@@ -25,6 +25,12 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   handleRetry = () => {
+    // Firestore assertion errors corrupt the SDK's internal state — a full reload
+    // is the only reliable recovery; resetting React state alone won't help.
+    if (this.state.error?.message?.includes('INTERNAL ASSERTION FAILED')) {
+      window.location.reload();
+      return;
+    }
     this.setState({ hasError: false, error: null });
   };
 

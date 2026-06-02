@@ -20,7 +20,7 @@ const PermissionContext = createContext<PermissionContextType | undefined>(undef
 // WebView Bridge Helpers
 export const isInWebView = (): boolean =>
   typeof window !== 'undefined' &&
-  !!(window as any).ReactNativeWebView;
+  (!!(window as any).ReactNativeWebView || !!(window as any).__commoveNative);
 
 export const postToNative = (message: object) => {
   if (isInWebView()) {
