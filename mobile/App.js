@@ -1,16 +1,106 @@
-import React from 'react';
-import { StyleSheet, View, SafeAreaView, ActivityIndicator } from 'react-native';
+﻿import React, { useEffect, useRef } from 'react';
+import { StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, Vibration } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
+import * as Haptics from 'expo-haptics';
+
+// Configure how notifications appear when app is in foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+async function setupAndroidChannel() {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('commove-alerts', {
+      name: 'Commove Alerts',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#8b5cf6',
+    });
+  }
+}
+
+async function requestNativePermissions() {
+  const { status } = await Notifications.requestPermissionsAsync({
+    ios: { allowAlert: true, allowBadge: true, allowSound: true },
+  });
+  return status === 'granted';
+}
+
+async function getPermissionStatus() {
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status === 'granted') return 'granted';
+  if (status === 'denied') return 'denied';
+  return 'prompt';
+}
 
 export default function App() {
   const WEB_URL = 'https://commove.vercel.app/';
+  const webviewRef = useRef(null);
+
+  const postToWebView = (data) => {
+    if (webviewRef.current) {
+      const escaped = JSON.stringify(data).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      webviewRef.current.injectJavaScript(`window.dispatchEvent(new MessageEvent('message', { data: '${escaped}' })); true;`);
+    }
+  };
+
+  useEffect(() => { setupAndroidChannel(); }, []);
+
+  const handleWebViewMessage = async (event) => {
+    let data;
+    try { data = JSON.parse(event.nativeEvent.data); } catch { return; }
+
+    switch (data?.type) {
+      case 'GET_NOTIFICATION_STATUS': {
+        const status = await getPermissionStatus();
+        postToWebView({ type: 'INITIAL_NOTIFICATION_STATUS', status });
+        break;
+      }
+      case 'REQUEST_NOTIFICATION_PERMISSION': {
+        const granted = await requestNativePermissions();
+        postToWebView({ type: 'NOTIFICATION_PERMISSION_RESULT', granted });
+        break;
+      }
+      case 'SEND_NOTIFICATION': {
+        try {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: data.title || 'Commove',
+              body: data.body || 'You have a new notification.',
+              sound: true,
+              android: { channelId: 'commove-alerts' },
+            },
+            trigger: null,
+          });
+        } catch (e) { console.warn('[Commove] scheduleNotification failed:', e); }
+        break;
+      }
+      case 'VIBRATE': {
+        try {
+          if (Platform.OS === 'ios') {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          } else {
+            Vibration.vibrate(Array.isArray(data.pattern) ? data.pattern : [0, 200]);
+          }
+        } catch (e) { console.warn('[Commove] Haptic/vibrate failed:', e); }
+        break;
+      }
+      default: break;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" translucent={true} backgroundColor="transparent" />
-      <WebView 
-        source={{ uri: WEB_URL }} 
+      <WebView
+        ref={webviewRef}
+        source={{ uri: WEB_URL }}
         style={styles.webview}
         javaScriptEnabled={true}
         domStorageEnabled={true}
@@ -19,9 +109,9 @@ export default function App() {
         geolocationEnabled={true}
         allowFileAccess={true}
         mediaPlaybackRequiresUserAction={false}
-        // Important for safe area insets to be injected into the webview
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
+        onMessage={handleWebViewMessage}
         renderLoading={() => (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#8b5cf6" />
@@ -33,21 +123,10 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#111827',
-  },
-  webview: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#111827' },
+  webview: { flex: 1 },
   loadingContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#111827',
-  }
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    justifyContent: 'center', alignItems: 'center', backgroundColor: '#111827',
+  },
 });

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 
 type PermissionStatus = 'granted' | 'denied' | 'prompt' | 'unsupported';
@@ -17,6 +17,17 @@ interface PermissionContextType {
 
 const PermissionContext = createContext<PermissionContextType | undefined>(undefined);
 
+// WebView Bridge Helpers
+export const isInWebView = (): boolean =>
+  typeof window !== 'undefined' &&
+  !!(window as any).ReactNativeWebView;
+
+export const postToNative = (message: object) => {
+  if (isInWebView()) {
+    (window as any).ReactNativeWebView.postMessage(JSON.stringify(message));
+  }
+};
+
 export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [permissions, setPermissions] = useState<{
     location: PermissionStatus;
@@ -28,78 +39,69 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     notifications: 'prompt',
   });
 
+  const pendingNotifResolverRef = React.useRef<((granted: boolean) => void) | null>(null);
+
+  useEffect(() => {
+    const handleNativeMessage = (event: MessageEvent) => {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data?.type === 'NOTIFICATION_PERMISSION_RESULT') {
+          const granted: boolean = !!data.granted;
+          setPermissions(prev => ({ ...prev, notifications: granted ? 'granted' : 'denied' }));
+          if (pendingNotifResolverRef.current) {
+            pendingNotifResolverRef.current(granted);
+            pendingNotifResolverRef.current = null;
+          }
+          if (!granted) toast.error('Notification access denied. Please enable it in your device settings.');
+        }
+        if (data?.type === 'INITIAL_NOTIFICATION_STATUS') {
+          const status: PermissionStatus = data.status ?? 'prompt';
+          setPermissions(prev => ({ ...prev, notifications: status }));
+        }
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('message', handleNativeMessage);
+    return () => window.removeEventListener('message', handleNativeMessage);
+  }, []);
+
+  useEffect(() => {
+    if (isInWebView()) postToNative({ type: 'GET_NOTIFICATION_STATUS' });
+  }, []);
+
   const checkPermissions = useCallback(async () => {
     const newStatus = { ...permissions };
-
-    // Check Geolocation
     if ('geolocation' in navigator) {
       try {
         const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
         newStatus.location = result.state as PermissionStatus;
-        result.onchange = () => {
-          setPermissions(prev => ({ ...prev, location: result.state as PermissionStatus }));
-        };
-      } catch (e) {
-        newStatus.location = 'prompt';
-      }
-    } else {
-      newStatus.location = 'unsupported';
-    }
+        result.onchange = () => setPermissions(prev => ({ ...prev, location: result.state as PermissionStatus }));
+      } catch { newStatus.location = 'prompt'; }
+    } else { newStatus.location = 'unsupported'; }
 
-    // Check Notifications
-    const isMobileApp = typeof window !== 'undefined' && (
-      (window as any).ReactNativeWebView || 
-      /Android|iPhone|iPad|iPod|Expo/i.test(navigator.userAgent) ||
-      (window as any).standalone === true
-    );
-
-    if (isMobileApp) {
-      newStatus.notifications = 'granted';
+    if (isInWebView()) {
+      // Native layer handles this via INITIAL_NOTIFICATION_STATUS
     } else if ('Notification' in window) {
       const status = Notification.permission;
       newStatus.notifications = (status === 'default' ? 'prompt' : status) as PermissionStatus;
-    } else {
-      newStatus.notifications = 'unsupported';
-    }
+    } else { newStatus.notifications = 'unsupported'; }
 
-    // Camera is harder to check without requesting, but we can try permissions API
     try {
       const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
       newStatus.camera = result.state as PermissionStatus;
-      result.onchange = () => {
-        setPermissions(prev => ({ ...prev, camera: result.state as PermissionStatus }));
-      };
-    } catch (e) {
-      // Fallback if camera query is not supported
-      newStatus.camera = 'prompt';
-    }
+      result.onchange = () => setPermissions(prev => ({ ...prev, camera: result.state as PermissionStatus }));
+    } catch { newStatus.camera = 'prompt'; }
 
     setPermissions(newStatus);
   }, [permissions]);
 
-  useEffect(() => {
-    checkPermissions();
-  }, []);
+  useEffect(() => { checkPermissions(); }, []);
 
   const requestLocation = async () => {
     return new Promise<boolean>((resolve) => {
-      if (!('geolocation' in navigator)) {
-        toast.error('Geolocation is not supported by your browser');
-        resolve(false);
-        return;
-      }
-
+      if (!('geolocation' in navigator)) { toast.error('Geolocation is not supported by your browser'); resolve(false); return; }
       navigator.geolocation.getCurrentPosition(
-        () => {
-          setPermissions(prev => ({ ...prev, location: 'granted' }));
-          resolve(true);
-        },
-        (error) => {
-          console.error('Location error:', error);
-          setPermissions(prev => ({ ...prev, location: 'denied' }));
-          toast.error('Location access denied. Please enable it in settings.');
-          resolve(false);
-        }
+        () => { setPermissions(prev => ({ ...prev, location: 'granted' })); resolve(true); },
+        (error) => { console.error('Location error:', error); setPermissions(prev => ({ ...prev, location: 'denied' })); toast.error('Location access denied. Please enable it in settings.'); resolve(false); }
       );
     });
   };
@@ -118,34 +120,26 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const requestNotifications = async () => {
-    // Detect if we are in the Mobile App wrapper
-    const isMobileApp = typeof window !== 'undefined' && (
-      (window as any).ReactNativeWebView || 
-      /Android|iPhone|iPad|iPod|Expo/i.test(navigator.userAgent) ||
-      (window as any).standalone === true
-    );
-
-    if (isMobileApp) {
-        // Mobile always uses internal Firestore notifications, so we treat as granted immediately
-        setPermissions(prev => ({ ...prev, notifications: 'granted' }));
-        return true;
+  const requestNotifications = async (): Promise<boolean> => {
+    if (isInWebView()) {
+      return new Promise<boolean>((resolve) => {
+        pendingNotifResolverRef.current = resolve;
+        postToNative({ type: 'REQUEST_NOTIFICATION_PERMISSION' });
+        setTimeout(() => {
+          if (pendingNotifResolverRef.current) {
+            pendingNotifResolverRef.current = null;
+            toast.error('Permission request timed out. Please try again.');
+            resolve(false);
+          }
+        }, 15000);
+      });
     }
-
-    if (!('Notification' in window)) {
-      toast.error('Notifications are not supported by your browser');
-      return false;
-    }
-
+    if (!('Notification' in window)) { toast.error('Notifications are not supported by your browser'); return false; }
     const permission = await Notification.requestPermission();
     setPermissions(prev => ({ ...prev, notifications: permission as PermissionStatus }));
-    
-    if (permission === 'granted') {
-      return true;
-    } else {
-      toast.error('Notification access denied.');
-      return false;
-    }
+    if (permission === 'granted') return true;
+    toast.error('Notification access denied.');
+    return false;
   };
 
   return (
@@ -157,8 +151,6 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
 export const usePermissions = () => {
   const context = useContext(PermissionContext);
-  if (context === undefined) {
-    throw new Error('usePermissions must be used within a PermissionProvider');
-  }
+  if (context === undefined) throw new Error('usePermissions must be used within a PermissionProvider');
   return context;
 };
