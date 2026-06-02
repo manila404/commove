@@ -138,17 +138,6 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ cur
               </button>
             </div>
           )}
-          <ToggleSwitch label="Email Notifications" description="Receive digests and updates via email" checked={settings.emailEnabled} onChange={() => toggle('emailEnabled')} />
-          {settings.emailEnabled && (
-            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700">
-              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Email Frequency</label>
-              <select value={settings.emailFrequency} onChange={(e) => handleInputChange('emailFrequency', e.target.value)} className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
-                <option value="instant">Instant Alerts</option>
-                <option value="daily">Daily Digest</option>
-                <option value="weekly">Weekly Summary</option>
-              </select>
-            </div>
-          )}
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
