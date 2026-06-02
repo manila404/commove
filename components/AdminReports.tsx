@@ -3,6 +3,39 @@ import * as XLSX from 'xlsx-js-style';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { EventType, User } from '../types';
 
+// Cross-platform Excel download — works in desktop browsers AND Android WebView
+const downloadExcel = (buffer: ArrayBuffer, filename: string) => {
+    const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const blob = new Blob([buffer], { type: mimeType });
+
+    // Primary: blob URL (works on desktop + modern Android Chrome)
+    if (window.URL && window.URL.createObjectURL) {
+        try {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.setAttribute('download', filename);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => window.URL.revokeObjectURL(url), 200);
+            return;
+        } catch { /* fall through */ }
+    }
+
+    // Fallback: FileReader base64 data URI (reliable in Android WebView)
+    const reader = new FileReader();
+    reader.onload = () => {
+        const a = document.createElement('a');
+        a.href = reader.result as string;
+        a.setAttribute('download', filename);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+    reader.readAsDataURL(blob);
+};
+
 const ALL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const ALL_QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
 const CURRENT_YEAR = new Date().getFullYear();
@@ -310,16 +343,8 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
 
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = window.URL.createObjectURL(data);
-        const link = document.createElement('a');
-        link.href = url;
         const cleanName = activePeriodStr.replace(/[^a-zA-Z0-9]/g, '_');
-        link.setAttribute('download', `Commove_Report_${cleanName}_${new Date().toISOString().split('T')[0]}.xlsx`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        downloadExcel(excelBuffer, `Commove_Report_${cleanName}_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
     const handleEventDownload = (eventData: any, periodKey: string) => {
@@ -448,16 +473,8 @@ const AdminReports: React.FC<AdminReportsProps> = ({ events, users }) => {
         XLSX.utils.book_append_sheet(workbook, worksheet, "Event Report");
 
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = window.URL.createObjectURL(data);
-        const link = document.createElement('a');
-        link.href = url;
         const cleanName = eventData.event.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-        link.setAttribute('download', `Commove_Event_${cleanName}_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        downloadExcel(excelBuffer, `Commove_Event_${cleanName}_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
     return (
