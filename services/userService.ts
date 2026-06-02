@@ -103,7 +103,9 @@ export const updateUserData = async (uid: string, data: Partial<User>): Promise<
     try {
         const userDocRef = doc(db, usersCollectionRef, uid);
         const cleanedData = sanitizeUserData(data);
-        await setDoc(userDocRef, cleanedData, { merge: true });
+        // Use updateDoc (not setDoc+merge) so Firestore rules always evaluate this
+        // as an 'update' — setDoc+merge can ambiguously trigger 'create' evaluation.
+        await updateDoc(userDocRef, cleanedData);
     } catch (error) {
         console.error("Error updating user data:", error);
         throw error;

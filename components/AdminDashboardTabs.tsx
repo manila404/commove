@@ -2644,24 +2644,25 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const participationRate = residents.length > 0 ? Math.round((participants.length / residents.length) * 100) : 0;
     const pendingApprovalsCount = pendingRequests.length;
 
-    // Calculate Growth Percentages (Month over Month)
+    // Calculate Growth Percentages (Month over Month) — capped at ±100%
+    const clampGrowth = (val: number) => Math.max(-100, Math.min(100, val));
     const currentMonthName = months[currentMonthIndex];
     const prevMonthName = currentMonthIndex > 0 ? months[currentMonthIndex - 1] : months[11];
-    
+
     // 1. Participant/User Growth
     const currentCheckIns = checkInsByMonth[currentMonthName] || 0;
     const prevCheckIns = checkInsByMonth[prevMonthName] || 0;
-    const participantGrowth = prevCheckIns === 0 ? (currentCheckIns > 0 ? 100 : 0) : Math.round(((currentCheckIns - prevCheckIns) / prevCheckIns) * 100);
+    const participantGrowth = clampGrowth(prevCheckIns === 0 ? (currentCheckIns > 0 ? 100 : 0) : Math.round(((currentCheckIns - prevCheckIns) / prevCheckIns) * 100));
 
     // 2. Event Growth
     const currentEvents = eventsByMonth[currentMonthName] || 0;
     const prevEvents = eventsByMonth[prevMonthName] || 0;
-    const eventGrowth = prevEvents === 0 ? (currentEvents > 0 ? 100 : 0) : Math.round(((currentEvents - prevEvents) / prevEvents) * 100);
+    const eventGrowth = clampGrowth(prevEvents === 0 ? (currentEvents > 0 ? 100 : 0) : Math.round(((currentEvents - prevEvents) / prevEvents) * 100));
 
-    // 3. Participation Rate Growth (Mocked trend based on check-ins vs events ratio changes)
+    // 3. Participation Rate Growth (check-ins per event ratio, month over month)
     const currentRatio = currentEvents > 0 ? currentCheckIns / currentEvents : 0;
     const prevRatio = prevEvents > 0 ? prevCheckIns / prevEvents : 0;
-    const rateGrowth = prevRatio === 0 ? (currentRatio > 0 ? 5 : 0) : Math.round(((currentRatio - prevRatio) / prevRatio) * 100);
+    const rateGrowth = clampGrowth(prevRatio === 0 ? (currentRatio > 0 ? 100 : 0) : Math.round(((currentRatio - prevRatio) / prevRatio) * 100));
 
     const renderGrowth = (val: number) => {
         if (val === 0) return <span className="text-[10px] md:text-xs font-bold text-gray-400">0%</span>;
