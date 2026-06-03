@@ -97,7 +97,7 @@ const DEFAULT_REQUIREMENTS = [
     { key: 'businessPermitUrl', label: 'Business Permit' },
 ];
 
-type DashboardTab = 'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights';
+type DashboardTab = 'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCreated, onEventUpdated, onEventDeleted, onClose, onManageRegistrations }) => {
     const { showAlert, showConfirm } = useAlert();
@@ -216,7 +216,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         }
     }, [requestedDashboardTab]);
 
-    const dashboardAvailableTabs: DashboardTab[] = ['analytics', 'demographics', 'events', 'calendar', 'reports'];
+    const dashboardAvailableTabs: DashboardTab[] = ['analytics', 'events', 'calendar', 'reports'];
     if (canManageUsers) {
         dashboardAvailableTabs.splice(3, 0, 'users');
         dashboardAvailableTabs.push('highlights');
@@ -825,9 +825,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                     )}
                     <button
                         onClick={() => { setEditingEvent(null); switchTab('create'); }}
-                        className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all transform active:scale-[0.98] shadow-sm text-sm font-bold"
+                        className="text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all transform active:scale-[0.98] shadow-sm text-sm font-semibold"
+                        style={{ background: '#0052A3' }}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
                         Create Event
@@ -839,38 +840,74 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             <div className="flex-1 min-h-0 overflow-y-auto animate-fade-in-up">
             <div className="p-4 md:py-8 pb-24">
             {/* Hero banner */}
-            <div className="relative overflow-hidden rounded-2xl mb-8" style={{ minHeight: '148px', background: 'linear-gradient(130deg, #eaedff 0%, #d8ccff 22%, #c9a5f5 45%, #e99af0 68%, #fbb5d5 100%)' }}>
-                {/* Frosted glass rectangles — left cluster */}
-                <div style={{ position: 'absolute', width: '200px', height: '165px', borderRadius: '28px', background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.28)', transform: 'rotate(-18deg)', top: '-35px', left: '1%' }} />
-                <div style={{ position: 'absolute', width: '165px', height: '135px', borderRadius: '24px', background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.20)', transform: 'rotate(-10deg)', top: '-12px', left: '7%' }} />
-                <div style={{ position: 'absolute', width: '135px', height: '108px', borderRadius: '20px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', transform: 'rotate(-4deg)', top: '12px', left: '13%' }} />
+            <div className="relative overflow-hidden rounded-2xl mb-8" style={{ minHeight: '148px', background: 'linear-gradient(to right, #0052A3 0%, #0066cc 55%, #FFD200 100%)' }}>
+                {/* Glassy rectangles — left cluster */}
+                <div style={{ position: 'absolute', width: '200px', height: '165px', borderRadius: '28px', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.25)', transform: 'rotate(-18deg)', top: '-35px', left: '1%' }} />
+                <div style={{ position: 'absolute', width: '165px', height: '135px', borderRadius: '24px', background: 'rgba(255,255,255,0.09)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.18)', transform: 'rotate(-10deg)', top: '-12px', left: '7%' }} />
+                <div style={{ position: 'absolute', width: '135px', height: '108px', borderRadius: '20px', background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)', transform: 'rotate(-4deg)', top: '12px', left: '13%' }} />
 
-                {/* Pink/magenta center blob */}
-                <div style={{ position: 'absolute', width: '150px', height: '125px', borderRadius: '50%', background: 'radial-gradient(circle at 38% 38%, #ff28a0 0%, #e040fb 55%, rgba(200,50,200,0) 100%)', filter: 'blur(14px)', top: '2%', left: '40%', opacity: 0.88 }} />
-
-                {/* Purple/violet stacked rectangles — right fan */}
-                <div style={{ position: 'absolute', width: '168px', height: '138px', borderRadius: '28px', background: 'linear-gradient(148deg, #b570ff 0%, #7c22d4 100%)', transform: 'rotate(28deg)', top: '-28px', right: '24%', opacity: 0.78 }} />
-                <div style={{ position: 'absolute', width: '158px', height: '128px', borderRadius: '26px', background: 'linear-gradient(148deg, #a050ef 0%, #6b18c4 100%)', transform: 'rotate(20deg)', top: '-16px', right: '16%', opacity: 0.80 }} />
-                <div style={{ position: 'absolute', width: '148px', height: '118px', borderRadius: '24px', background: 'linear-gradient(148deg, #8f3de2 0%, #5a10b0 100%)', transform: 'rotate(12deg)', top: '-4px', right: '9%', opacity: 0.86 }} />
-                <div style={{ position: 'absolute', width: '138px', height: '108px', borderRadius: '22px', background: 'linear-gradient(148deg, #7928cc 0%, #4a0090 100%)', transform: 'rotate(4deg)', top: '8px', right: '2%', opacity: 0.92 }} />
+                {/* Glassy rectangles — right fan */}
+                <div style={{ position: 'absolute', width: '168px', height: '138px', borderRadius: '28px', background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.30)', transform: 'rotate(28deg)', top: '-28px', right: '24%' }} />
+                <div style={{ position: 'absolute', width: '158px', height: '128px', borderRadius: '26px', background: 'rgba(255,255,255,0.10)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.22)', transform: 'rotate(20deg)', top: '-16px', right: '16%' }} />
+                <div style={{ position: 'absolute', width: '148px', height: '118px', borderRadius: '24px', background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.16)', transform: 'rotate(12deg)', top: '-4px', right: '9%' }} />
+                <div style={{ position: 'absolute', width: '138px', height: '108px', borderRadius: '22px', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)', transform: 'rotate(4deg)', top: '8px', right: '2%' }} />
 
                 {/* Text */}
-                <div className="relative z-10 px-6 py-6 md:px-8 md:py-7">
-                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1.5 tracking-tight">
-                        Hello, {currentUser.name.split(' ')[0]}
-                    </h1>
-                    <p className="text-sm font-medium text-gray-600 leading-snug">
-                        Full overview of Commove analytics
-                    </p>
-                    <p className="text-sm font-medium text-gray-500 leading-snug mt-0.5">
-                        Manage events, users, and insights all in one place.
-                    </p>
-                </div>
+                {(() => {
+                    const bannerContent: Record<string, { heading: string; line1: string; line2: string }> = {
+                        analytics: {
+                            heading: `Hello, ${currentUser.name.split(' ')[0]}`,
+                            line1: 'Full overview of Commove analytics',
+                            line2: 'Manage events, users, and insights all in one place.',
+                        },
+                        events: {
+                            heading: 'Manage Events',
+                            line1: 'Create, review, and publish community events',
+                            line2: 'Approve submissions, track attendance, and keep things running.',
+                        },
+                        users: {
+                            heading: 'Manage Users',
+                            line1: 'View and manage all registered community members',
+                            line2: 'Assign roles, handle requests, and keep your community organized.',
+                        },
+                        calendar: {
+                            heading: 'Events Calendar',
+                            line1: 'Browse upcoming events by date',
+                            line2: 'Stay on top of what\'s happening in the community.',
+                        },
+                        reports: {
+                            heading: 'Reports & Analytics',
+                            line1: 'Generate participation and engagement reports',
+                            line2: 'Download data exports to track event impact over time.',
+                        },
+                        highlights: {
+                            heading: 'Community Highlights',
+                            line1: 'Feature the best moments and events',
+                            line2: 'Showcase what makes this community shine.',
+                        },
+                    };
+                    const content = bannerContent[dashboardActiveTab] || bannerContent.analytics;
+                    return (
+                        <div key={dashboardActiveTab} className="relative z-10 px-6 py-6 md:px-8 md:py-7" style={{ animation: 'bannerFadeRight 0.4s ease forwards' }}>
+                            <style>{`@keyframes bannerFadeRight { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }`}</style>
+                            <h1 className="text-xl md:text-2xl font-semibold text-white mb-1.5 tracking-tight">
+                                {content.heading}
+                            </h1>
+                            <p className="text-sm font-medium text-blue-100 leading-snug">
+                                {content.line1}
+                            </p>
+                            <p className="text-sm font-medium text-blue-200 leading-snug mt-0.5">
+                                {content.line2}
+                            </p>
+                        </div>
+                    );
+                })()}
             </div>
             <div className="flex md:hidden gap-2 w-full items-center mb-6">
                 <button
                     onClick={() => { setEditingEvent(null); switchTab('create'); }}
-                    className="w-full justify-center bg-[#8b5cf6] hover:bg-[#7c3aed] text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all transform active:scale-[0.98] shadow-sm text-sm font-bold"
+                    className="w-full justify-center text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all transform active:scale-[0.98] shadow-sm text-sm font-bold"
+                    style={{ background: '#0052A3' }}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />

@@ -107,21 +107,6 @@ export const getEventAlerts = (event: EventType, allEvents: EventType[]): EventA
     }
 
     // ── Low registration alert for PUBLISHED events close to their date ───────
-    if ((event.status === 'published' || event.status === 'scheduled') &&
-        daysUntil >= 0 && daysUntil <= LOW_REGISTRATION_DAYS_WINDOW) {
-        // Private events use approved registrations; public events use interested or check-ins
-        const count = event.isPrivate
-            ? (event.approvedCount ?? 0)
-            : Math.max(event.interestedCount ?? 0, event.checkInCount ?? 0);
-        if (count < LOW_REGISTRATION_THRESHOLD) {
-            alerts.push({
-                id: 'low-registration',
-                severity: 'warning',
-                label: 'Low Registration',
-                detail: `Only ${count} ${event.isPrivate ? 'approved registration' : 'participant'}${count === 1 ? '' : 's'} with ${daysUntil === 0 ? 'event today' : `${daysUntil} day${daysUntil === 1 ? '' : 's'} left`}.`,
-            });
-        }
-    }
 
     return alerts;
 };

@@ -90,7 +90,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
           style={{ transform: 'scale(1)', opacity: 1 }}
         >
           {/* User Info Card */}
-          <div className="bg-primary-600 dark:bg-primary-800 p-3 rounded-lg shadow-sm relative z-20">
+          <div className="p-3 rounded-lg shadow-sm relative z-20 overflow-hidden" style={{ background: 'linear-gradient(to right, #0052A3 0%, #0066cc 55%, #FFD200 100%)' }}>
               <div className="flex items-center gap-2.5">
                   <div className="relative group shrink-0">
                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary-600 shadow-md overflow-hidden">

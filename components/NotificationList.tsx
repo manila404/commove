@@ -52,7 +52,7 @@ const TypeIcon: React.FC<{ type: AppNotification['type']; isRead: boolean }> = (
     }
     if (type === 'event_created' || type === 'event_submitted') {
         return (
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isRead ? 'bg-gray-100 dark:bg-gray-700 text-gray-400' : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isRead ? 'bg-gray-100 dark:bg-gray-700 text-gray-400' : ''}`} style={!isRead ? { background: '#EBF2FF', color: '#0052A3' } : {}}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
@@ -592,7 +592,7 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-sm text-gray-400 font-medium">
-                            You have <span className="text-primary-600 font-black">{unreadCount} Notifications</span> today.
+                            You have <span className="font-semibold" style={{ color: '#0052A3' }}>{unreadCount} Notifications</span> today.
                         </p>
                     </div>
                     <button 
@@ -655,7 +655,7 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                 return (
                     <div className="space-y-3">
                         {/* Section Header */}
-                        <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                             <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                                 <span className="relative flex h-2.5 w-2.5">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -721,7 +721,7 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
             <div className="space-y-8">
                 {Object.entries(groupedNotifications).map(([group, list]) => (
                     <div key={group} className="space-y-3">
-                        <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                             {group}
                             <div className="h-[2px] flex-1 bg-gray-100 dark:bg-gray-800 rounded-full" />
                         </h3>
@@ -751,13 +751,13 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                                             onClick={() => handleClick(notif)}
                                         >
                                             {!notif.isRead && (
-                                                <span className="absolute top-4 left-4 w-2 h-2 rounded-full bg-primary-600" />
+                                                <span className="absolute top-4 left-4 w-2 h-2 rounded-full" style={{ background: '#0052A3' }} />
                                             )}
 
                                             <TypeIcon type={notif.type} isRead={notif.isRead} />
 
                                             <div className="flex-1 min-w-0">
-                                                <h4 className={`font-bold text-sm ${notif.isRead ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                                                <h4 className={`font-semibold text-sm ${notif.isRead ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                                                     {notif.title}
                                                 </h4>
                                                 <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 line-clamp-2 font-medium">

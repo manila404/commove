@@ -2017,6 +2017,7 @@ const App: React.FC = () => {
                             onOpenScanner={handleOpenScanner}
                             pendingFacilitatorCount={pendingFacilitatorCount}
                             unreadNotificationCount={unreadNotificationCount}
+                            isStaff={isStaff}
                         />
                         <main ref={outerContainerRef} className={`flex-1 min-h-0 transition-all duration-300 scroll-smooth ${activeTab === 'nearby'
                             ? 'h-full overflow-hidden'
@@ -2149,7 +2150,7 @@ const App: React.FC = () => {
 
                                     <div className="px-4 md:pl-8 md:pr-4 space-y-4">
                                         <div className="space-y-1 mb-5 animate-fade-in-up">
-                                            <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Discover Events</h1>
+                                            <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Discover Events</h1>
                                             <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm md:max-w-none leading-relaxed">
                                                 Explore popular events near you, browse by category, or check out some of the great community calendars.
                                             </p>
@@ -2210,7 +2211,7 @@ const App: React.FC = () => {
                                         {/* 3. Category Cards */}
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
-                                                <h2 className="text-base md:text-lg font-semibold md:font-bold text-gray-900 dark:text-white">Categories</h2>
+                                                <h2 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">Categories</h2>
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => scrollCategories('left')}
@@ -2285,7 +2286,7 @@ const App: React.FC = () => {
 
                                         {/* Recommended for You + Event List */}
                                         <div className="space-y-4">
-                                            <h2 id="recommended-section" className="text-base md:text-lg font-semibold md:font-bold text-gray-900 dark:text-white pt-1">
+                                            <h2 id="recommended-section" className="text-base md:text-lg font-semibold text-gray-900 dark:text-white pt-1">
                                                 {selectedDateFilter ? `Events on ${formatDisplayDate(selectedDateFilter)}` :
                                                     selectedCategory === 'All' ? 'Recommended for You' : selectedCategory}
                                             </h2>

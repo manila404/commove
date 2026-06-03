@@ -41,7 +41,7 @@ interface AdminDashboardTabsProps {
     onRejectFacilitator: (userId: string) => void;
     onDeleteUser: (userId: string) => void;
     canManageUsers: boolean;
-    activeTab: 'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights';
+    activeTab: 'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights';
     setActiveTab: (tab: 'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights') => void;
     initialTab?: 'analytics' | 'events' | 'users';
     onInitialTabConsumed?: () => void;
@@ -206,6 +206,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [analyticsDrawerEvent, setAnalyticsDrawerEvent] = useState<EventType | null>(null);
     const [metricsDrawerOpen, setMetricsDrawerOpen] = useState(false);
     const [dsDrawerOpen, setDsDrawerOpen] = useState(false);
+    const [pendingDrawerOpen, setPendingDrawerOpen] = useState(false);
+    const [pendingFacilitatorDrawerOpen, setPendingFacilitatorDrawerOpen] = useState(false);
     const [cardDetailDrawer, setCardDetailDrawer] = useState<{ title: string; insights: Array<{ level: InsightLevel; text: string; rec?: string }> } | null>(null);
     const [cardDetailClosing, setCardDetailClosing] = useState(false);
     const closeCardDetailDrawer = () => {
@@ -237,6 +239,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [userSortOrder, setUserSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [userPage, setUserPage] = useState(1);
     const [showPendingFacilitatorFilter, setShowPendingFacilitatorFilter] = useState(false);
+    const [showUserFilterDropdown, setShowUserFilterDropdown] = useState(false);
+    const [openKebabUserId, setOpenKebabUserId] = useState<string | null>(null);
     const USERS_PER_PAGE = 10;
 
     // ── User search bar ───────────────────────────────────────────────────────
@@ -529,7 +533,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-3 mb-5 text-left space-y-2 border border-gray-100 dark:border-gray-700">
                                     {selectedEvents.map((ev, i) => (
                                         <div key={ev.id} className="flex items-center gap-2.5">
-                                            <span className="w-5 h-5 rounded-full bg-[#8b5cf6]/10 text-[#8b5cf6] text-[10px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
+                                            <span className="w-5 h-5 rounded-full text-[10px] font-semibold flex items-center justify-center shrink-0 text-white" style={{ background: '#0052A3' }}>{i + 1}</span>
                                             {ev.imageUrl && <img src={ev.imageUrl} alt={ev.name} className="w-8 h-8 rounded-lg object-cover shrink-0" />}
                                             <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{ev.name}</p>
                                         </div>
@@ -539,7 +543,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                             <button
                                 onClick={() => { setHighlightsShowModal(false); setHighlightsSaved(false); }}
-                                className="w-full py-3 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-white font-bold text-sm transition-all active:scale-95 shadow-lg shadow-purple-500/20"
+                                className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all active:scale-95 shadow-sm"
+                                style={{ background: '#0052A3' }}
                             >
                                 Done
                             </button>
@@ -550,17 +555,16 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {/* Header */}
                 <div className="flex items-start justify-between">
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Feed Highlights</h3>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Feed Highlights</h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Select any number of events to feature at the top of the resident feed.</p>
                     </div>
                     <button
                         onClick={saveHighlights}
                         disabled={highlightsSaving}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            highlightsSaved
-                                ? 'bg-green-600 text-white'
-                                : 'bg-primary-600 hover:bg-primary-700 text-white'
+                        className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 shadow-sm ${
+                            highlightsSaved ? 'bg-green-600 text-white' : 'text-white'
                         } disabled:opacity-60`}
+                        style={!highlightsSaved ? { background: '#0052A3' } : {}}
                     >
                         {highlightsSaving ? 'Saving…' : highlightsSaved ? '✓ Saved!' : 'Save Highlights'}
                     </button>
@@ -569,18 +573,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {/* Selected highlights — ordered list */}
                 <div className="bg-white dark:bg-[#111827] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
                     <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                             Selected Highlights
-                            <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${
-                                highlightIds.length > 0
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                    : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                            }`}>{highlightIds.length}</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">{highlightIds.length}</span>
                         </h4>
                         {highlightIds.length > 0 && (
                             <button
                                 onClick={() => { setHighlightIds([]); setHighlights([]); setHighlightsSaved(false); }}
-                                className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors"
+                                className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors"
                             >
                                 Clear all
                             </button>
@@ -589,12 +589,12 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                     {highlightsLoading ? (
                         <div className="py-12 flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-purple-600" />
+                            <div className="animate-spin rounded-full h-7 w-7 border-b-2" style={{ borderColor: '#0052A3' }} />
                         </div>
                     ) : selectedEvents.length === 0 ? (
                         <div className="py-12 flex flex-col items-center justify-center gap-3 text-center px-6">
-                            <div className="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: '#EBF2FF' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" style={{ color: '#0052A3' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                                 </svg>
                             </div>
@@ -605,12 +605,12 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         <div className="divide-y divide-gray-50 dark:divide-gray-800">
                             {selectedEvents.map((event, idx) => (
                                 <div key={event.id} className="flex items-center gap-3 px-5 py-3.5 group">
-                                    <span className="w-6 h-6 rounded-full bg-[#8b5cf6]/10 text-[#8b5cf6] text-xs font-black flex items-center justify-center shrink-0">{idx + 1}</span>
+                                    <span className="w-6 h-6 rounded-full text-xs font-semibold flex items-center justify-center shrink-0 text-white" style={{ background: '#0052A3' }}>{idx + 1}</span>
                                     {event.imageUrl && (
                                         <img src={event.imageUrl} alt={event.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
                                     )}
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{event.name}</p>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{event.name}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{formatDisplayDate(event.date)} · {event.venue || event.city}</p>
                                     </div>
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -648,13 +648,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 <div className="bg-white dark:bg-[#111827] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
                     <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 space-y-3">
                         {/* Title */}
-                        <h4 className="text-sm font-bold text-gray-900 dark:text-white">All Published Events</h4>
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white">All Published Events</h4>
 
                         {/* Search bar with dropdown — same as Users tab */}
                         <div className="relative" ref={highlightSearchRef}>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                                    <Search size={16} className={highlightSearchFocused ? 'text-purple-600' : 'text-gray-400 dark:text-gray-500'} />
+                                    <Search size={16} className={highlightSearchFocused ? '' : 'text-gray-400 dark:text-gray-500'} style={highlightSearchFocused ? { color: '#0052A3' } : {}} />
                                 </div>
                                 <input
                                     type="text"
@@ -664,7 +664,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     onChange={e => { setHighlightSearch(e.target.value); setHighlightPage(1); }}
                                     className={`w-full pl-10 pr-10 py-2.5 rounded-full text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all duration-300 ${
                                         highlightSearchFocused
-                                            ? 'bg-white dark:bg-gray-800 border-2 border-purple-500 ring-4 ring-purple-500/10'
+                                            ? 'bg-white dark:bg-gray-800 border-2 border-blue-400 ring-4 ring-blue-400/10'
                                             : 'bg-gray-100 dark:bg-gray-700 border-2 border-transparent'
                                     }`}
                                 />
@@ -1336,12 +1336,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 )}
                 <CardInsight {...newUsersInsight} moreInsights={newUsersMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights]})} />
             </div>
-        </div>
-        );
-    };
 
-    const renderDemographics = () => (
-        <div className="flex flex-col gap-6 mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Gender Distribution */}
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
@@ -1404,8 +1399,40 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
                 <CardInsight {...topEventsInsight} moreInsights={topEventsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Top Events by Attendance', insights: [topEventsInsight, ...topEventsMoreInsights]})} />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Users by Role</h3>
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={usersByRole} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} />
+                                <RechartsTooltip />
+                                <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 min-w-0">
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Resident Engagement (Events Attended)</h3>
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={engagementData} layout="vertical" margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
+                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 70 : 80} />
+                                <RechartsTooltip />
+                                <Bar dataKey="users" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={20} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
         </div>
-    );
+        );
+    };
 
     const EVENTS_PER_PAGE = 10;
 
@@ -1447,31 +1474,161 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
         return (
         <div className="mt-6 space-y-6">
-            {/* Event Visibility Tabs (All / Public / Private) - Modern Underline Style */}
-            <div className="flex items-center gap-6 border-b border-gray-100 dark:border-gray-800 mb-6">
-                {[
-                    { key: 'all' as const, label: 'All Events' },
-                    { key: 'public' as const, label: 'Public' },
-                    { key: 'private' as const, label: 'Private' },
-                ].map(tab => {
-                    const isActive = eventVisibilityFilter === tab.key;
-                    return (
-                        <button
-                            key={tab.key}
-                            onClick={() => setEventVisibilityFilter(tab.key)}
-                            className={`relative py-4 px-1 text-sm font-black transition-all ${
-                                isActive
-                                    ? 'text-primary-600 dark:text-primary-400'
-                                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-                            }`}
-                        >
-                            {tab.label}
-                            {isActive && (
-                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-600 dark:bg-primary-500 rounded-t-full shadow-[0_-2px_8px_rgba(124,58,237,0.3)]" />
+            {/* ── Unified toolbar (matches reference design) ── */}
+            <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+                {/* Title + count */}
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                    All Events{' '}
+                    <span className="text-gray-400 font-normal text-sm ml-2">({allFilteredSortedEvents.length} Events)</span>
+                </h2>
+                {/* Pending Approvals — rounded-full like "Check Products" */}
+                {canManageUsers && pendingRequests.length > 0 && (
+                    <button
+                        onClick={() => setPendingDrawerOpen(true)}
+                        className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold text-white whitespace-nowrap transition-all hover:opacity-90 active:scale-95 shadow-sm"
+                        style={{ background: '#0052A3' }}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        Pending Approvals
+                        <span className="bg-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center" style={{ color: '#0052A3' }}>{pendingRequests.length}</span>
+                    </button>
+                )}
+                {/* Search bar with filter button INSIDE — matches reference exactly */}
+                <div className="relative w-full sm:flex-1 sm:min-w-0" ref={eventSearchRef}>
+                    <div className="bg-white dark:bg-gray-800 rounded-full py-1 px-1.5 border border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                        <div className="relative flex-1 flex items-center ml-2">
+                            <Search size={13} className="text-gray-400 flex-shrink-0" />
+                            <input
+                                type="text"
+                                placeholder="Search events, venues, categories..."
+                                value={eventSearchQuery}
+                                onFocus={() => setEventSearchFocused(true)}
+                                onChange={e => { setEventSearchQuery(e.target.value); setEventsPage(1); }}
+                                className="w-full bg-transparent border-none pl-2.5 pr-2 py-1.5 text-[13px] text-gray-700 dark:text-gray-200 outline-none placeholder-gray-400"
+                            />
+                            {eventSearchQuery && (
+                                <button type="button" onClick={() => setEventSearchQuery('')} className="flex-shrink-0 text-gray-400 hover:text-gray-600 pr-1">
+                                    <X size={13} />
+                                </button>
                             )}
-                        </button>
-                    );
-                })}
+                        </div>
+                        {/* Filter button — circular, inside search bar */}
+                        <div className="relative flex-shrink-0">
+                            <button
+                                onClick={e => { e.stopPropagation(); setShowSortMenu(v => !v); setEventSearchFocused(false); }}
+                                className="h-8 w-8 rounded-full flex items-center justify-center text-white hover:opacity-90 transition-all active:scale-95"
+                                style={{ background: '#0052A3' }}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 10h12M9 15h6" /></svg>
+                            </button>
+                            {showSortMenu && (
+                                <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 z-[300]">
+                                    {/* View filter */}
+                                    <div className="mb-4">
+                                        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">View</p>
+                                        <div className="flex gap-2">
+                                            {[{ key: 'all' as const, label: 'All' }, { key: 'public' as const, label: 'Public' }, { key: 'private' as const, label: 'Private' }].map(tab => (
+                                                <button key={tab.key} onClick={() => setEventVisibilityFilter(tab.key)}
+                                                    className="flex-1 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
+                                                    style={eventVisibilityFilter === tab.key ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
+                                                >{tab.label}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {/* Status filter */}
+                                    <div className="mb-4">
+                                        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Status</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {[{ id: 'all', label: 'All' }, { id: 'pending', label: 'Pending' }, { id: 'scheduled', label: 'Scheduled' }, { id: 'published', label: 'Published' }].map(opt => (
+                                                <button key={opt.id} onClick={() => { setEventFilter(opt.id as any); setShowSortMenu(false); }}
+                                                    className="px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
+                                                    style={eventFilter === opt.id ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
+                                                >{opt.label}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {/* Sort */}
+                                    <div>
+                                        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Sort by</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {[{ id: 'newest', label: 'Newest' }, { id: 'oldest', label: 'Oldest' }, { id: 'asc', label: 'A → Z' }, { id: 'desc', label: 'Z → A' }].map(opt => (
+                                                <button key={opt.id} onClick={() => { setEventSortOrder(opt.id as any); setShowSortMenu(false); }}
+                                                    className="px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
+                                                    style={eventSortOrder === opt.id ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
+                                                >{opt.label}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {/* Search suggestions dropdown */}
+                    {eventSearchFocused && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 z-[200]">
+                            <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-[12px] font-medium text-gray-500">Recent Searches</h4>
+                                {eventSearchHistory.length > 0 && (
+                                    <button onClick={clearEventSearchHistory} className="text-[11px] font-bold text-blue-600 hover:text-blue-700 transition">Clear All</button>
+                                )}
+                            </div>
+                            {eventSearchHistory.length > 0 ? (
+                                <div className="space-y-1 mb-4">
+                                    {eventSearchHistory.map((term, i) => (
+                                        <div key={term + i} className="flex items-center justify-between px-2 py-1.5 hover:bg-blue-50 rounded-xl cursor-pointer group transition" onClick={() => { setEventSearchQuery(term); saveEventSearchHistory(term); setEventSearchFocused(false); }}>
+                                            <div className="flex items-center gap-2">
+                                                <Clock size={11} className="text-gray-300" />
+                                                <span className="text-[13px] text-gray-600 font-medium">{term}</span>
+                                            </div>
+                                            <button onClick={e => { e.stopPropagation(); }} className="opacity-0 group-hover:opacity-100">
+                                                <X size={10} className="text-gray-300 hover:text-red-500" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-gray-400 text-center py-3 mb-3">No recent searches</p>
+                            )}
+                            {eventSearchQuery.trim() && (
+                                <>
+                                    <h4 className="text-[12px] font-medium text-gray-500 mb-3">Suggested Events</h4>
+                                    <div className="space-y-2 max-h-52 overflow-y-auto">
+                                        {events.filter(e => (e.name || '').toLowerCase().includes(eventSearchQuery.toLowerCase())).slice(0, 5).map(ev => (
+                                            <div key={ev.id} className="flex items-center gap-3 p-2 hover:bg-blue-50 rounded-xl cursor-pointer transition" onClick={() => { setEventSearchQuery(ev.name); saveEventSearchHistory(ev.name); setEventSearchFocused(false); }}>
+                                                <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                                    {ev.imageUrl ? <img src={ev.imageUrl} alt={ev.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Search size={12} className="text-gray-400" /></div>}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[13px] font-bold text-gray-800 truncate">{ev.name}</p>
+                                                    <p className="text-[10px] text-gray-400">{formatDisplayDate(ev.date)}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+                {/* Sort by label + select — matches reference exactly */}
+                <div className="flex items-center gap-2 whitespace-nowrap">
+                    <span className="text-[13px] text-gray-500 font-medium">Sort by:</span>
+                    <div className="relative">
+                        <select
+                            value={eventSortOrder}
+                            onChange={e => setEventSortOrder(e.target.value as any)}
+                            className="appearance-none bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 hover:border-blue-400 rounded-full pl-4 pr-8 py-1.5 text-[13px] font-semibold text-gray-700 dark:text-gray-200 outline-none focus:ring-2 transition-all cursor-pointer shadow-sm"
+                        >
+                            <option value="newest">Newest</option>
+                            <option value="oldest">Oldest</option>
+                            <option value="asc">A → Z</option>
+                            <option value="desc">Z → A</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* My Private Events — Creator Management Panel */}
@@ -1526,7 +1683,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </div>
                 );
             })()}
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
+            {currentUser?.role === 'facilitator' && <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
                 {/* Section header — contextual to role */}
                 <div className="flex items-start justify-between mb-4 gap-3">
                     <div>
@@ -1633,126 +1790,35 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         ))}
                     </div>
                 )}
-            </div>
+            </div>}
 
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 overflow-visible min-h-[400px]">
-                {/* All Events header row */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-3">
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">All Events</h3>
-                    {/* Search bar */}
-                    {(() => {
-                        const suggestions = eventSearchQuery.trim()
-                            ? events.filter(e =>
-                                (e.name || '').toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
-                                (Array.isArray(e.category) ? e.category : [e.category]).some((c: string) => (c || '').toLowerCase().includes(eventSearchQuery.toLowerCase())) ||
-                                (e.venue || '').toLowerCase().includes(eventSearchQuery.toLowerCase())
-                              ).slice(0, 4)
-                            : [];
-                        return (
-                            <div className="relative flex-1 max-w-md" ref={eventSearchRef}>
-                                <form onSubmit={e => { e.preventDefault(); saveEventSearchHistory(eventSearchQuery); setEventSearchFocused(false); }} className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Search size={14} className={eventSearchFocused ? 'text-purple-600' : 'text-gray-400 dark:text-gray-500'} />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        value={eventSearchQuery}
-                                        onFocus={() => setEventSearchFocused(true)}
-                                        onChange={e => setEventSearchQuery(e.target.value)}
-                                        placeholder="Search events, venues, categories..."
-                                        className={`w-full pl-8 pr-8 py-2 rounded-full text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all duration-300 ${eventSearchFocused ? 'bg-white dark:bg-gray-800 border-2 border-purple-500 ring-4 ring-purple-500/10' : 'bg-gray-100 dark:bg-gray-700 border-2 border-transparent'}`}
-                                    />
-                                    {eventSearchQuery && (
-                                        <button type="button" onClick={() => { setEventSearchQuery(''); }} className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white">
-                                            <X size={13} />
-                                        </button>
-                                    )}
-                                </form>
-                                {/* Dropdown */}
-                                {eventSearchFocused && (
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                        {/* Recent searches */}
-                                        {!eventSearchQuery && eventSearchHistory.length > 0 && (
-                                            <div className="p-4 space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm font-bold text-gray-900 dark:text-white">Recent searches</span>
-                                                    <button onClick={clearEventSearchHistory} className="text-xs font-semibold text-gray-400 hover:text-red-500 dark:hover:text-red-400 flex items-center gap-1 transition-colors">
-                                                        <Trash2 size={12} /> Clear
-                                                    </button>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {eventSearchHistory.map((term, i) => (
-                                                        <button key={term + i} onClick={() => { setEventSearchQuery(term); saveEventSearchHistory(term); setEventSearchFocused(false); }} className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left">
-                                                            <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-                                                                <Clock size={12} className="text-gray-500 dark:text-gray-400" />
-                                                            </div>
-                                                            <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{term}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {/* Suggestions */}
-                                        {eventSearchQuery.trim() && (
-                                            <div className="p-4">
-                                                <span className="text-xs font-semibold text-gray-900 dark:text-white tracking-wide uppercase">Suggested Events</span>
-                                                {suggestions.length > 0 ? (
-                                                    <div className="grid grid-cols-2 gap-2 mt-3">
-                                                        {suggestions.map((event: EventType) => (
-                                                            <button key={event.id} onClick={() => { setEventSearchQuery(event.name); saveEventSearchHistory(event.name); setEventSearchFocused(false); }} className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left">
-                                                                <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-600">
-                                                                    {event.imageUrl ? (
-                                                                        <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                                                    ) : (
-                                                                        <div className="w-full h-full flex items-center justify-center"><Search size={12} className="text-gray-400" /></div>
-                                                                    )}
-                                                                </div>
-                                                                <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate leading-tight">{event.name}</span>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <div className="py-5 text-center">
-                                                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
-                                                            <Search size={14} className="text-gray-400" />
-                                                        </div>
-                                                        <p className="text-xs font-semibold text-gray-900 dark:text-white">No events found for "{eventSearchQuery}"</p>
-                                                        <p className="text-[10px] text-gray-400 mt-0.5">Try a different keyword</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                        {/* See all results */}
-                                        {suggestions.length === 4 && (
-                                            <button onClick={() => { saveEventSearchHistory(eventSearchQuery); setEventSearchFocused(false); }} className="w-full py-2.5 text-gray-500 dark:text-gray-400 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-t border-gray-100 dark:border-gray-700">
-                                                See all results for "{eventSearchQuery}"
-                                            </button>
-                                        )}
-                                        {/* Empty state when no query and no history */}
-                                        {!eventSearchQuery && eventSearchHistory.length === 0 && (
-                                            <div className="p-4 text-center py-5">
-                                                <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
-                                                    <Search size={14} className="text-gray-400" />
-                                                </div>
-                                                <p className="text-xs text-gray-400 dark:text-gray-500">Search by event name, venue, or category</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })()}
-                    <div className="relative flex-shrink-0">
-                        <button 
-                            onClick={() => setShowSortMenu(!showSortMenu)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                        >
-                            Sort by
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
-                        </button>
+            <div className="bg-white dark:bg-[#111827] overflow-visible min-h-[400px]">
+                <div className="hidden"><button>
 
                         {showSortMenu && (
                             <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#1f2937] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-[100] overflow-hidden">
+                                <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">View</h4>
+                                    <div className="flex gap-1.5">
+                                        {[
+                                            { key: 'all' as const, label: 'All' },
+                                            { key: 'public' as const, label: 'Public' },
+                                            { key: 'private' as const, label: 'Private' },
+                                        ].map(tab => (
+                                            <button
+                                                key={tab.key}
+                                                onClick={() => { setEventVisibilityFilter(tab.key); }}
+                                                className="flex-1 px-2 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+                                                style={eventVisibilityFilter === tab.key
+                                                    ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' }
+                                                    : { background: '#f9fafb', color: '#374151', borderColor: '#e5e7eb' }
+                                                }
+                                            >
+                                                {tab.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                                 <div className="p-4">
                                     <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Sort by</h4>
                                     <div className="space-y-3">
@@ -1814,185 +1880,133 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 </div>
                             </div>
                         )}
-                    </div>
-                </div>
-                <div className="overflow-x-auto md:overflow-visible pb-16 md:pb-0">
-                <table className="w-full min-w-[600px] text-left">
+                    </button></div>
+                <div className="overflow-x-auto pb-16 md:pb-0 bg-white rounded-[10px] border border-gray-100 shadow-sm">
+                <table className="w-full min-w-[700px] text-left border-collapse">
                     <thead>
-                        <tr className="bg-gray-100 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400">
-                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight">Event</th>
-                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight">Date</th>
-                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight">Location</th>
-                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight text-center">Attendees</th>
-                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight text-center">Feedback</th>
-                            <th className="py-3 px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-tight text-right pr-4 min-w-[180px]">Status & Actions</th>
+                        <tr className="bg-gray-50/50 border-b border-gray-100">
+                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize">Event</th>
+                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize">Date</th>
+                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize">Location</th>
+                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize text-center">Attendees</th>
+                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize text-center">Feedback</th>
+                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize text-center">Status & Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-50">
                                 {paginatedEvents.map(event => {
-                            // Use the authoritative denormalized counter from the event document
                             const attendeeCount = safeNum(event.checkInCount);
                             const attendeesStr = event.maxParticipants ? `${attendeeCount}/${event.maxParticipants}` : `${attendeeCount} (No Limit)`;
                             return (
-                                <tr key={event.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                                    <td className="py-4 px-4 font-medium text-gray-900 dark:text-white text-sm">
-                                        <div className="flex flex-col gap-1">
-                                            <span>{event.name}</span>
-                                            {(() => {
-                                                const alerts = getEventAlerts(event, events);
-                                                if (alerts.length === 0) return null;
-                                                return (
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {alerts.map(a => <AlertChip key={a.id} alert={a} />)}
-                                                    </div>
-                                                );
-                                            })()}
+                                <tr key={event.id} className="hover:bg-blue-50/30 transition-colors group">
+                                    {/* Event column — image + name + alerts */}
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 p-1">
+                                                {event.imageUrl
+                                                    ? <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover rounded-lg" />
+                                                    : <div className="w-full h-full flex items-center justify-center text-gray-300"><svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
+                                                }
+                                            </div>
+                                            <div className="min-w-0">
+                                                <span className="text-[14px] font-semibold text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer block leading-snug" onClick={() => onPreviewEvent && onPreviewEvent(event)}>
+                                                    {event.name}
+                                                </span>
+                                                {(() => {
+                                                    const alerts = getEventAlerts(event, events);
+                                                    if (!alerts.length) return null;
+                                                    return <div className="flex flex-wrap gap-1 mt-1">{alerts.map(a => <AlertChip key={a.id} alert={a} />)}</div>;
+                                                })()}
+                                            </div>
                                         </div>
                                     </td>
-                                    <td className="py-4 px-4 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDisplayDate(event.date)}</td>
-                                    <td className="py-4 px-4 text-sm text-gray-500 dark:text-gray-400">
-                                        <div className="flex items-center gap-1.5 min-w-[120px]">
+                                    {/* Date */}
+                                    <td className="px-6 py-4 text-[13px] text-gray-600 font-medium whitespace-nowrap">{formatDisplayDate(event.date)}</td>
+                                    {/* Location */}
+                                    <td className="px-6 py-4 text-[13px] text-gray-600">
+                                        <div className="flex items-center gap-1.5">
                                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                            <span className="truncate">{event.venue || event.city}</span>
+                                            <span className="truncate max-w-[160px]">{event.venue || event.city}</span>
                                         </div>
                                     </td>
-                                    <td className="py-4 px-4 text-gray-500 dark:text-gray-400">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <span className="text-sm">{attendeesStr}</span>
-                                            <button 
-                                                onClick={() => onViewParticipants(event)}
-                                                className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors group relative"
-                                                title="View Attendees"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                                </svg>
-                                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">View Participants</span>
-                                            </button>
-                                        </div>
+                                    {/* Attendees */}
+                                    <td className="px-6 py-4 text-center">
+                                        <button onClick={() => onViewParticipants(event)} className="inline-flex items-center gap-1.5 text-[13px] text-gray-600 hover:text-blue-600 transition-colors group/att" title="View Participants">
+                                            <span>{attendeesStr}</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400 group-hover/att:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                        </button>
                                     </td>
-                                    <td className="py-4 px-4">
+                                    {/* Feedback */}
+                                    <td className="px-6 py-4 text-center">
                                         {(() => {
-                                            const eventFeedback = allFeedback.filter(f => f.eventId === event.id);
-                                            if (eventFeedback.length === 0) return <span className="text-xs text-gray-400 italic">No ratings</span>;
-                                            
-                                            const avgRating = eventFeedback.reduce((acc, f) => acc + f.rating, 0) / eventFeedback.length;
+                                            const fb = allFeedback.filter(f => f.eventId === event.id);
+                                            if (!fb.length) return <span className="text-[12px] text-gray-400 italic">No ratings</span>;
+                                            const avg = fb.reduce((s, f) => s + f.rating, 0) / fb.length;
                                             return (
-                                                <div className="flex items-center justify-center gap-1.5 group cursor-pointer" onClick={() => setViewingFeedbackEvent(event)}>
-                                                    <div className="flex items-center text-yellow-500">
-                                                        <Star className="w-3.5 h-3.5 fill-current" />
-                                                        <span className="text-xs font-black ml-1">{avgRating.toFixed(1)}</span>
-                                                    </div>
-                                                    <span className="text-[10px] text-gray-400 font-bold">({eventFeedback.length})</span>
-                                                </div>
+                                                <button className="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-80" onClick={() => setViewingFeedbackEvent(event)}>
+                                                    <Star className="w-3.5 h-3.5 text-yellow-500 fill-current" />
+                                                    <span className="text-[13px] font-bold text-gray-800">{avg.toFixed(1)}</span>
+                                                    <span className="text-[11px] text-gray-400">({fb.length})</span>
+                                                </button>
                                             );
                                         })()}
                                     </td>
-                                    <td className="py-4 px-4">
-                                        <div className="flex items-center justify-end gap-3 pr-4 whitespace-nowrap">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
-                                                event.status === 'draft' ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 outline outline-1 outline-gray-200 dark:outline-gray-700' :
-                                                event.status === 'scheduled' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' :
-                                                event.status === 'pending' ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 
-                                                event.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' :
-                                                event.status === 'cancelled' ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 line-through' :
-                                                'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400'
+                                    {/* Status + Actions */}
+                                    <td className="px-6 py-4 text-center">
+                                        <div className="flex items-center justify-center gap-3">
+                                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold border ${
+                                                event.status === 'draft' ? 'bg-gray-50 text-gray-500 border-gray-200' :
+                                                event.status === 'scheduled' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                event.status === 'pending' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                event.status === 'rejected' ? 'bg-red-50 text-red-500 border-red-100' :
+                                                event.status === 'cancelled' ? 'bg-gray-100 text-gray-400 border-gray-200 line-through' :
+                                                'bg-green-50 text-green-600 border-green-100'
                                             }`}>
-                                                {event.status === 'scheduled' && (
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                )}
-                                                {event.status === 'cancelled' && (
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                                )}
-                                                {event.status || 'approved'}
+                                                {event.status || 'published'}
                                             </span>
                                             <div className="relative action-menu-container">
-                                                <button 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setActiveActionMenu(activeActionMenu === event.id ? null : event.id);
-                                                    }}
-                                                    className={`p-1.5 rounded-lg transition-all ${activeActionMenu === event.id ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setActiveActionMenu(activeActionMenu === event.id ? null : event.id); }}
+                                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all"
                                                     title="Actions"
                                                 >
                                                     <MoreVerticalIcon className="w-5 h-5" />
                                                 </button>
 
                                                 {activeActionMenu === event.id && (
-                                                    <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
-                                                        <div className="px-4 py-2 border-b border-gray-50 dark:border-gray-700/50 mb-1">
-                                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Event Actions</p>
-                                                        </div>
-                                                        
-                                                        <button
-                                                            onClick={() => { setAnalyticsDrawerEvent(event); setActiveActionMenu(null); }}
-                                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                                                            View Analytics
-                                                        </button>
-
-                                                        <button
-                                                            onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); }}
-                                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-                                                        >
-                                                            <MessageSquare className="w-4 h-4" />
-                                                            View Feedback
-                                                        </button>
-
-                                                        <button 
-                                                            onClick={() => { onViewQRCode(event); setActiveActionMenu(null); }}
-                                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h3.5M12 12h.01M16 12h.01M12 16h.01M16 16h.01M7 8h2v2H7V8zm0 0V6a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V10a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V14a2 2 0 114 0v2H7zm0 0h4m-4 4h2v2H7v-2zm0 0V18a2 2 0 114 0v2H7zm0 0h4" /></svg>
-                                                            View QR Code
-                                                        </button>
-
-                                                        {onPreviewEvent && (
-                                                            <button 
-                                                                onClick={() => { onPreviewEvent(event); setActiveActionMenu(null); }}
-                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                                                            >
-                                                                <Eye className="w-4 h-4" />
-                                                                Preview Event
+                                                    <div className="absolute right-0 mt-2 z-50 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-3 animate-in fade-in zoom-in-95 duration-150" style={{ width: '340px' }}>
+                                                        <style>{`.action-item { position: relative; } .action-item::after { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 1.5px; background: #0052A3; transition: width 0.25s ease; } .action-item:hover::after { width: 100%; } .action-item-danger::after { background: #ef4444; }`}</style>
+                                                        <p className="text-[13px] font-semibold text-gray-400 mb-3 px-1 text-left">Event Actions</p>
+                                                        <div className="grid grid-cols-3 gap-1">
+                                                            <button onClick={() => { setAnalyticsDrawerEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                <span className="text-[12px] font-semibold">Analytics</span>
                                                             </button>
-                                                        )}
-
-                                                        <button 
-                                                            onClick={() => { onEditEvent(event); setActiveActionMenu(null); }}
-                                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                                            Edit Event
-                                                        </button>
-
-                                                        {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
-                                                            <button
-                                                                onClick={() => { setPendingConfirm({ type: 'notify', event }); setActiveActionMenu(null); }}
-                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
-                                                            >
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                                                                Notify Update
+                                                            <button onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                <span className="text-[12px] font-semibold">Feedback</span>
                                                             </button>
-                                                        )}
-
-                                                        {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
-                                                            <button
-                                                                onClick={() => { setPendingConfirm({ type: 'cancel', event }); setActiveActionMenu(null); }}
-                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
-                                                            >
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                                                Cancel Event
+                                                            <button onClick={() => { onViewQRCode(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                <span className="text-[12px] font-semibold">QR Code</span>
                                                             </button>
-                                                        )}
-
-                                                        <div className="border-t border-gray-50 dark:border-gray-700/50 mt-1">
-                                                            <button 
-                                                                onClick={() => { onDeleteEvent(event.id); setActiveActionMenu(null); }}
-                                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                                            >
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                                Delete Event
+                                                            {onPreviewEvent && (
+                                                                <button onClick={() => { onPreviewEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                    <span className="text-[12px] font-semibold">Preview</span>
+                                                                </button>
+                                                            )}
+                                                            <button onClick={() => { onEditEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                <span className="text-[12px] font-semibold">Edit</span>
+                                                            </button>
+                                                            {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
+                                                                <button onClick={() => { setPendingConfirm({ type: 'notify', event }); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                    <span className="text-[12px] font-semibold">Notify</span>
+                                                                </button>
+                                                            )}
+                                                            {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
+                                                                <button onClick={() => { setPendingConfirm({ type: 'cancel', event }); setActiveActionMenu(null); }} className="action-item action-item-danger px-2 py-2.5 rounded-xl text-gray-900 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-center">
+                                                                    <span className="text-[12px] font-semibold">Cancel</span>
+                                                                </button>
+                                                            )}
+                                                            <button onClick={() => { onDeleteEvent(event.id); setActiveActionMenu(null); }} className="action-item action-item-danger px-2 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-center">
+                                                                <span className="text-[12px] font-semibold text-red-500">Delete</span>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -2007,34 +2021,22 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </table>
                 </div>
                 {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-4 border-t border-gray-100 dark:border-gray-800">
-                        <span className="text-xs text-gray-400">
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                             Showing {(eventsPage - 1) * EVENTS_PER_PAGE + 1}–{Math.min(eventsPage * EVENTS_PER_PAGE, allFilteredSortedEvents.length)} of {allFilteredSortedEvents.length} events
-                        </span>
+                        </p>
                         <div className="flex items-center gap-1">
                             <button
                                 onClick={() => setEventsPage(p => Math.max(1, p - 1))}
                                 disabled={eventsPage === 1}
-                                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                            </button>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                <button
-                                    key={page}
-                                    onClick={() => setEventsPage(page)}
-                                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${eventsPage === page ? 'bg-primary-600 text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-                                >
-                                    {page}
-                                </button>
-                            ))}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            >← Prev</button>
+                            <span className="text-xs text-gray-500 px-2">{eventsPage} / {totalPages}</span>
                             <button
                                 onClick={() => setEventsPage(p => Math.min(totalPages, p + 1))}
                                 disabled={eventsPage === totalPages}
-                                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                            </button>
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            >Next →</button>
                         </div>
                     </div>
                 )}
@@ -2070,6 +2072,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
         // Sort
         const sortedUsers = [...activeFilteredUsers].sort((a, b) => {
+            if (userSortOrder === 'asc') return (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase());
+            if (userSortOrder === 'desc') return (b.name || '').toLowerCase().localeCompare((a.name || '').toLowerCase());
             const aTime = (a as any).createdAt ?? 0;
             const bTime = (b as any).createdAt ?? 0;
             return userSortOrder === 'newest' ? bTime - aTime : aTime - bTime;
@@ -2080,79 +2084,20 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         const safePage = Math.min(userPage, totalPages);
         const pagedUsers = sortedUsers.slice((safePage - 1) * USERS_PER_PAGE, safePage * USERS_PER_PAGE);
 
+        const formatDate = (ts: any) => {
+            if (!ts) return '—';
+            const ms = typeof ts === 'object' && ts?.toMillis ? ts.toMillis() : Number(ts);
+            if (!ms) return '—';
+            return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        };
+
         return (
-            <div className="mt-6 space-y-6">
-                {pendingFacilitators.length > 0 && (
-                    <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
-                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Facilitator Requests</h3>
-                        <div className="space-y-4">
-                            {pendingFacilitators.map(user => (
-                                <div 
-                                    key={user.uid} 
-                                    id={`user-${user.uid}`}
-                                    className={`flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-xl gap-4 transition-all duration-500 ${
-                                        highlightUserId === user.uid 
-                                        ? 'border-blue-500 bg-blue-100/30 dark:bg-blue-900/40 ring-4 ring-blue-500/20 scale-[1.02] shadow-xl shadow-blue-500/10' 
-                                        : 'border-blue-50/50 dark:border-blue-900/20 bg-blue-50/20 dark:bg-blue-900/10'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-gray-900 dark:text-white">{user.name}</h4>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex gap-4 items-center">
-                                        {(user.idUrl || (user as any).facilitatorIdUrl) && (
-                                            <div className="flex flex-col items-center">
-                                                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase mb-1">Gov ID</span>
-                                                <img 
-                                                    src={user.idUrl || (user as any).facilitatorIdUrl} 
-                                                    alt="ID" 
-                                                    className="w-16 h-10 object-cover rounded border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity" 
-                                                    onClick={() => setSelectedImageUrl(user.idUrl || (user as any).facilitatorIdUrl || null)}
-                                                />
-                                            </div>
-                                        )}
-                                        {user.faceUrl && (
-                                            <div className="flex flex-col items-center">
-                                                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase mb-1">Face Scan</span>
-                                                <img 
-                                                    src={user.faceUrl} 
-                                                    alt="Face" 
-                                                    className="w-10 h-10 object-cover rounded-full border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-80 transition-opacity" 
-                                                    onClick={() => setSelectedImageUrl(user.faceUrl || null)}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <button onClick={() => onApproveFacilitator(user.uid)} className="px-4 py-1.5 bg-green-600 text-white text-xs font-bold rounded-full hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20">
-                                            Approve
-                                        </button>
-                                        <button onClick={() => onRejectFacilitator(user.uid)} className="px-4 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
-                                            Reject
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
+            <div className="mt-6 space-y-4">
                 {/* Image Modal */}
                 {selectedImageUrl && typeof document !== 'undefined' && createPortal(
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedImageUrl(null)}>
-                        <div className="relative max-w-xs w-full flex flex-col items-center justify-center" onClick={e => e.stopPropagation()}>
-                            <button 
-                                onClick={() => setSelectedImageUrl(null)}
-                                className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors"
-                            >
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedImageUrl(null)}>
+                        <div className="relative max-w-xs w-full" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setSelectedImageUrl(null)} className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors">
                                 <XMarkIcon className="w-8 h-8" />
                             </button>
                             <img src={selectedImageUrl} alt="Full Preview" className="w-full h-auto rounded-xl shadow-2xl" />
@@ -2161,325 +2106,265 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     document.body
                 )}
 
-                {/* User Stats Overview */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
-                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Users by Role</h3>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={usersByRole} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} dx={isMobile ? 0 : 0} />
-                                <RechartsTooltip />
-                                <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
-                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Resident Engagement (Events Attended)</h3>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={engagementData} layout="vertical" margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
-                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 70 : 80} dx={isMobile ? 0 : 0} />
-                                <RechartsTooltip />
-                                <Bar dataKey="users" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={20} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
-
-            {canManageUsers && (
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
-                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Manage Users</h3>
-
-                    {/* Search — home-style with dropdown */}
-                    {(() => {
-                        const userSuggestions = userSearchQuery.trim()
-                            ? users.filter(u =>
-                                (u.name || '').toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-                                (u.email || '').toLowerCase().includes(userSearchQuery.toLowerCase())
-                              ).slice(0, 4)
-                            : [];
-                        return (
-                            <div className="mb-4 relative" ref={userSearchRef}>
-                                <form onSubmit={e => { e.preventDefault(); saveUserSearchHistory(userSearchQuery); setUserSearchFocused(false); }} className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 md:pl-4 flex items-center pointer-events-none">
-                                        <Search size={16} className={userSearchFocused ? 'text-purple-600' : 'text-gray-400 dark:text-gray-500'} />
-                                    </div>
+                {canManageUsers && (
+                <div>
+                    {/* ── Toolbar (outside table) ── */}
+                    {/* Toolbar — matches Events tab design */}
+                    <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                            All users{' '}
+                            <span className="text-gray-400 font-normal text-sm ml-2">({sortedUsers.length} Users)</span>
+                        </h2>
+                        {/* Pending Facilitator Requests button — always visible for admin */}
+                        {canManageUsers && (
+                            <button
+                                onClick={() => setPendingFacilitatorDrawerOpen(true)}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold text-white whitespace-nowrap transition-all hover:opacity-90 active:scale-95 shadow-sm"
+                                style={{ background: '#0052A3' }}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                Pending Requests
+                                <span className="bg-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center" style={{ color: '#0052A3' }}>{pendingFacilitators.length}</span>
+                            </button>
+                        )}
+                        {/* Search bar with filter button inside — same as Events tab */}
+                        <div className="relative w-full sm:flex-1 sm:min-w-0" ref={userSearchRef}>
+                            <div className="bg-white dark:bg-gray-800 rounded-full py-1 px-1.5 border border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                                <div className="relative flex-1 flex items-center ml-2">
+                                    <Search size={13} className="text-gray-400 flex-shrink-0" />
                                     <input
                                         type="text"
                                         placeholder="Search users by name or email..."
                                         value={userSearchQuery}
                                         onFocus={() => setUserSearchFocused(true)}
                                         onChange={e => { setUserSearchQuery(e.target.value); setUserPage(1); }}
-                                        className={`w-full pl-10 md:pl-11 pr-10 py-2.5 rounded-full text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all duration-300 ${userSearchFocused ? 'bg-white dark:bg-gray-800 border-2 border-purple-500 ring-4 ring-purple-500/10' : 'bg-gray-100 dark:bg-gray-700 border-2 border-transparent'}`}
+                                        className="w-full bg-transparent border-none pl-2.5 pr-2 py-1.5 text-[13px] text-gray-700 dark:text-gray-200 outline-none placeholder-gray-400"
                                     />
                                     {userSearchQuery && (
-                                        <button type="button" onClick={() => { setUserSearchQuery(''); setUserPage(1); }} className="absolute inset-y-0 right-3.5 md:right-4 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white">
-                                            <X size={16} />
+                                        <button type="button" onClick={() => { setUserSearchQuery(''); setUserPage(1); }} className="flex-shrink-0 text-gray-400 hover:text-gray-600 pr-1">
+                                            <X size={13} />
                                         </button>
                                     )}
-                                </form>
-                                {/* Dropdown */}
-                                {userSearchFocused && (
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                        {/* Recent searches */}
-                                        {!userSearchQuery && userSearchHistory.length > 0 && (
-                                            <div className="p-4 space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm font-bold text-gray-900 dark:text-white">Recent searches</span>
-                                                    <button onClick={clearUserSearchHistory} className="text-xs font-semibold text-gray-400 hover:text-red-500 dark:hover:text-red-400 flex items-center gap-1 transition-colors">
-                                                        <Trash2 size={12} /> Clear
-                                                    </button>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {userSearchHistory.map((term, i) => (
-                                                        <button key={term + i} onClick={() => { setUserSearchQuery(term); setUserPage(1); saveUserSearchHistory(term); setUserSearchFocused(false); }} className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left">
-                                                            <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-                                                                <Clock size={12} className="text-gray-500 dark:text-gray-400" />
-                                                            </div>
-                                                            <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{term}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                </div>
+                                {/* Circular filter button inside search bar */}
+                                <div className="relative flex-shrink-0">
+                                    <button
+                                        onClick={e => { e.stopPropagation(); setShowUserFilterDropdown(v => !v); setUserSearchFocused(false); }}
+                                        className="h-8 w-8 rounded-full flex items-center justify-center text-white hover:opacity-90 transition-all active:scale-95"
+                                        style={{ background: (showPendingFacilitatorFilter || userFilter !== 'all') ? '#0052A3' : '#0052A3' }}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 10h12M9 15h6" /></svg>
+                                        {(showPendingFacilitatorFilter || userFilter !== 'all') && (
+                                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] font-black text-white flex items-center justify-center">1</span>
                                         )}
-                                        {/* Suggestions */}
-                                        {userSearchQuery.trim() && (
-                                            <div className="p-4">
-                                                <span className="text-xs font-semibold text-gray-900 dark:text-white tracking-wide uppercase">Suggested Users</span>
-                                                {userSuggestions.length > 0 ? (
-                                                    <div className="grid grid-cols-2 gap-2 mt-3">
-                                                        {userSuggestions.map((u: User) => (
-                                                            <button key={u.uid} onClick={() => { setUserSearchQuery(u.name || u.email || ''); setUserPage(1); saveUserSearchHistory(u.name || u.email || ''); setUserSearchFocused(false); }} className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left">
-                                                                <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-                                                                    {u.avatarUrl ? (
-                                                                        <img src={u.avatarUrl} alt={u.name || ''} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                                                    ) : (
-                                                                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{(u.name || u.email || '?')[0].toUpperCase()}</span>
-                                                                    )}
-                                                                </div>
-                                                                <div className="min-w-0">
-                                                                    <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{u.name || 'No name'}</p>
-                                                                    <p className="text-[10px] text-gray-400 truncate">{u.email}</p>
-                                                                </div>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <div className="py-5 text-center">
-                                                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
-                                                            <Search size={14} className="text-gray-400" />
-                                                        </div>
-                                                        <p className="text-xs font-semibold text-gray-900 dark:text-white">No users found for "{userSearchQuery}"</p>
-                                                        <p className="text-[10px] text-gray-400 mt-0.5">Try a different name or email</p>
-                                                    </div>
-                                                )}
+                                    </button>
+                                    {showUserFilterDropdown && (
+                                        <div className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 z-[300] w-56">
+                                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Filter by role</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {['all', 'admins', 'facilitators', 'users'].map((filter) => (
+                                                    <button key={filter} onClick={() => { setShowPendingFacilitatorFilter(false); setUserFilter(filter as any); setUserPage(1); setShowUserFilterDropdown(false); }}
+                                                        className="px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
+                                                        style={!showPendingFacilitatorFilter && userFilter === filter ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
+                                                    >{filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}</button>
+                                                ))}
                                             </div>
-                                        )}
-                                        {/* Empty hint */}
-                                        {!userSearchQuery && userSearchHistory.length === 0 && (
-                                            <div className="p-4 text-center py-5">
-                                                <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
-                                                    <Search size={14} className="text-gray-400" />
-                                                </div>
-                                                <p className="text-xs text-gray-400 dark:text-gray-500">Search by name or email address</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        );
-                    })()}
-
-                    {/* Role Filters (left) + Sort & Pending (right) */}
-                    <div className="flex flex-wrap gap-2 mb-4 items-center">
-                        {/* Role filter pills */}
-                        {['all', 'admins', 'facilitators', 'users'].map((filter) => (
-                            <button
-                                key={filter}
-                                onClick={() => { setShowPendingFacilitatorFilter(false); setUserFilter(filter as any); setUserPage(1); }}
-                                className={`px-4 py-1.5 rounded-full text-xs font-semibold capitalize whitespace-nowrap border transition-all ${
-                                    !showPendingFacilitatorFilter && userFilter === filter
-                                    ? 'bg-[#8b5cf6] text-white border-[#8b5cf6]'
-                                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
-                            >
-                                {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
-                            </button>
-                        ))}
-
-                        {/* Right side — pending */}
-                        <div className="ml-auto flex items-center gap-2">
-                            {/* Pending Requests */}
-                            <button
-                                onClick={() => { setShowPendingFacilitatorFilter(true); setUserPage(1); }}
-                                className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex items-center gap-1.5 ${
-                                    showPendingFacilitatorFilter
-                                    ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20'
-                                    : 'bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20'
-                                }`}
-                            >
-                                Pending Requests
-                                {pendingFacilitators.length > 0 && (
-                                    <span className="ml-0.5 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{pendingFacilitators.length}</span>
-                                )}
-                            </button>
+                        </div>
+                        {/* Sort by — same as Events tab */}
+                        <div className="flex items-center gap-2 whitespace-nowrap">
+                            <span className="text-[13px] text-gray-500 font-medium">Sort by:</span>
+                            <div className="relative">
+                                <select
+                                    value={userSortOrder}
+                                    onChange={e => { setUserSortOrder(e.target.value as any); setUserPage(1); }}
+                                    className="appearance-none bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 hover:border-blue-400 rounded-full pl-4 pr-8 py-1.5 text-[13px] font-semibold text-gray-700 dark:text-gray-200 outline-none focus:ring-2 transition-all cursor-pointer shadow-sm"
+                                >
+                                    <option value="newest">Newest</option>
+                                    <option value="oldest">Oldest</option>
+                                    <option value="asc">A → Z</option>
+                                    <option value="desc">Z → A</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Active filter label */}
-                    {showPendingFacilitatorFilter && (
-                        <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Showing {pendingFacilitators.length} Pending Facilitator Request{pendingFacilitators.length !== 1 ? 's' : ''}
-                            <button onClick={() => { setShowPendingFacilitatorFilter(false); setUserPage(1); }} className="ml-auto text-amber-500 hover:text-amber-700 transition-colors">✕ Clear</button>
-                        </div>
-                    )}
-
-
-                    {isLoadingUsers ? (
-                        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
-                    ) : userError ? (
-                         <div className="text-center text-red-500 py-8">{userError} <button onClick={fetchUsers} className="underline ml-2">Retry</button></div>
-                    ) : (
-                        <div className="space-y-4">
-                            {pagedUsers.map(user => (
-                                <div 
-                                    key={user.uid} 
-                                    id={`user-${user.uid}`}
-                                    className={`p-4 md:p-4 rounded-[15px] md:rounded-2xl shadow-sm border flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 group hover:shadow-md transition-all duration-500 ${
-                                        highlightUserId === user.uid 
-                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-4 ring-blue-500/20 scale-[1.01]' 
-                                        : 'bg-white dark:bg-gray-800/50 border-gray-100 dark:border-gray-700/60'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 shrink-0 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 overflow-hidden">
-                                            {user.avatarUrl ? (
-                                                <img src={user.avatarUrl || undefined} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                            ) : (
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                            )}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
-                                            <div className="flex gap-2 mt-1">
-                                                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                                                    user.role === 'admin' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' :
-                                                    user.role === 'facilitator' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
-                                                    'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                                                }`}>
-                                                    {user.role || 'User'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="w-full md:w-auto flex flex-wrap items-center justify-between md:justify-end gap-2 pt-3 md:pt-0 mt-1 md:mt-0 border-t border-gray-50 md:border-none">
-                                        {user.facilitatorRequestStatus === 'pending' && (
-                                            <div className="flex gap-1">
-                                                <button 
-                                                    onClick={() => onApproveFacilitator(user.uid)}
-                                                    className="p-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-colors border border-transparent hover:border-green-200"
-                                                    title="Approve Facilitator Request"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                                </button>
-                                                {((user as any).facilitatorIdUrl || user.idUrl) && (
-                                                    <button 
-                                                        onClick={() => setSelectedImageUrl((user as any).facilitatorIdUrl || user.idUrl || null)}
-                                                        className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors border border-transparent hover:border-blue-200"
-                                                        title="View Submitted ID"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                                    </button>
-                                                )}
-                                                <button 
-                                                    onClick={() => onRejectFacilitator(user.uid)}
-                                                    className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors border border-transparent hover:border-red-200"
-                                                    title="Reject Facilitator Request"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                </button>
-                                            </div>
-                                        )}
-                                        <div className="flex gap-2 items-center ml-auto">
-                                            {/* Role control: admins are locked; others get a User/Facilitator dropdown */}
-                                            {user.role === 'admin' || user.email === 'admincommove@gmail.com' ? (
-                                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/40 rounded-lg">
-                                                    <Lock className="w-3 h-3 text-purple-500 dark:text-purple-400 shrink-0" />
-                                                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400">Admin</span>
+                    {/* ── Table card ── */}
+                    <div className="bg-white dark:bg-[#111827] overflow-hidden">
+                        {isLoadingUsers ? (
+                            <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div></div>
+                        ) : userError ? (
+                            <div className="text-center text-red-500 py-10">{userError} <button onClick={fetchUsers} className="underline ml-2">Retry</button></div>
+                        ) : (
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-gray-50/50 border-b border-gray-100">
+                                        <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Name</th>
+                                        <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Address</th>
+                                        <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Age</th>
+                                        <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Sex</th>
+                                        <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Access</th>
+                                        <th className="w-12 px-6 py-4"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                                    {pagedUsers.map(user => {
+                                        const age = user.birthday ? Math.floor((Date.now() - new Date(user.birthday).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null;
+                                        const isKebabOpen = openKebabUserId === user.uid;
+                                        return (
+                                        <tr
+                                            key={user.uid}
+                                            id={`user-${user.uid}`}
+                                            className={`group transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40 ${
+                                                highlightUserId === user.uid ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                                            }`}
+                                        >
+                                            {/* Name */}
+                                            <td className="py-3 px-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-9 h-9 shrink-0 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden flex items-center justify-center text-gray-500">
+                                                        {user.avatarUrl ? (
+                                                            <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                        ) : (
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-semibold text-gray-900 dark:text-white truncate text-sm">{user.name}</p>
+                                                        <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.email}</p>
+                                                    </div>
                                                 </div>
-                                            ) : (
-                                                <select
-                                                    value={user.role || 'user'}
-                                                    onChange={(e) => {
-                                                        const newRole = e.target.value as 'facilitator' | 'user';
-                                                        if (newRole === (user.role || 'user')) return;
-                                                        setPendingRoleChange({ user, newRole });
-                                                        // Reset select visually to current value until confirmed
-                                                        e.target.value = user.role || 'user';
-                                                    }}
-                                                    className="text-xs md:text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
-                                                >
-                                                    <option value="user">User</option>
-                                                    <option value="facilitator">Facilitator</option>
-                                                </select>
-                                            )}
-                                            <button
-                                                onClick={() => onDeleteUser(user.uid)}
-                                                disabled={user.email === 'admincommove@gmail.com'}
-                                                className="hidden"
-                                                title="Delete User"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            {sortedUsers.length === 0 && <p className="text-center text-gray-500 mt-8">No users found.</p>}
-                        </div>
-                    )}
+                                            </td>
+                                            {/* Address */}
+                                            <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300 max-w-[180px]">
+                                                <span className="truncate block">{user.address || <span className="text-gray-300 dark:text-gray-600">—</span>}</span>
+                                            </td>
+                                            {/* Age */}
+                                            <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
+                                                {age !== null ? age : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                                            </td>
+                                            {/* Sex */}
+                                            <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
+                                                {user.sex || <span className="text-gray-300 dark:text-gray-600">—</span>}
+                                            </td>
+                                            {/* Access */}
+                                            <td className="py-3 px-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${
+                                                        user.role === 'admin'
+                                                            ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                                                            : user.role === 'facilitator'
+                                                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                                            : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+                                                    }`}>
+                                                        {(user.role || 'user').charAt(0).toUpperCase() + (user.role || 'user').slice(1)}
+                                                    </span>
+                                                    {user.facilitatorRequestStatus === 'pending' && (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">Pending</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            {/* 3-dot menu */}
+                                            <td className="py-3 px-4">
+                                                <div className="relative flex justify-end">
+                                                    <button
+                                                        onClick={() => setOpenKebabUserId(isKebabOpen ? null : user.uid)}
+                                                        className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 transition-colors"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                                                    </button>
+                                                    {isKebabOpen && (
+                                                        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[400] overflow-hidden min-w-[160px]">
+                                                            <div className="p-1">
+                                                                {user.role !== 'admin' && user.email !== 'admincommove@gmail.com' && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => { setPendingRoleChange({ user, newRole: 'user' }); setOpenKebabUserId(null); }}
+                                                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 ${user.role === 'user' || !user.role ? 'text-gray-400 cursor-default' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                                                            disabled={user.role === 'user' || !user.role}
+                                                                        >
+                                                                            <span className="w-2 h-2 rounded-full bg-gray-400 shrink-0"></span>
+                                                                            Set as User
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => { setPendingRoleChange({ user, newRole: 'facilitator' }); setOpenKebabUserId(null); }}
+                                                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 ${user.role === 'facilitator' ? 'text-gray-400 cursor-default' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                                                            disabled={user.role === 'facilitator'}
+                                                                        >
+                                                                            <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
+                                                                            Set as Facilitator
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                                {user.facilitatorRequestStatus === 'pending' && (
+                                                                    <>
+                                                                        <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
+                                                                        <button onClick={() => { onApproveFacilitator(user.uid); setOpenKebabUserId(null); }} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center gap-2">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                                            Approve Request
+                                                                        </button>
+                                                                        <button onClick={() => { onRejectFacilitator(user.uid); setOpenKebabUserId(null); }} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                            Reject Request
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                                {((user as any).facilitatorIdUrl || user.idUrl) && (
+                                                                    <>
+                                                                        <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
+                                                                        <button onClick={() => { setSelectedImageUrl((user as any).facilitatorIdUrl || user.idUrl || null); setOpenKebabUserId(null); }} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                                            View ID
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        );
+                                    })}
+                                    {sortedUsers.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="text-center text-gray-400 py-12 text-sm">No users found.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
-                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                Showing {((safePage - 1) * USERS_PER_PAGE) + 1}–{Math.min(safePage * USERS_PER_PAGE, sortedUsers.length)} of {sortedUsers.length} users
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setUserPage(p => Math.max(1, p - 1))}
-                                    disabled={safePage === 1}
-                                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                >
-                                    ← Previous
-                                </button>
-                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 px-2">
-                                    {safePage} / {totalPages}
-                                </span>
-                                <button
-                                    onClick={() => setUserPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={safePage === totalPages}
-                                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                >
-                                    Next →
-                                </button>
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Showing {((safePage - 1) * USERS_PER_PAGE) + 1}–{Math.min(safePage * USERS_PER_PAGE, sortedUsers.length)} of {sortedUsers.length} users
+                                </p>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                                        disabled={safePage === 1}
+                                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                    >← Prev</button>
+                                    <span className="text-xs text-gray-500 px-2">{safePage} / {totalPages}</span>
+                                    <button
+                                        onClick={() => setUserPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={safePage === totalPages}
+                                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                    >Next →</button>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
-            )}
+                )}
             </div>
         );
     };
@@ -2524,7 +2409,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
-                        <h3 className="font-bold text-gray-900 dark:text-white">{monthName} {year}</h3>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{monthName} {year}</h3>
                         <button 
                             onClick={() => changeMonth(1)}
                             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
@@ -2536,7 +2421,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </div>
                     <div className="grid grid-cols-7 gap-2 text-center text-[10px] uppercase tracking-wider mb-2">
                         {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                            <div key={d} className="text-gray-400 dark:text-gray-500 font-bold">{d}</div>
+                            <div key={d} className="text-gray-400 dark:text-gray-500 font-semibold">{d}</div>
                         ))}
                     </div>
                     <div className="grid grid-cols-7 gap-y-2 text-center text-sm">
@@ -2552,20 +2437,21 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             
                             return (
                                 <div key={day} className="flex justify-center items-center relative">
-                                    <button 
+                                    <button
                                         onClick={() => setSelectedDate(day)}
                                         className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-                                            selectedDate === day 
-                                            ? 'bg-[#8b5cf6] text-white font-bold shadow-lg shadow-purple-500/30' 
-                                            : isToday 
-                                            ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-900/20 ring-1 ring-purple-200 dark:ring-purple-700' 
-                                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                            selectedDate === day
+                                            ? 'text-white font-semibold shadow-lg'
+                                            : isToday
+                                            ? 'font-semibold ring-1 ring-blue-200 dark:ring-blue-700'
+                                            : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
                                         }`}
+                                        style={selectedDate === day ? { background: '#0052A3' } : isToday ? { color: '#0052A3', background: '#EBF2FF' } : {}}
                                     >
                                         {day}
                                     </button>
                                     {hasEvent && (
-                                        <div className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${selectedDate === day ? 'bg-white' : 'bg-purple-600'}`}></div>
+                                        <div className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${selectedDate === day ? 'bg-white' : 'bg-[#0052A3]'}`}></div>
                                     )}
                                 </div>
                             );
@@ -2574,7 +2460,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>
                 <div className="lg:col-span-2 bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col min-h-[400px]">
                     <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Events on {monthName} {selectedDate}, {year}</h3>
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">Events on {monthName} {selectedDate}, {year}</h3>
                         <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-full text-[10px] font-bold uppercase">
                             {eventsOnSelectedDate.length} {eventsOnSelectedDate.length === 1 ? 'Event' : 'Events'}
                         </div>
@@ -2593,13 +2479,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     ) : (
                         <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
                             {eventsOnSelectedDate.map(event => (
-                                <div key={event.id} className="group p-4 bg-white dark:bg-[#111827] rounded-2xl border border-gray-100 dark:border-gray-800/60 hover:border-purple-200 dark:hover:border-purple-900 hover:shadow-md transition-all flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
+                                <div key={event.id} className="group p-4 bg-white dark:bg-[#111827] rounded-2xl border border-gray-100 dark:border-gray-800/60 hover:border-blue-200 dark:hover:border-blue-900 hover:shadow-md transition-all flex items-center gap-4">
+                                    <div className="flex items-center gap-4 flex-1 min-w-0">
                                         <div className="w-14 h-14 rounded-xl overflow-hidden shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
                                             {event.imageUrl ? (
                                                 <img src={event.imageUrl} alt="" className="w-full h-full object-cover" />
                                             ) : (
-                                                <div className="w-full h-full bg-purple-50 flex items-center justify-center text-purple-400">
+                                                <div className="w-full h-full bg-blue-50 flex items-center justify-center" style={{ color: '#0052A3' }}>
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                     </svg>
@@ -2607,22 +2493,23 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             )}
                                         </div>
                                         <div className="min-w-0">
-                                            <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-purple-600 transition-colors truncate">{event.name}</h4>
+                                            <h4 className="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-[#0052A3] transition-colors truncate">{event.name}</h4>
                                             <div className="flex flex-col gap-0.5">
                                                 <div className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" style={{ color: '#0052A3' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                                     {event.startTime} - {event.endTime}
                                                 </div>
                                                 <div className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                                     {event.venue || event.city}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => onEditEvent(event)}
-                                        className="py-2 px-4 bg-gray-50 dark:bg-gray-800 hover:bg-purple-50 dark:hover:bg-purple-900/30 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 rounded-xl text-xs font-bold transition-all border border-transparent hover:border-purple-100 dark:hover:border-purple-900/50"
+                                        className="flex-shrink-0 py-2 px-4 bg-gray-50 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold transition-all border border-transparent hover:border-blue-100 dark:hover:border-blue-900/50 whitespace-nowrap"
+                                        style={{ minWidth: '80px' }}
                                     >
                                         Edit / View
                                     </button>
@@ -2676,17 +2563,17 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
     return (
         <div className="w-full animate-fade-in-up">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+            {activeTab === 'analytics' && <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-6" style={{ fontFamily: "'Inter', ui-sans-serif, sans-serif" }}>
                 {/* Total Users */}
-                <div className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between">
+                <div className="bg-gradient-to-br from-white via-blue-50 to-blue-100 dark:from-[#111827] dark:via-blue-900/20 dark:to-blue-800/30 p-2.5 md:p-4 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800/40 flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 dark:text-purple-400 flex items-center justify-center">
+                        <div className="w-6 h-6 md:w-7 md:h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center" style={{ color: '#0052A3' }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         </div>
                         {renderGrowth(participantGrowth)}
                     </div>
                     <div>
-                        <h3 className="text-lg md:text-2xl font-extrabold text-gray-900 dark:text-white">{canManageUsers ? totalUsersCount : participants.length}</h3>
+                        <h3 className="text-base md:text-xl font-extrabold text-gray-900 dark:text-white">{canManageUsers ? totalUsersCount : participants.length}</h3>
                         <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{canManageUsers ? 'Total Users' : 'Event Participants'}</p>
                     </div>
                 </div>
@@ -2694,54 +2581,62 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {/* Total Events — click to open engagement metrics drawer */}
                 <button
                     onClick={() => setMetricsDrawerOpen(true)}
-                    className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between text-left cursor-pointer hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-150 group"
+                    className="bg-gradient-to-br from-white via-blue-50 to-blue-100 dark:from-[#111827] dark:via-blue-900/20 dark:to-blue-800/30 p-2.5 md:p-4 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800/40 flex flex-col justify-between text-left cursor-pointer hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-150 group"
                 >
                     <div className="flex justify-between items-start mb-2">
-                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 dark:text-purple-400 flex items-center justify-center group-hover:bg-purple-100 dark:group-hover:bg-purple-800/40 transition-colors">
+                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-800/40 transition-colors" style={{ color: '#0052A3' }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                         </div>
                         {renderGrowth(eventGrowth)}
                     </div>
                     <div>
-                        <h3 className="text-lg md:text-2xl font-extrabold text-gray-900 dark:text-white">{totalEventsCount}</h3>
+                        <h3 className="text-base md:text-xl font-extrabold text-gray-900 dark:text-white">{totalEventsCount}</h3>
                         <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">Total Events</p>
                     </div>
                 </button>
 
                 {/* Participation Rate */}
-                <div className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between">
+                <div className="bg-gradient-to-br from-white via-blue-50 to-blue-100 dark:from-[#111827] dark:via-blue-900/20 dark:to-blue-800/30 p-2.5 md:p-4 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800/40 flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 dark:text-purple-400 flex items-center justify-center">
+                        <div className="w-6 h-6 md:w-7 md:h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center" style={{ color: '#0052A3' }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                         </div>
                         {renderGrowth(rateGrowth)}
                     </div>
                     <div>
-                        <h3 className="text-lg md:text-2xl font-extrabold text-gray-900 dark:text-white">{participationRate}%</h3>
+                        <h3 className="text-base md:text-xl font-extrabold text-gray-900 dark:text-white">{participationRate}%</h3>
                         <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">Participation Rate</p>
                     </div>
                 </div>
 
                 {/* Pending Approvals */}
-                <div className="bg-gradient-to-br from-white via-purple-50 to-purple-100 dark:from-[#111827] dark:via-purple-900/20 dark:to-purple-800/30 p-3 md:p-5 rounded-xl shadow-sm border border-purple-200 dark:border-purple-800/40 flex flex-col justify-between">
+                <button
+                    onClick={() => canManageUsers && setPendingDrawerOpen(true)}
+                    className="bg-gradient-to-br from-white via-blue-50 to-blue-100 dark:from-[#111827] dark:via-blue-900/20 dark:to-blue-800/30 p-2.5 md:p-4 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800/40 flex flex-col justify-between text-left transition-all hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 cursor-pointer"
+                >
                     <div className="flex justify-between items-start mb-2">
-                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 dark:text-purple-400 flex items-center justify-center">
+                        <div className="w-6 h-6 md:w-7 md:h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center" style={{ color: '#0052A3' }}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
+                        {pendingApprovalsCount > 0 && (
+                            <span className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded-full" style={{ background: '#0052A3' }}>{pendingApprovalsCount}</span>
+                        )}
                     </div>
                     <div>
-                        <h3 className="text-lg md:text-2xl font-extrabold text-gray-900 dark:text-white">{pendingApprovalsCount}</h3>
+                        <h3 className="text-base md:text-xl font-extrabold text-gray-900 dark:text-white">{pendingApprovalsCount}</h3>
                         <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">Pending Approvals</p>
+                        {canManageUsers && <p className="text-[9px] font-semibold mt-1" style={{ color: '#0052A3' }}>Click to review →</p>}
                     </div>
-                </div>
-            </div>
+                </button>
+            </div>}
 
-            {/* ── Decision Support trigger button — visible on all tabs ─────── */}
-            {(activeTab === 'analytics' || activeTab === 'demographics' || activeTab === 'events' || activeTab === 'users') && (
+            {/* ── Decision Support trigger button — analytics tab only ─────── */}
+            {activeTab === 'analytics' && (
                 <div className="flex justify-end mb-3">
                     <button
                         onClick={() => setDsDrawerOpen(true)}
-                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-[#111827] border border-purple-200 dark:border-purple-800/50 text-purple-600 dark:text-purple-400 text-xs font-bold shadow-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:border-purple-300 dark:hover:border-purple-700 transition-all active:scale-95"
+                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-white shadow-sm transition-all active:scale-95 hover:opacity-90"
+                        style={{ background: '#0052A3' }}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -2752,12 +2647,162 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             )}
 
             {activeTab === 'analytics' && renderAnalytics()}
-            {activeTab === 'demographics' && renderDemographics()}
             {activeTab === 'events' && renderEvents()}
             {activeTab === 'users' && canManageUsers && renderUsers()}
             {activeTab === 'calendar' && renderCalendar()}
             {activeTab === 'reports' && renderReports()}
             {activeTab === 'highlights' && canManageUsers && renderHighlights()}
+
+            {/* ── Pending Facilitator Requests Drawer ──────────────────────── */}
+            {pendingFacilitatorDrawerOpen && typeof document !== 'undefined' && createPortal(
+                <>
+                    <style>{`@keyframes slideInRightFac{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 99997, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }} onClick={() => setPendingFacilitatorDrawerOpen(false)} />
+                    <div style={{ position: 'fixed', top: 0, right: 0, height: '100%', width: '100%', maxWidth: '480px', zIndex: 99998, animation: 'slideInRightFac 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column' }}
+                        className="bg-white dark:bg-[#0f172a] shadow-2xl overflow-y-auto"
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-[#0f172a] z-10">
+                            <div>
+                                <h2 className="text-base font-bold text-gray-900 dark:text-white">Pending Facilitator Requests</h2>
+                                <p className="text-xs text-gray-400 mt-0.5">{pendingFacilitators.length} request{pendingFacilitators.length !== 1 ? 's' : ''} awaiting review</p>
+                            </div>
+                            <button onClick={() => setPendingFacilitatorDrawerOpen(false)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        {/* Body */}
+                        <div className="flex-1 px-6 py-4 space-y-4">
+                            {pendingFacilitators.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-16 text-center">
+                                    <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-3" style={{ color: '#0052A3' }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </div>
+                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">All caught up!</p>
+                                    <p className="text-xs text-gray-400 mt-1">No pending facilitator requests.</p>
+                                </div>
+                            ) : (
+                                pendingFacilitators.map(user => (
+                                    <div key={user.uid} id={`user-${user.uid}`} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700/50 p-4">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-10 h-10 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center">
+                                                {user.avatarUrl ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-bold text-gray-900 dark:text-white text-sm">{user.name}</p>
+                                                <p className="text-xs text-gray-400">{user.email}</p>
+                                            </div>
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200">Pending</span>
+                                        </div>
+                                        {/* ID / Face images */}
+                                        {((user.idUrl || (user as any).facilitatorIdUrl) || user.faceUrl) && (
+                                            <div className="flex gap-3 mb-3">
+                                                {(user.idUrl || (user as any).facilitatorIdUrl) && (
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className="text-[9px] font-bold uppercase text-gray-400">Gov ID</span>
+                                                        <img src={user.idUrl || (user as any).facilitatorIdUrl} alt="ID" className="w-20 h-14 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80" onClick={() => setSelectedImageUrl(user.idUrl || (user as any).facilitatorIdUrl || null)} />
+                                                    </div>
+                                                )}
+                                                {user.faceUrl && (
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className="text-[9px] font-bold uppercase text-gray-400">Face</span>
+                                                        <img src={user.faceUrl} alt="Face" className="w-12 h-12 object-cover rounded-full border border-gray-200 cursor-pointer hover:opacity-80" onClick={() => setSelectedImageUrl(user.faceUrl || null)} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        <div className="flex gap-2 justify-end">
+                                            <button onClick={() => onApproveFacilitator(user.uid)} className="px-4 py-1.5 rounded-full text-xs font-bold bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm">Approve</button>
+                                            <button onClick={() => onRejectFacilitator(user.uid)} className="px-4 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors">Reject</button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </>,
+                document.body
+            )}
+
+            {/* ── Pending Approvals Drawer ─────────────────────────────────── */}
+            {pendingDrawerOpen && typeof document !== 'undefined' && createPortal(
+                <>
+                    <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+                    <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 99997, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}
+                        onClick={() => setPendingDrawerOpen(false)}
+                    />
+                    <div style={{ position: 'fixed', top: 0, right: 0, height: '100%', width: '100%', maxWidth: '480px', zIndex: 99998, animation: 'slideInRight 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column' }}
+                        className="bg-white dark:bg-[#0f172a] shadow-2xl overflow-y-auto"
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-[#0f172a] z-10">
+                            <div>
+                                <h2 className="text-base font-bold text-gray-900 dark:text-white">Pending Approvals</h2>
+                                <p className="text-xs text-gray-400 mt-0.5">{pendingRequests.length} event{pendingRequests.length !== 1 ? 's' : ''} awaiting review</p>
+                            </div>
+                            <button onClick={() => setPendingDrawerOpen(false)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        {/* Body */}
+                        <div className="flex-1 px-6 py-4 space-y-4">
+                            {pendingRequests.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-16 text-center">
+                                    <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-3" style={{ color: '#0052A3' }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </div>
+                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">All caught up!</p>
+                                    <p className="text-xs text-gray-400 mt-1">No pending approvals at the moment.</p>
+                                </div>
+                            ) : (
+                                pendingRequests.map(event => (
+                                    <div key={event.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700/50 p-4">
+                                        <div className="flex gap-3 mb-3">
+                                            {event.imageUrl && <img src={event.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />}
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                                    <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{event.name}</p>
+                                                    {event.priority === 'urgent' && <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-[9px] font-black uppercase rounded-md flex-shrink-0">Urgent</span>}
+                                                    {event.priority === 'average' && <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-[9px] font-black uppercase rounded-md flex-shrink-0">Average</span>}
+                                                    <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[9px] font-black uppercase rounded-md flex-shrink-0">Pending</span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">{event.organizer || 'Unknown'} • {formatDisplayDate(event.date)}</p>
+                                                {(() => {
+                                                    const alerts = getEventAlerts(event, events);
+                                                    if (!alerts.length) return null;
+                                                    return (
+                                                        <div className="flex flex-wrap gap-1 mt-1.5">
+                                                            {alerts.map(a => <AlertChip key={a.id} alert={a} />)}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 justify-end">
+                                            {onPreviewEvent && (
+                                                <button onClick={() => { onPreviewEvent(event); setPendingDrawerOpen(false); }} className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Preview">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                </button>
+                                            )}
+                                            <button onClick={() => { setPendingConfirm({ type: 'publish', event }); setPendingDrawerOpen(false); }} className="w-9 h-9 flex items-center justify-center rounded-full border border-green-200 dark:border-green-900/50 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" title="Approve & Publish">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                            </button>
+                                            <button onClick={() => { onSchedule(event); setPendingDrawerOpen(false); }} className="w-9 h-9 flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-900/50 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Schedule">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            </button>
+                                            <button onClick={() => { onReject(event.id); }} className="w-9 h-9 flex items-center justify-center rounded-full border border-red-200 dark:border-red-900/50 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Reject">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </>,
+                document.body
+            )}
 
             {/* ── Analytics Drawer ─────────────────────────────────────────────── */}
             {analyticsDrawerEvent && typeof document !== 'undefined' && createPortal(

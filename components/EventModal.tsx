@@ -253,7 +253,7 @@ const EventModal: React.FC<EventModalProps> = ({
             </svg>
           </div>
           <span className="text-gray-900 dark:text-white font-semibold">om</span>
-          <span className="text-primary-700 dark:text-primary-500 font-normal">move</span>
+          <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
         </div>
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
           Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.organizer || 'Admin'}</span>

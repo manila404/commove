@@ -22,7 +22,7 @@ const EventList: React.FC<EventListProps> = ({ events, onEventSelect, onToggleSa
             alt="No live events"
             className="w-36 h-36 md:w-52 md:h-52 object-contain mb-3 md:mb-4 opacity-90"
           />
-          <h2 className="text-base md:text-xl font-bold text-gray-800 dark:text-gray-200">
+          <h2 className="text-base md:text-xl font-semibold text-gray-800 dark:text-gray-200">
             The stage is quiet right now...
           </h2>
           <p className="text-gray-500 dark:text-gray-400 mt-1.5 text-xs md:text-sm max-w-[260px] md:max-w-xs leading-relaxed">

@@ -195,7 +195,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           onClick={goToToday}
           className="text-xs font-medium px-3 py-1 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-colors"
         >
-          Today
+          Month
         </button>
       </div>
       <div className="flex gap-1">
@@ -270,7 +270,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 className={[
                   'w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-medium',
                   isToday
-                    ? 'bg-primary-600 text-white shadow-md'
+                    ? 'text-white shadow-md'
                     : isPastDay && isCurrentMonth
                     ? 'text-gray-400 dark:text-gray-500'
                     : 'text-gray-700 dark:text-gray-300 group-hover:bg-gray-200 dark:group-hover:bg-gray-600',
@@ -278,6 +278,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 ]
                   .filter(Boolean)
                   .join(' ')}
+                style={isToday ? { backgroundColor: '#0052A3' } : undefined}
               >
                 {cloneDay.getDate()}
               </span>
@@ -289,7 +290,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 const categories = Array.isArray(event.category)
                   ? event.category
                   : [event.category];
-                const colorClass = getCategoryColor(categories, isPastDay);
                 // Build display text: prepend label if recurring/multi-day
                 const displayText =
                   label === 'multi-day'
@@ -298,11 +298,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     ? `${label} · ${event.name}`
                     : event.name;
 
+                const pillStyle = isPastDay
+                  ? { backgroundColor: '#d1d5db', color: '#9ca3af' }
+                  : { backgroundColor: '#0052A3', color: '#ffffff' };
+
                 return (
                   <div
                     key={`${event.id}-${ymd}`}
                     title={displayText}
-                    className={`text-[9px] md:text-xs px-1 md:px-1.5 py-0.5 rounded truncate font-medium ${colorClass}`}
+                    className="text-[9px] md:text-xs px-1 md:px-1.5 py-0.5 rounded truncate font-medium"
+                    style={pillStyle}
                   >
                     {displayText}
                   </div>

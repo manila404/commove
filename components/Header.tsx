@@ -29,10 +29,10 @@ const LiveClock = () => {
 
     return (
         <div className="hidden sm:flex flex-col items-end justify-center mr-4">
-            <div className="text-sm md:text-base font-black text-gray-900 dark:text-white tabular-nums tracking-tight leading-none mb-1">
+            <div className="text-sm md:text-base font-semibold text-gray-900 dark:text-white tabular-nums tracking-tight leading-none mb-1">
                 {formattedTime}
             </div>
-            <div className="text-[10px] md:text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-tight leading-none">
+            <div className="text-[10px] md:text-[11px] font-semibold text-gray-400 dark:text-gray-500 tracking-tight leading-none">
                 {dayName}, {formattedDate}
             </div>
         </div>
@@ -56,36 +56,28 @@ const Header: React.FC<HeaderProps> = ({
                     <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-100" />
                 </button>
               ) : (
-                <div className="flex items-center select-none text-xl md:text-2xl tracking-tighter mr-2" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
+                <div className="flex items-center select-none text-xl md:text-2xl tracking-tighter mr-2" style={{ fontFamily: "'Inter', ui-sans-serif, sans-serif", letterSpacing: '-0.02em' }}>
                     {/* Stylized 'C' SVG */}
-                    <div className="relative inline-flex items-center justify-center text-gray-900 dark:text-white mr-[-0.08em]">
-                        <svg 
-                            style={{ width: '0.65em', height: '0.65em', transform: 'translateY(0.06em)' }} 
-                            viewBox="0 0 100 100" 
-                            fill="none" 
-                            stroke="currentColor" 
+                    <div className="relative inline-flex items-center justify-center mr-[-0.08em] text-gray-900 dark:text-white">
+                        <svg
+                            style={{ width: '0.65em', height: '0.65em', transform: 'translateY(0.06em)' }}
+                            viewBox="0 0 100 100"
+                            fill="none"
+                            stroke="currentColor"
                             strokeWidth="20"
                         >
                             {/* The outer arc of the 'C' */}
                             <path d="M 82 26 A 40 40 0 1 0 82 74" />
-                            
                             {/* The inner dot/circle */}
-                            <circle 
-                                cx="48" 
-                                cy="50" 
-                                r="14" 
-                                fill="currentColor" 
-                                stroke="none" 
-                                className="text-primary-700 dark:text-primary-500" 
-                            />
+                            <circle cx="48" cy="50" r="14" fill="#0052A3" stroke="none" />
                         </svg>
                     </div>
-                    
+
                     {/* The rest of the logo text */}
                     {!title && (
                         <>
-                            <span className="text-gray-900 dark:text-white font-semibold">om</span>
-                            <span className="text-primary-700 dark:text-primary-500 font-normal">move</span>
+                            <span className="font-semibold text-gray-900 dark:text-white">om</span>
+                            <span className="font-normal text-[#0052A3] dark:text-[#5BA4F5]">move</span>
                         </>
                     )}
                 </div>

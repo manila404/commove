@@ -46,13 +46,13 @@ const EventCard: React.FC<EventCardProps> = ({ event, onSelect, onToggleSave }) 
     >
        <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">
          {event.isLive && (
-             <div className="bg-red-600 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg flex items-center animate-pulse tracking-tighter">
+             <div className="bg-red-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full shadow-lg flex items-center animate-pulse tracking-tighter">
                 <span className="w-1.5 h-1.5 bg-white rounded-full mr-1.5 shadow-[0_0_8px_white]"></span>
                 HAPPENING NOW
              </div>
          )}
          {(event as any).isPrivate && (
-             <div className="bg-orange-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 tracking-tighter">
+             <div className="bg-orange-500 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 tracking-tighter">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor">
                   <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
                 </svg>
@@ -66,7 +66,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onSelect, onToggleSave }) 
             </div>
             )}
             {event.isNearby && (
-            <span className="bg-green-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md" title="Happening near you">
+            <span className="bg-green-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-md" title="Happening near you">
                 Nearby
             </span>
             )}
@@ -89,13 +89,13 @@ const EventCard: React.FC<EventCardProps> = ({ event, onSelect, onToggleSave }) 
       <div className="p-5 flex flex-col flex-grow">
         <div className="mb-3 flex flex-wrap gap-1">
           {(Array.isArray(event.category) ? event.category : [event.category]).map((cat) => (
-            <span key={cat} className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getCategoryStyles(cat)}`}>
+            <span key={cat} className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${getCategoryStyles(cat)}`}>
               {cat}
             </span>
           ))}
         </div>
 
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors leading-tight">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors leading-tight">
           {event.name}
         </h3>
         

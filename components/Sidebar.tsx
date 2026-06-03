@@ -13,69 +13,61 @@ interface SidebarProps {
     onOpenScanner: () => void;
     pendingFacilitatorCount?: number;
     unreadNotificationCount?: number;
+    isStaff?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onOpenScanner, pendingFacilitatorCount, unreadNotificationCount = 0 }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, onOpenScanner, pendingFacilitatorCount, unreadNotificationCount = 0, isStaff = false }) => {
+    const activeStyle = { backgroundColor: '#EBF2FF', color: '#0052A3' };
     return (
         <div className="hidden md:flex flex-col w-20 h-[calc(100vh-64px)] sticky top-16 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-6 items-center gap-6 z-30">
             <button
                 onClick={() => onTabChange('feed')}
-                className={`p-3 rounded-2xl transition-all ${
-                    activeTab === 'feed' 
-                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' 
-                        : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
+                className="p-3 rounded-2xl transition-all"
+                style={activeTab === 'feed' ? activeStyle : {}}
                 title="Feed"
             >
-                <HomeIcon className="w-6 h-6" />
+                <HomeIcon className={`w-6 h-6 ${activeTab === 'feed' ? '' : 'text-gray-500'}`} />
             </button>
             <button
                 onClick={() => onTabChange('calendar')}
-                className={`p-3 rounded-2xl transition-all ${
-                    activeTab === 'calendar' 
-                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' 
-                        : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
+                className="p-3 rounded-2xl transition-all"
+                style={activeTab === 'calendar' ? activeStyle : {}}
                 title="Calendar"
             >
-                <CalendarIcon className="w-6 h-6" />
+                <CalendarIcon className={`w-6 h-6 ${activeTab === 'calendar' ? '' : 'text-gray-500'}`} />
             </button>
-            <button
-                onClick={onOpenScanner}
-                className="p-3 rounded-2xl transition-all text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-                title="Scan QR"
-            >
-                <QrCodeIcon className="w-6 h-6" />
-            </button>
+            {!isStaff && (
+                <button
+                    onClick={onOpenScanner}
+                    className="p-3 rounded-2xl transition-all text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    title="Scan QR"
+                >
+                    <QrCodeIcon className="w-6 h-6" />
+                </button>
+            )}
             <div className="relative">
                 <button
                     onClick={() => onTabChange('notifications')}
-                    className={`p-3 rounded-2xl transition-all ${
-                        activeTab === 'notifications' 
-                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' 
-                            : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
+                    className="p-3 rounded-2xl transition-all"
+                    style={activeTab === 'notifications' ? activeStyle : {}}
                     title="Notifications"
                 >
-                    <BellIcon className="w-6 h-6" />
+                    <BellIcon className={`w-6 h-6 ${activeTab === 'notifications' ? '' : 'text-gray-500'}`} />
                 </button>
                 {(pendingFacilitatorCount !== undefined && pendingFacilitatorCount > 0) && (
                     <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)] border-2 border-white dark:border-gray-900" title={`${pendingFacilitatorCount} pending requests`} />
                 )}
                 {(unreadNotificationCount > 0 && (!pendingFacilitatorCount || pendingFacilitatorCount === 0)) && (
-                    <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-primary-500 rounded-full animate-bounce shadow-sm border-2 border-white dark:border-gray-900" title={`${unreadNotificationCount} unread notifications`} />
+                    <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full animate-bounce shadow-sm border-2 border-white dark:border-gray-900" style={{ backgroundColor: '#0052A3' }} title={`${unreadNotificationCount} unread notifications`} />
                 )}
             </div>
             <button
                 onClick={() => onTabChange('nearby')}
-                className={`p-3 rounded-2xl transition-all ${
-                    activeTab === 'nearby' 
-                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' 
-                        : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
+                className="p-3 rounded-2xl transition-all"
+                style={activeTab === 'nearby' ? activeStyle : {}}
                 title="Nearby"
             >
-                <LocationIcon className="w-6 h-6" />
+                <LocationIcon className={`w-6 h-6 ${activeTab === 'nearby' ? '' : 'text-gray-500'}`} />
             </button>
         </div>
     );

@@ -54,7 +54,7 @@ const HorizontalEventCard: React.FC<{
 
       {/* Content Side */}
       <div className="flex-1 min-w-0 relative z-10">
-        <div className="flex items-center gap-1.5 text-[13px] font-bold text-gray-400 dark:text-gray-500 mb-1.5 tracking-tight uppercase">
+        <div className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-400 dark:text-gray-500 mb-1.5 tracking-tight uppercase">
           <Clock size={14} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
           {event.startTime ? (
             <span className="flex items-center">
@@ -65,7 +65,7 @@ const HorizontalEventCard: React.FC<{
           ) : 'All Day'}
         </div>
 
-        <h3 className="text-sm md:text-base font-black text-gray-900 dark:text-white line-clamp-1 mb-1 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
+        <h3 className="text-sm md:text-base font-semibold text-gray-900 dark:text-white line-clamp-1 mb-1 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
           {event.name}
         </h3>
 
@@ -78,12 +78,12 @@ const HorizontalEventCard: React.FC<{
         {(event.isLive || (event.approvedCount || 0) > 10) && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {event.isLive && (
-              <span className="bg-red-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full tracking-tighter animate-pulse flex items-center gap-1">
+              <span className="bg-red-500 text-white text-[8px] font-semibold uppercase px-2 py-0.5 rounded-full tracking-tighter animate-pulse flex items-center gap-1">
                 <span className="w-1 h-1 bg-white rounded-full" /> Live
               </span>
             )}
             {(event.approvedCount || 0) > 10 && (
-              <span className="bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-[8px] font-black uppercase px-2 py-0.5 rounded-full tracking-tighter border border-primary-100 dark:border-primary-800/50">
+              <span className="bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-[8px] font-semibold uppercase px-2 py-0.5 rounded-full tracking-tighter border border-primary-100 dark:border-primary-800/50">
                 Trending
               </span>
             )}
@@ -187,7 +187,7 @@ const ViewAllPopularEvents: React.FC<ViewAllPopularEventsProps> = ({
           </div>
           {/* Text */}
           <div className="relative z-10">
-            <h2 className="text-xl md:text-2xl font-bold text-white leading-tight">
+            <h2 className="text-xl md:text-2xl font-semibold text-white leading-tight">
               Popular Events
             </h2>
             <p className="text-white/80 text-sm mt-1 max-w-md">
@@ -201,7 +201,7 @@ const ViewAllPopularEvents: React.FC<ViewAllPopularEventsProps> = ({
         {/* ── TIMELINE ──────────────────────────────────────────────── */}
         <div className="relative">
           <div className="flex items-center justify-between gap-4 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               Events
             </h2>
 
@@ -219,7 +219,7 @@ const ViewAllPopularEvents: React.FC<ViewAllPopularEventsProps> = ({
 
           {groupedEvents.length === 0 ? (
             <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-[2.5rem] border-2 border-dashed border-gray-100 dark:border-gray-800">
-              <p className="text-sm text-gray-400 font-black italic tracking-wide uppercase opacity-60">No events discovered yet</p>
+              <p className="text-sm text-gray-400 font-semibold italic tracking-wide uppercase opacity-60">No events discovered yet</p>
             </div>
           ) : (
             <div className="space-y-6 relative">

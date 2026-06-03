@@ -72,7 +72,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
                             </svg>
                         </div>
                         <span className="text-white md:text-gray-900 dark:md:text-white font-semibold">om</span>
-                        <span className="text-white/90 md:text-primary-700 dark:md:text-primary-500 font-normal">move</span>
+                        <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
                     </div>
                     {/* Mobile X button — aligned with logo */}
                     <button
@@ -141,7 +141,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
                                 </svg>
                             </div>
                             <span className="text-gray-900 dark:text-white font-semibold">om</span>
-                            <span className="text-primary-700 dark:text-primary-500 font-normal">move</span>
+                            <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
                         </div>
                         <p className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">
                             Discover events and connect with your community.
