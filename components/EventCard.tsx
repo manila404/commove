@@ -28,7 +28,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onSelect, onToggleSave }) 
       case 'Conference':
       case 'Expo Events':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 border-blue-200 dark:border-blue-800';
-      case 'Health':
+      case 'Health and Wellness':
         return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200 border-green-200 dark:border-green-800';
       case 'Competitions':
         return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200 border-red-200 dark:border-red-800';

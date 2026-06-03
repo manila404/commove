@@ -148,7 +148,7 @@ export const extractEventFromImage = async (base64Image: string, optionalText: s
     - startTime: HH:MM (24hr, default 08:00)
     - venue: Location name
     - description: Summary of the event
-    - category: One of [Concerts, Conference, Arts, Gaming, Business, Cosplay, Competitions, Technology, Health, Expo Events, Cafe]`;
+    - category: One of [Concerts, Conference, Arts, Gaming, Business, Cosplay, Competitions, Technology, Health and Wellness, Expo Events, Cafe]`;
 
     const response = await retryWithBackoff<GenerateContentResponse>(() => ai!.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -225,7 +225,7 @@ export const extractEventFromText = async (input: string): Promise<{ isEvent: bo
         "startTime": "HH:MM" (24hr format, default 08:00),
         "venue": "Location name",
         "description": "1 sentence summary",
-        "category": "One of [Concerts, Conference, Arts, Gaming, Business, Cosplay, Competitions, Technology, Health, Expo Events, Cafe]"
+        "category": "One of [Concerts, Conference, Arts, Gaming, Business, Cosplay, Competitions, Technology, Health and Wellness, Expo Events, Cafe]"
       }`;
 
       config = {
@@ -250,7 +250,7 @@ export const extractEventFromText = async (input: string): Promise<{ isEvent: bo
       - startTime: HH:MM format (24hr). Default to "08:00".
       - venue: The location name. Default to "Bacoor, Cavite".
       - description: A 1-sentence summary.
-      - category: One of [Concerts, Conference, Arts, Gaming, Business, Cosplay, Competitions, Technology, Health, Expo Events, Cafe]`;
+      - category: One of [Concerts, Conference, Arts, Gaming, Business, Cosplay, Competitions, Technology, Health and Wellness, Expo Events, Cafe]`;
 
       config = {
         responseMimeType: "application/json",
