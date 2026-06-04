@@ -5,11 +5,14 @@ import { CameraIcon, MapPinIcon, BellIcon, XMarkIcon } from '../constants';
 
 interface PermissionManagerProps {
   onComplete: () => void;
+  userRole?: string;
 }
 
-const PermissionManager: React.FC<PermissionManagerProps> = ({ onComplete }) => {
+const PermissionManager: React.FC<PermissionManagerProps> = ({ onComplete, userRole }) => {
   const { permissions, requestLocation, requestCamera, requestNotifications } = usePermissions();
   const [step, setStep] = useState(0);
+
+  const showCameraStep = userRole === 'user';
 
   const steps = [
     {
@@ -20,14 +23,14 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onComplete }) => 
       status: permissions.location,
       request: requestLocation,
     },
-    {
+    ...(showCameraStep ? [{
       id: 'camera',
       title: 'Camera Access',
       description: 'Needed for scanning QR codes at event check-points and completing challenges.',
       icon: <CameraIcon className="w-12 h-12 text-green-500" />,
       status: permissions.camera,
       request: requestCamera,
-    },
+    }] : []),
     {
       id: 'notifications',
       title: 'Notifications',

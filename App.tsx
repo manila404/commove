@@ -2693,10 +2693,13 @@ const App: React.FC = () => {
 
             {/* Permission Manager */}
             {showPermissionManager && (
-                <PermissionManager onComplete={() => {
-                    try { localStorage.setItem('hasSeenPermissionManager', 'true'); } catch (e) { }
-                    setShowPermissionManager(false);
-                }} />
+                <PermissionManager 
+                    userRole={currentUser?.role}
+                    onComplete={() => {
+                        try { localStorage.setItem('hasSeenPermissionManager', 'true'); } catch (e) { }
+                        setShowPermissionManager(false);
+                    }} 
+                />
             )}
 
             {/* Logout Confirmation Modal */}
