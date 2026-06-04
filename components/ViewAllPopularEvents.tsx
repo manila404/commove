@@ -170,7 +170,7 @@ const ViewAllPopularEvents: React.FC<ViewAllPopularEventsProps> = ({
       <div className="px-3 sm:px-4 md:px-6 mb-8 max-w-[1600px] mx-auto">
         <div
           className="relative rounded-2xl overflow-hidden px-8 py-7"
-          style={{ background: 'linear-gradient(135deg, #c084fc 0%, #e879f9 35%, #f0abfc 60%, #93c5fd 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 40%, #facc15 75%, #fef08a 100%)' }}
         >
           {/* Glassy floating circles */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">

@@ -170,7 +170,7 @@ const HighlightsSlider: React.FC<HighlightsSliderProps> = ({ events, onEventSele
     <div className="w-full">
       {/* Section header — title left, arrows right (desktop only) */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-base md:text-lg font-semibold md:font-bold text-gray-900 dark:text-white">
+        <h2 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">
           Highlights
         </h2>
         <div className="hidden md:flex items-center gap-1.5">

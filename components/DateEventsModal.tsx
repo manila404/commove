@@ -154,7 +154,7 @@ const DateEventsModal: React.FC<DateEventsModalProps> = ({
                       
                       <button 
                         onClick={() => onEventClick(event)}
-                        className="px-3 py-1.5 md:px-4 md:py-2 bg-purple-600 hover:bg-purple-700 text-white text-[10px] md:text-xs font-bold rounded-lg transition-all active:scale-95 whitespace-nowrap"
+                        className="px-3 py-1.5 md:px-4 md:py-2 bg-primary-600 hover:bg-primary-700 text-white text-[10px] md:text-xs font-bold rounded-lg transition-all active:scale-95 whitespace-nowrap"
                       >
                         View Event
                       </button>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import RichText from './RichText';
 import { Image as ImageIcon, ArrowLeft, Share2, Heart, Phone, MessageCircle, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { EventType, Reminder, User } from '../types';
@@ -88,7 +88,7 @@ const EventModal: React.FC<EventModalProps> = ({
   }, [event.id, event.isPrivate]);
 
   // Derive the user's registration status directly from currentUser.registrationStatuses.
-  // This requires NO Firestore collection queries — the data comes from the user document
+  // This requires NO Firestore collection queries â€” the data comes from the user document
   // which is already loaded in app state and updates in real-time via App.tsx's user subscription.
   React.useEffect(() => {
     if (!event.isPrivate || !currentUser) {
@@ -117,7 +117,7 @@ const EventModal: React.FC<EventModalProps> = ({
   const isCheckedIn = currentUser?.checkedInEventIds?.includes(event.id);
   const isResident = currentUser?.role === 'user';
   const isFacilitatorOrAdmin = currentUser?.role === 'facilitator' || currentUser?.role === 'admin';
-  // True when all slots are filled with APPROVED participants — blocks new registration submissions
+  // True when all slots are filled with APPROVED participants â€” blocks new registration submissions
   const approvedCount = liveApprovedCount;
   const isEventFull = event.maxParticipants != null && approvedCount >= event.maxParticipants;
 
@@ -263,7 +263,7 @@ const EventModal: React.FC<EventModalProps> = ({
       {/* Header Image Carousel */}
       <div className="flex justify-center">
       <div className={`relative rounded-[15px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 w-[300px] h-[300px] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
-        {/* Blurred background fill — same image scaled+blurred so no white gaps */}
+        {/* Blurred background fill â€” same image scaled+blurred so no white gaps */}
         <img
           src={allPhotos[activePhotoIndex] || undefined}
           aria-hidden="true"
@@ -391,8 +391,8 @@ const EventModal: React.FC<EventModalProps> = ({
         {/* Meta Info Row */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
-              <CalendarIcon className="w-5 h-5 text-purple-500" />
+            <div className="w-9 h-9 rounded-xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center shrink-0">
+              <CalendarIcon className="w-5 h-5 text-primary-500" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Date</p>
@@ -405,7 +405,7 @@ const EventModal: React.FC<EventModalProps> = ({
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Time</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatTime(event.startTime)} – {formatTime(event.endTime)}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatTime(event.startTime)} â€“ {formatTime(event.endTime)}</p>
             </div>
           </div>
           <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 flex items-center gap-3">
@@ -459,7 +459,7 @@ const EventModal: React.FC<EventModalProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">Participation</h3>
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              {event.isPrivate ? 'Private event • Registration required' : 'Public event • Anyone can attend'}
+              {event.isPrivate ? 'Private event â€¢ Registration required' : 'Public event â€¢ Anyone can attend'}
             </p>
           </div>
 
@@ -476,11 +476,11 @@ const EventModal: React.FC<EventModalProps> = ({
           {isResident ? (
             // RESIDENT VIEW
             event.isPrivate ? (
-              <div className="p-8 bg-purple-50 dark:bg-purple-900/20 rounded-[20px] border-2 border-dashed border-purple-200 dark:border-purple-800/50">
+              <div className="p-8 bg-primary-50 dark:bg-primary-900/20 rounded-[20px] border-2 border-dashed border-primary-200 dark:border-primary-800/50">
                 {isLoadingReg ? (
                   <div className="flex justify-center p-4"><Spinner /></div>
                 ) : userReg ? (
-                  // User already has a registration — show their status
+                  // User already has a registration â€” show their status
                   <div className={`p-6 rounded-2xl text-center shadow-sm border-2 ${
                     userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                     userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
@@ -518,7 +518,7 @@ const EventModal: React.FC<EventModalProps> = ({
                           onClick={handleCheckIn}
                           className="w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
                         >
-                          {isCheckedIn ? '✓ Already Checked-In' : 'Check-In to Event'}
+                          {isCheckedIn ? 'âœ“ Already Checked-In' : 'Check-In to Event'}
                         </button>
                       </>
                     )}
@@ -535,7 +535,7 @@ const EventModal: React.FC<EventModalProps> = ({
                     )}
                   </div>
                 ) : isEventFull ? (
-                  // Event is full — no more registrations accepted
+                  // Event is full â€” no more registrations accepted
                   <div className="p-6 rounded-2xl text-center bg-gray-50 dark:bg-gray-800/50 border-2 border-gray-200 dark:border-gray-700">
                     <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -546,33 +546,33 @@ const EventModal: React.FC<EventModalProps> = ({
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">All available slots have been filled. Registration is now closed.</p>
                   </div>
                 ) : (
-                  // No existing registration and slots available — show the form
+                  // No existing registration and slots available â€” show the form
                   <div className="space-y-6">
                     <div className="text-center">
-                      <p className="text-purple-900 dark:text-purple-100 font-bold text-lg mb-1">Request to Join</p>
-                      <p className="text-purple-600/60 dark:text-purple-400/60 text-xs font-medium uppercase tracking-tighter">Fill in your details below to register</p>
+                      <p className="text-primary-900 dark:text-primary-100 font-bold text-lg mb-1">Request to Join</p>
+                      <p className="text-primary-600/60 dark:text-primary-400/60 text-xs font-medium uppercase tracking-tighter">Fill in your details below to register</p>
                     </div>
                     <form onSubmit={handleRegisterSubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <input 
                           type="text" placeholder="Full Name" required
                           value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})}
-                          className="w-full px-5 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-purple-500 outline-none transition-all"
+                          className="w-full px-5 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all"
                         />
                         <input 
                           type="tel" placeholder="Phone Number (Optional)"
                           value={regData.phoneNumber} onChange={e => setRegData({...regData, phoneNumber: e.target.value})}
-                          className="w-full px-5 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-purple-500 outline-none transition-all"
+                          className="w-full px-5 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all"
                         />
                       </div>
                       <input 
                         type="email" placeholder="Email Address" required readOnly
                         value={regData.email} onChange={e => setRegData({...regData, email: e.target.value})}
-                        className="w-full px-5 py-4 bg-gray-100 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-purple-500 outline-none transition-all cursor-not-allowed opacity-70"
+                        className="w-full px-5 py-4 bg-gray-100 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all cursor-not-allowed opacity-70"
                       />
                       <button 
                         type="submit" disabled={isRegistering || !currentUser}
-                        className="w-full py-4 bg-purple-600 text-white font-black rounded-2xl shadow-xl shadow-purple-500/30 hover:bg-purple-700 disabled:opacity-50 transition-all active:scale-95"
+                        className="w-full py-4 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/30 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95"
                       >
                         {isRegistering ? 'Submitting Request...' : 'Submit Registration Request'}
                       </button>
@@ -585,9 +585,9 @@ const EventModal: React.FC<EventModalProps> = ({
               <div className="flex gap-3">
                 <button
                   onClick={() => onToggleParticipation(event.id, 'interested')}
-                  className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'}`}
+                  className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white'}`}
                 >
-                  {isInterested ? '✓ Interested' : 'Interested?'}
+                  {isInterested ? 'âœ“ Interested' : 'Interested?'}
                 </button>
               </div>
             )
@@ -599,14 +599,14 @@ const EventModal: React.FC<EventModalProps> = ({
                   onClick={handleCheckIn}
                   className="flex-1 py-3 bg-gray-900 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-black transition-all active:scale-95"
                 >
-                  {isCheckedIn ? '✓ Checked-in' : 'Check-In Now (Staff)'}
+                  {isCheckedIn ? 'âœ“ Checked-in' : 'Check-In Now (Staff)'}
                 </button>
               )}
               <button
                 onClick={() => isGuest ? onLoginRequired?.() : onToggleParticipation(event.id, 'interested')}
                 className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-gray-900 border-gray-900 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-gray-900 text-gray-900 dark:text-white hover:bg-gray-900 hover:text-white'}`}
               >
-                {isInterested ? '✓ Interested' : 'Interested?'}
+                {isInterested ? 'âœ“ Interested' : 'Interested?'}
               </button>
             </div>
           )}
@@ -666,7 +666,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between"
               >
                 <div className="flex flex-col items-start">
-                  <span>{existingReminderLabel ? `Reminder set — ${existingReminderLabel}` : 'Set Reminder'}</span>
+                  <span>{existingReminderLabel ? `Reminder set â€” ${existingReminderLabel}` : 'Set Reminder'}</span>
                   <span className="text-[11px] font-normal text-gray-400 mt-0.5">Notify when the event starts, at your chosen time</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -733,7 +733,7 @@ const EventModal: React.FC<EventModalProps> = ({
       <div className="space-y-1.5">
         <div className="mb-3 flex flex-wrap gap-2">
           {(Array.isArray(event.category) ? event.category : [event.category]).map(cat => (
-            <span key={cat} className="px-4 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-full shadow-md">
+            <span key={cat} className="px-4 py-1.5 bg-primary-600 text-white text-xs font-bold rounded-full shadow-md">
               {cat}
             </span>
           ))}
@@ -745,7 +745,7 @@ const EventModal: React.FC<EventModalProps> = ({
       {/* Meta Info Row */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-sm shrink-0">
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-primary-600 rounded-full flex items-center justify-center text-white shadow-sm shrink-0">
             <CalendarIcon className="w-4 h-4 md:w-5 md:h-5" />
           </div>
           <div className="flex flex-col">
@@ -754,7 +754,7 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-3.5">
-          <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-sm shrink-0">
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-primary-600 rounded-full flex items-center justify-center text-white shadow-sm shrink-0">
             <ClockIcon className="w-4 h-4 md:w-5 md:h-5" />
           </div>
           <div className="flex flex-col">
@@ -763,7 +763,7 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-3.5">
-          <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-sm shrink-0">
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-primary-600 rounded-full flex items-center justify-center text-white shadow-sm shrink-0">
             <LocationIcon className="w-4 h-4 md:w-5 md:h-5" />
           </div>
           <div className="flex flex-col">
@@ -814,8 +814,8 @@ const EventModal: React.FC<EventModalProps> = ({
         ) : (
         <>
         <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Participation</h3>
-        <p className={`text-xs font-bold uppercase tracking-widest ${event.isPrivate ? 'text-orange-500' : 'text-purple-600'}`}>
-          {event.isPrivate ? 'Private Event • Registration Required' : 'Public Event • Anyone Can Attend'}
+        <p className={`text-xs font-bold uppercase tracking-widest ${event.isPrivate ? 'text-orange-500' : 'text-primary-600'}`}>
+          {event.isPrivate ? 'Private Event â€¢ Registration Required' : 'Public Event â€¢ Anyone Can Attend'}
         </p>
 
         {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
@@ -831,11 +831,11 @@ const EventModal: React.FC<EventModalProps> = ({
         {isResident ? (
           // RESIDENT VIEW
           event.isPrivate ? (
-            <div className="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-3xl border border-purple-100 dark:border-purple-800">
+            <div className="p-5 bg-primary-50 dark:bg-primary-900/20 rounded-3xl border border-primary-100 dark:border-primary-800">
               {isLoadingReg ? (
                 <div className="flex justify-center p-4"><Spinner /></div>
               ) : userReg ? (
-                // User already has a registration — show their current status
+                // User already has a registration â€” show their current status
                 <div className={`p-4 rounded-2xl text-center shadow-sm border ${
                   userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                   userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
@@ -857,7 +857,7 @@ const EventModal: React.FC<EventModalProps> = ({
                         onClick={handleCheckIn}
                         className="w-full py-2.5 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
                       >
-                        {isCheckedIn ? '✓ Checked-In' : 'Check-In Now'}
+                        {isCheckedIn ? 'âœ“ Checked-In' : 'Check-In Now'}
                       </button>
                     </>
                   )}
@@ -869,7 +869,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   )}
                 </div>
               ) : isEventFull ? (
-                // Event is full — block new registrations
+                // Event is full â€” block new registrations
                 <div className="p-4 rounded-2xl text-center bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
                   <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -880,13 +880,13 @@ const EventModal: React.FC<EventModalProps> = ({
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400">All available slots have been filled. Registration is now closed.</p>
                 </div>
               ) : (
-                // No registration yet and slots available — show the form
+                // No registration yet and slots available â€” show the form
                 <form onSubmit={handleRegisterSubmit} className="space-y-3">
-                  <p className="text-center text-sm font-bold text-purple-800 dark:text-purple-200 mb-1">Request to Attend</p>
+                  <p className="text-center text-sm font-bold text-primary-800 dark:text-primary-200 mb-1">Request to Attend</p>
                   <input 
                     type="text" placeholder="Full Name" required
                     value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})}
-                    className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-purple-500 outline-none transition-all"
+                    className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-primary-500 outline-none transition-all"
                   />
                   <input 
                     type="email" placeholder="Email Address" required readOnly
@@ -896,11 +896,11 @@ const EventModal: React.FC<EventModalProps> = ({
                   <input 
                     type="tel" placeholder="Phone Number (Optional)"
                     value={regData.phoneNumber} onChange={e => setRegData({...regData, phoneNumber: e.target.value})}
-                    className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-purple-500 outline-none transition-all"
+                    className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-primary-500 outline-none transition-all"
                   />
                   <button 
                     type="submit" disabled={isRegistering || !currentUser}
-                    className="w-full py-3 bg-purple-600 text-white font-black rounded-2xl shadow-xl shadow-purple-500/20 hover:bg-purple-700 disabled:opacity-50 transition-all active:scale-95"
+                    className="w-full py-3 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/20 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95"
                   >
                     {isRegistering ? 'Submitting Request...' : 'Request to Attend'}
                   </button>
@@ -915,9 +915,9 @@ const EventModal: React.FC<EventModalProps> = ({
                </div>
                <button 
                 onClick={() => onToggleParticipation(event.id, 'interested')}
-                className={`w-full py-3 md:py-4 rounded-2xl border-2 font-black transition-all ${isInterested ? 'bg-purple-600 border-purple-600 text-white shadow-lg' : 'bg-white dark:bg-gray-800 border-purple-600 text-purple-600 hover:bg-purple-700 hover:text-white'}`}
+                className={`w-full py-3 md:py-4 rounded-2xl border-2 font-black transition-all ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-lg' : 'bg-white dark:bg-gray-800 border-primary-600 text-primary-600 hover:bg-primary-700 hover:text-white'}`}
               >
-                {isInterested ? '✓ I am Interested' : 'Express Interest'}
+                {isInterested ? 'âœ“ I am Interested' : 'Express Interest'}
               </button>
             </div>
           )
@@ -927,14 +927,14 @@ const EventModal: React.FC<EventModalProps> = ({
             {!isGuest && (
               <button
                 onClick={handleCheckIn}
-                className="w-full py-2.5 md:py-3.5 bg-purple-600 text-white text-sm md:text-base font-bold rounded-2xl shadow-lg hover:bg-purple-700 transition-all active:scale-95"
+                className="w-full py-2.5 md:py-3.5 bg-primary-600 text-white text-sm md:text-base font-bold rounded-2xl shadow-lg hover:bg-primary-700 transition-all active:scale-95"
               >
-                {isCheckedIn ? '✓ Checked-in (Staff)' : 'Check-In Now (Staff)'}
+                {isCheckedIn ? 'âœ“ Checked-in (Staff)' : 'Check-In Now (Staff)'}
               </button>
             )}
             <button
               onClick={() => isGuest ? onLoginRequired?.() : onToggleParticipation(event.id, 'interested')}
-              className={`w-full py-2.5 md:py-3.5 rounded-2xl border-2 text-sm md:text-base font-bold transition-all ${isInterested ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-white border-purple-600 text-purple-600 hover:bg-purple-700 hover:text-white'}`}
+              className={`w-full py-2.5 md:py-3.5 rounded-2xl border-2 text-sm md:text-base font-bold transition-all ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-md' : 'bg-white border-primary-600 text-primary-600 hover:bg-primary-700 hover:text-white'}`}
             >
               {isInterested ? 'Interested' : 'Interested?'}
             </button>
@@ -981,7 +981,7 @@ const EventModal: React.FC<EventModalProps> = ({
           </button>
           <button 
             onClick={() => onToggleSave(event.id)}
-            className="w-full py-2.5 md:py-3.5 bg-purple-600 text-white text-sm md:text-base font-bold rounded-2xl shadow-lg hover:bg-purple-700 transition-all"
+            className="w-full py-2.5 md:py-3.5 bg-primary-600 text-white text-sm md:text-base font-bold rounded-2xl shadow-lg hover:bg-primary-700 transition-all"
           >
             {isSaved ? 'Unsave Event' : 'Save Event'}
           </button>
@@ -991,7 +991,7 @@ const EventModal: React.FC<EventModalProps> = ({
             className={`w-full py-2.5 md:py-3.5 rounded-2xl border-2 text-sm md:text-base font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${
               existingReminderLabel 
                 ? 'bg-green-600 border-green-600 text-white shadow-green-500/20' 
-                : 'bg-white border-gray-200 text-gray-400 hover:border-purple-400 hover:text-purple-600'
+                : 'bg-white border-gray-200 text-gray-400 hover:border-primary-400 hover:text-primary-600'
             }`}
           >
             {existingReminderLabel ? (
@@ -1032,7 +1032,7 @@ const EventModal: React.FC<EventModalProps> = ({
         <div className="p-8 space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center text-purple-600">
+              <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-2xl flex items-center justify-center text-primary-600">
                 <BellIcon className="w-5 h-5" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -1054,7 +1054,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 <select 
                   value={reminderOffset}
                   onChange={(e) => setReminderOffset(e.target.value)}
-                  className="w-full p-4 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-purple-500 rounded-2xl font-bold text-gray-700 dark:text-gray-200 outline-none transition-all appearance-none"
+                  className="w-full p-4 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-primary-500 rounded-2xl font-bold text-gray-700 dark:text-gray-200 outline-none transition-all appearance-none"
                 >
                   {reminderOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1080,7 +1080,7 @@ const EventModal: React.FC<EventModalProps> = ({
           <div className="flex flex-col gap-3 pt-4">
             <button 
               onClick={handleSetReminderClick}
-              className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-2xl shadow-lg shadow-purple-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+              className="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-2xl shadow-lg shadow-primary-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
             >
               {reminder ? 'Update Reminder' : 'Set Reminder'}
             </button>
@@ -1099,7 +1099,7 @@ const EventModal: React.FC<EventModalProps> = ({
     </motion.div>
   );
 
-  // Shared lightbox — used by both desktop and mobile
+  // Shared lightbox â€” used by both desktop and mobile
   const lightbox = (
     <AnimatePresence>
       {lightboxOpen && (
@@ -1225,7 +1225,7 @@ const EventModal: React.FC<EventModalProps> = ({
         </div>
 
         <div className="p-4 space-y-5">
-          {/* Image Carousel — desktop card style */}
+          {/* Image Carousel â€” desktop card style */}
           <div className="flex justify-center">
             <div className={`relative rounded-[15px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 w-[260px] h-[260px] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
               <img
@@ -1310,8 +1310,8 @@ const EventModal: React.FC<EventModalProps> = ({
             {/* Meta Info Grid */}
             <div className="flex flex-col gap-2">
               <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-3 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
-                  <CalendarIcon className="w-4 h-4 text-purple-500" />
+                <div className="w-9 h-9 rounded-xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center shrink-0">
+                  <CalendarIcon className="w-4 h-4 text-primary-500" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">Date</p>
@@ -1324,7 +1324,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">Time</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatTime(event.startTime)} – {formatTime(event.endTime)}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatTime(event.startTime)} â€“ {formatTime(event.endTime)}</p>
                 </div>
               </div>
               <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-3 flex items-center gap-3">
@@ -1379,7 +1379,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Participation</h3>
                     <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {event.isPrivate ? 'Private • Reg. required' : 'Public • Anyone can attend'}
+                      {event.isPrivate ? 'Private â€¢ Reg. required' : 'Public â€¢ Anyone can attend'}
                     </p>
                   </div>
 
@@ -1395,7 +1395,7 @@ const EventModal: React.FC<EventModalProps> = ({
 
                   {isResident ? (
                     event.isPrivate ? (
-                      <div className="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-[20px] border-2 border-dashed border-purple-200 dark:border-purple-800/50">
+                      <div className="p-5 bg-primary-50 dark:bg-primary-900/20 rounded-[20px] border-2 border-dashed border-primary-200 dark:border-primary-800/50">
                         {isLoadingReg ? (
                           <div className="flex justify-center p-4"><Spinner /></div>
                         ) : userReg ? (
@@ -1425,7 +1425,7 @@ const EventModal: React.FC<EventModalProps> = ({
                                 <p className="text-sm font-black mb-1">You are already registered!</p>
                                 <p className="text-xs font-medium opacity-80 mb-3">A slot has been assigned to you.</p>
                                 <button onClick={handleCheckIn} className="w-full py-2.5 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95">
-                                  {isCheckedIn ? '✓ Already Checked-In' : 'Check-In to Event'}
+                                  {isCheckedIn ? 'âœ“ Already Checked-In' : 'Check-In to Event'}
                                 </button>
                               </>
                             )}
@@ -1450,14 +1450,14 @@ const EventModal: React.FC<EventModalProps> = ({
                         ) : (
                           <div className="space-y-4">
                             <div className="text-center">
-                              <p className="text-purple-900 dark:text-purple-100 font-bold mb-1">Request to Join</p>
-                              <p className="text-purple-600/60 dark:text-purple-400/60 text-xs font-medium uppercase tracking-tighter">Fill in your details below to register</p>
+                              <p className="text-primary-900 dark:text-primary-100 font-bold mb-1">Request to Join</p>
+                              <p className="text-primary-600/60 dark:text-primary-400/60 text-xs font-medium uppercase tracking-tighter">Fill in your details below to register</p>
                             </div>
                             <form onSubmit={handleRegisterSubmit} className="space-y-3">
-                              <input type="text" placeholder="Full Name" required value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-purple-500 outline-none transition-all" />
-                              <input type="tel" placeholder="Phone Number (Optional)" value={regData.phoneNumber} onChange={e => setRegData({...regData, phoneNumber: e.target.value})} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-purple-500 outline-none transition-all" />
+                              <input type="text" placeholder="Full Name" required value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all" />
+                              <input type="tel" placeholder="Phone Number (Optional)" value={regData.phoneNumber} onChange={e => setRegData({...regData, phoneNumber: e.target.value})} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all" />
                               <input type="email" placeholder="Email Address" required readOnly value={regData.email} className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold outline-none cursor-not-allowed opacity-70" />
-                              <button type="submit" disabled={isRegistering || !currentUser} className="w-full py-3 bg-purple-600 text-white font-black rounded-2xl shadow-xl shadow-purple-500/20 hover:bg-purple-700 disabled:opacity-50 transition-all active:scale-95">
+                              <button type="submit" disabled={isRegistering || !currentUser} className="w-full py-3 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/20 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95">
                                 {isRegistering ? 'Submitting...' : 'Submit Registration Request'}
                               </button>
                             </form>
@@ -1466,18 +1466,18 @@ const EventModal: React.FC<EventModalProps> = ({
                       </div>
                     ) : (
                       <div className="flex gap-3">
-                        <button onClick={() => onToggleParticipation(event.id, 'interested')} className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'}`}>
-                          {isInterested ? '✓ Interested' : 'Interested?'}
+                        <button onClick={() => onToggleParticipation(event.id, 'interested')} className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white'}`}>
+                          {isInterested ? 'âœ“ Interested' : 'Interested?'}
                         </button>
                       </div>
                     )
                   ) : (
                     <div className="flex gap-3">
                       <button onClick={handleCheckIn} className="flex-1 py-3 bg-gray-900 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-black transition-all active:scale-95">
-                        {isCheckedIn ? '✓ Checked-in' : 'Check-In Now (Staff)'}
+                        {isCheckedIn ? 'âœ“ Checked-in' : 'Check-In Now (Staff)'}
                       </button>
                       <button onClick={() => onToggleParticipation(event.id, 'interested')} className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-gray-900 border-gray-900 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-gray-900 text-gray-900 dark:text-white hover:bg-gray-900 hover:text-white'}`}>
-                        {isInterested ? '✓ Interested' : 'Interested?'}
+                        {isInterested ? 'âœ“ Interested' : 'Interested?'}
                       </button>
                     </div>
                   )}
@@ -1544,3 +1544,4 @@ const EventModal: React.FC<EventModalProps> = ({
 };
 
 export default EventModal;
+

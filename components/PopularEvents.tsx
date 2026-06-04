@@ -36,7 +36,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
       {/* Header */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <h2 className="text-base md:text-lg font-semibold md:font-extrabold text-gray-900 dark:text-white tracking-tight">Popular Events</h2>
+          <h2 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white tracking-tight">Popular Events</h2>
           <p className="text-xs font-semibold text-gray-400 mt-0.5">Bacoor</p>
         </div>
         {popularEvents.length > 0 && (
@@ -91,7 +91,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
                           {formatShortDate(event.date)}{event.startTime && <span className="ml-1">{formatTime(event.startTime)}</span>}
                         </p>
                       )}
-                      <h3 className="text-sm font-extrabold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1 group-hover:text-primary-600 transition-colors">{event.name}</h3>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1 group-hover:text-primary-600 transition-colors">{event.name}</h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">{event.venue}</p>
                     </div>
                   </button>
@@ -125,7 +125,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
                 ) : (
                   <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">{formatShortDate(event.date)}</p>
                 )}
-                <h3 className="text-sm font-extrabold text-gray-900 dark:text-white line-clamp-2 mb-1 group-hover:text-primary-600 transition-colors leading-snug">{event.name}</h3>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 mb-1 group-hover:text-primary-600 transition-colors leading-snug">{event.name}</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{event.venue}</p>
               </div>
             </button>

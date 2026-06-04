@@ -62,7 +62,7 @@ const UpcomingNextWeek: React.FC<UpcomingNextWeekProps> = ({ events, onEventSele
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-base md:text-lg font-semibold md:font-bold text-gray-900 dark:text-white">
+        <h2 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">
           Upcoming Events
         </h2>
         {onViewAll && (

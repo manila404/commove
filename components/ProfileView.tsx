@@ -44,13 +44,14 @@ interface ProfileViewProps {
     onUserUpdate: (updatedUser: User) => void;
     onProfileCardClick?: () => void;
     onEditProfile?: () => void;
+    onOpenScanner?: () => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ 
-    user, 
-    onLogout, 
+const ProfileView: React.FC<ProfileViewProps> = ({
+    user,
+    onLogout,
     onLogin,
-    onShowAdminPanel, 
+    onShowAdminPanel,
     onShowMyEvents,
     onEditPreferences,
     onShowPermitDashboard,
@@ -63,6 +64,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     onUserUpdate,
     onProfileCardClick,
     onEditProfile,
+    onOpenScanner,
 }) => {
     const [isChangingAvatar, setIsChangingAvatar] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
@@ -659,6 +661,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     </button>
 
                     {!isStaff && (
+                    <>
                     <button onClick={onShowMyEvents} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                         <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
                             <BookmarkIcon className="w-[18px] h-[18px]" />
@@ -668,6 +671,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Saved and attended events</p>
                         </div>
                     </button>
+                    {onOpenScanner && (
+                    <button onClick={onOpenScanner} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                        <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Scan QR Code</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Check in to events</p>
+                        </div>
+                    </button>
+                    )}
+                    </>
                     )}
 
                     <button onClick={onShowNotificationSettings} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">

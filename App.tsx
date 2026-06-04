@@ -52,6 +52,7 @@ import DateEventsModal from './components/DateEventsModal';
 import EventFeedbackModal from './components/EventFeedbackModal';
 import NetworkStatusBanner from './components/NetworkStatusBanner';
 import ResetPasswordModal from './components/ResetPasswordModal';
+import ChatBot from './components/ChatBot';
 
 import {
     Globe,
@@ -74,7 +75,7 @@ import {
 } from 'lucide-react';
 
 const CATEGORY_DATA: Record<string, { bg: string, subtitle: string, icon: React.ElementType }> = {
-    'All': { bg: 'from-[#a78bfa] to-[#8b5cf6]', subtitle: 'Everything', icon: Globe },
+    'All': { bg: 'from-[#0052A3] to-[#003f7f]', subtitle: 'Everything', icon: Globe },
     'Happening Now': { bg: 'from-[#f87171] to-[#ef4444]', subtitle: 'Live', icon: Flame },
     'Conference': { bg: 'from-[#60a5fa] to-[#3b82f6]', subtitle: 'Learn', icon: Mic },
     'Sports': { bg: 'from-[#818cf8] to-[#6366f1]', subtitle: 'Active', icon: Dumbbell },
@@ -194,11 +195,11 @@ const App: React.FC = () => {
     });
 
     // UI State - Managed via History
-    const [activeTab, setActiveTab] = useState<'feed' | 'calendar' | 'nearby' | 'notifications'>(() => {
+    const [activeTab, setActiveTab] = useState<'feed' | 'calendar' | 'chat' | 'nearby' | 'notifications'>(() => {
         try {
             if (typeof window !== 'undefined' && window.history.state?.view) {
                 const view = window.history.state.view;
-                if (['feed', 'calendar', 'nearby', 'notifications', 'profile'].includes(view)) {
+                if (['feed', 'calendar', 'chat', 'nearby', 'notifications', 'profile'].includes(view)) {
                     return view as any;
                 }
             }
@@ -1084,7 +1085,7 @@ const App: React.FC = () => {
 
     // --- Navigation Handlers ---
 
-    const handleTabChange = useCallback((tab: 'feed' | 'calendar' | 'nearby' | 'notifications') => {
+    const handleTabChange = useCallback((tab: 'feed' | 'calendar' | 'chat' | 'nearby' | 'notifications') => {
         setShowProfilePanel(false);
 
         if (activeTab === tab) {
@@ -2012,7 +2013,7 @@ const App: React.FC = () => {
                 <>
                     <div className={`flex flex-1 min-h-0 ${activeTab === 'nearby' ? 'overflow-hidden' : ''}`}>
                         <Sidebar
-                            activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
+                            activeTab={activeTab as 'feed' | 'calendar' | 'chat' | 'nearby' | 'notifications'}
                             onTabChange={handleTabChange}
                             onOpenScanner={handleOpenScanner}
                             pendingFacilitatorCount={pendingFacilitatorCount}
@@ -2414,6 +2415,16 @@ const App: React.FC = () => {
                                 />
                             )}
 
+                            {activeTab === 'chat' && (currentUser || isGuest) && currentUser?.role !== 'admin' && (
+                                <div key="chat" className="h-full min-h-0 flex flex-col animate-fade-in">
+                                    <ChatBot
+                                        events={events}
+                                        onEventSelect={handleOpenEvent}
+                                        onClose={() => handleTabChange('feed')}
+                                    />
+                                </div>
+                            )}
+
                             {activeTab === 'notifications' && (
                                 <div key="notifications" className="px-4 md:px-8 pt-8 md:pt-10 animate-fade-in">
                                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Notifications</h2>
@@ -2501,6 +2512,10 @@ const App: React.FC = () => {
                                         setShowProfilePanel(false);
                                         setShowEditProfileModal(true);
                                     }}
+                                    onOpenScanner={() => {
+                                        setShowProfilePanel(false);
+                                        handleOpenScanner();
+                                    }}
                                 />
                             </div>
                         </>
@@ -2518,12 +2533,13 @@ const App: React.FC = () => {
 
             {!activeOverlay && (
                 <BottomNav
-                    activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
+                    activeTab={activeTab as 'feed' | 'calendar' | 'chat' | 'nearby' | 'notifications'}
                     onTabChange={handleTabChange}
                     onOpenScanner={handleOpenScanner}
                     onNotificationClick={handleOpenNotifications}
                     pendingFacilitatorCount={pendingFacilitatorCount}
                     unreadNotificationCount={unreadNotificationCount}
+                    isStaff={isStaff}
                 />
             )}
 
@@ -2653,6 +2669,7 @@ const App: React.FC = () => {
                     </div>
                 </div>
             )}
+
         </div>
     );
 };
