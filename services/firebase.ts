@@ -1,7 +1,7 @@
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBEKNCfxB7-vPjzIDgCLC1xlNXdBbrTNp8",
@@ -28,7 +28,11 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 // Falls back to the default in-memory instance if already initialized (HMR).
 let db;
 try {
-    db = initializeFirestore(app, { localCache: persistentLocalCache() });
+    db = initializeFirestore(app, { 
+        localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+        }) 
+    });
 } catch {
     db = getFirestore(app);
 }
