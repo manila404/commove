@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DisplayEventType } from '../types';
 import { LocationIcon, CalendarIcon, ClockIcon, StarIcon, BookmarkIcon, formatDisplayDate, formatTime } from '../constants';
+import { getCategoryStyle } from '../utils/categoryStyles';
 
 interface EventCardProps {
   event: DisplayEventType;
@@ -15,35 +16,18 @@ const EventCard: React.FC<EventCardProps> = ({ event, onSelect, onToggleSave }) 
   }
 
   const getCategoryStyles = (category: string) => {
-    switch (category) {
-      case 'Concerts':
-      case 'Cosplay':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200 border-purple-200 dark:border-purple-800';
-      case 'Arts':
-        return 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-200 border-pink-200 dark:border-pink-800';
-      case 'Gaming':
-      case 'Technology':
-        return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-200 border-cyan-200 dark:border-cyan-800';
-      case 'Business':
-      case 'Conference':
-      case 'Expo Events':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 border-blue-200 dark:border-blue-800';
-      case 'Health and Wellness':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200 border-green-200 dark:border-green-800';
-      case 'Competitions':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200 border-red-200 dark:border-red-800';
-      case 'Cafe':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200 border-orange-200 dark:border-orange-800';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600';
-    }
+    return getCategoryStyle(category).badge;
   };
+
+  const firstCatStyle = getCategoryStyle(event.category);
 
   return (
     <div 
       className={`bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-md hover:shadow-xl dark:shadow-black/20 border transition-all duration-300 ease-in-out transform hover:-translate-y-1 cursor-pointer group relative flex flex-col h-full ${event.isLive ? 'border-red-500/50 dark:border-red-500/50 ring-2 ring-red-500/20' : 'border-gray-200 dark:border-gray-700'}`}
       onClick={() => onSelect(event)}
     >
+       {/* Premium Category Gradient Accent Line */}
+       <div className={`h-1 w-full bg-gradient-to-r ${firstCatStyle.bg}`} />
        <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">
          {event.isLive && (
              <div className="bg-red-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full shadow-lg flex items-center animate-pulse tracking-tighter">
