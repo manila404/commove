@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Clock, Trash2, MapPin, Calendar } from 'lucide-react';
 import type { EventType } from '../types';
 import { formatDisplayDate } from '../constants';
+import { smartSearchEvents } from '../utils/searchUtils';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -42,13 +43,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
   };
 
   const suggestions = query.trim() 
-    ? events.filter(e => 
-        (e.name || '').toLowerCase().includes(query.toLowerCase()) ||
-        (Array.isArray(e.category) ? e.category : [e.category]).some(cat => 
-          (cat || '').toLowerCase().includes(query.toLowerCase())
-        ) ||
-        (e.venue || '').toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 4)
+    ? smartSearchEvents(events, query).slice(0, 4)
     : [];
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Image as ImageIcon, CalendarDays } from 'lucide-react';
 import type { DisplayEventType } from '../types';
+import { smartSearchEvents } from '../utils/searchUtils';
 
 interface ViewAllUpcomingEventsProps {
   events: DisplayEventType[];
@@ -29,21 +30,19 @@ const ViewAllUpcomingEvents: React.FC<ViewAllUpcomingEventsProps> = ({
     end.setDate(today.getDate() + 14);
     end.setHours(23, 59, 59, 999);
 
-    return events
-      .filter(e => {
-        if (!e.date) return false;
-        const d = new Date(e.date + 'T00:00:00');
-        return d >= start && d <= end;
-      })
-      .filter(e => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (
-          e.name.toLowerCase().includes(q) ||
-          e.venue?.toLowerCase().includes(q)
-        );
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    let filtered = events.filter(e => {
+      if (!e.date) return false;
+      const d = new Date(e.date + 'T00:00:00');
+      return d >= start && d <= end;
+    });
+
+    if (search.trim()) {
+      filtered = smartSearchEvents(filtered, search);
+    } else {
+      filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+
+    return filtered;
   }, [events, search]);
 
   return (

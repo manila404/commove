@@ -10,6 +10,7 @@ import { getKNNRankedEvents } from './services/recommendationService'; // Import
 import { incrementEventCounter } from './services/analyticsService';
 import { CATEGORIES, formatDisplayDate } from './constants';
 import { Tag } from 'lucide-react';
+import { smartSearchEvents } from './utils/searchUtils';
 import type { User, EventType, DisplayEventType, Reminder, AppNotification } from './types';
 import { createNotification, subscribeToNotifications, hasNotification } from './services/notificationService';
 import { useAlert } from './contexts/AlertContext';
@@ -1802,16 +1803,7 @@ const App: React.FC = () => {
 
         // 2. Search Filter
         if (searchQuery) {
-            const lowercasedQuery = searchQuery.toLowerCase();
-            baseEvents = baseEvents.filter(event => {
-                const categories = Array.isArray(event.category) ? event.category : [event.category];
-                return (event.name || '').toLowerCase().includes(lowercasedQuery) ||
-                    categories.some(cat => (cat || '').toLowerCase().includes(lowercasedQuery)) ||
-                    (event.street || '').toLowerCase().includes(lowercasedQuery) ||
-                    (event.venue || '').toLowerCase().includes(lowercasedQuery) ||
-                    (event.city || '').toLowerCase().includes(lowercasedQuery) ||
-                    (event.description || '').toLowerCase().includes(lowercasedQuery);
-            });
+            baseEvents = smartSearchEvents(baseEvents, searchQuery);
         }
 
 
