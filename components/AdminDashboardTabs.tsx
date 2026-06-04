@@ -9,7 +9,7 @@ import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Lock, Eye
 import AdminReports from './AdminReports';
 import { getHighlights, setHighlights } from '../services/eventService';
 import { subscribeToAllFeedback } from '../services/feedbackService';
-import { createNotification } from '../services/notificationService';
+
 import { generateEventDecisionInsight, generateMonthlyDecisionSummary, generateAdminDecisionSummary, generateFacilitatorDecisionSummary } from '../services/analyticsInsightService';
 import type { CrossDomainSummary, DomainInsight, InsightDomain, InsightLevel } from '../services/analyticsInsightService';
 import type { EventFeedback } from '../types';
@@ -54,16 +54,6 @@ interface AdminDashboardTabsProps {
     onNotifyUpdate?: (event: EventType) => void;
 }
 
-// Returns a stable first-seen timestamp for an insight, persisted in localStorage.
-// ─── Insight notification dedup helpers ──────────────────────────────────────
-
-const getNotifiedInsightKeys = (uid: string): Set<string> => {
-    try { const r = localStorage.getItem(`cmt_ds_notified_${uid}`); return r ? new Set(JSON.parse(r) as string[]) : new Set<string>(); }
-    catch { return new Set<string>(); }
-};
-const saveNotifiedInsightKeys = (uid: string, keys: Set<string>): void => {
-    try { localStorage.setItem(`cmt_ds_notified_${uid}`, JSON.stringify([...keys])); } catch { }
-};
 
 // ─── Insight first-seen timestamp ────────────────────────────────────────────
 // Key is based on the stable identifier only (domain/card title + insight title),
@@ -318,65 +308,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         } catch { }
     }, [currentUser?.uid]);
 
-    // ── Decision Support → Notification + History bridge ─────────────────────
-    // Runs whenever data changes. Detects NEW insights, appends them to the
-    // persistent history, and fires a Firestore notification for critical/warning.
-    const dsNotifyingRef = useRef<Set<string>>(new Set());
-
-    useEffect(() => {
-        const uid = currentUser?.uid;
-        if (!uid || events.length === 0) return;
-
-        const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
-        const insights: DomainInsight[] = isAdmin
-            ? generateAdminDecisionSummary(events, users, allFeedback).insights
-            : (() => {
-                const myEvts = events.filter(e => e.createdBy === uid);
-                const myIds = new Set(myEvts.map(e => e.id));
-                const myFb = allFeedback.filter(f => myIds.has(f.eventId));
-                return generateFacilitatorDecisionSummary(myEvts, myFb, uid).insights;
-            })();
-
-        const currentKeys = new Set(insights.map(ins => `${ins.domain}|${ins.title}`));
-        const prevKeys = getNotifiedInsightKeys(uid);
-
-        // Persist current key set (drops resolved insights so they re-fire if they return)
-        saveNotifiedInsightKeys(uid, currentKeys);
-
-        // New = in current set, not in prev localStorage set, not already in-flight this session
-        const newInsights = insights.filter(ins => {
-            const k = `${ins.domain}|${ins.title}`;
-            return !prevKeys.has(k) && !dsNotifyingRef.current.has(k);
-        });
-        if (newInsights.length === 0) return;
-
-        // Mark in-flight synchronously to prevent duplicate queuing on rapid re-renders
-        newInsights.forEach(ins => dsNotifyingRef.current.add(`${ins.domain}|${ins.title}`));
-
-        // Append new insights to persistent history — skip any domain|title already stored
-        const now = new Date().toISOString();
-        const newEntries: StoredInsight[] = newInsights.map(ins => ({
-            domain: ins.domain, level: ins.level, title: ins.title, body: ins.body, seenAt: now,
-        }));
-        setInsightHistory(prev => {
-            const existingKeys = new Set(prev.map(h => `${h.domain}|${h.title}`));
-            const trulyNew = newEntries.filter(e => !existingKeys.has(`${e.domain}|${e.title}`));
-            if (trulyNew.length === 0) return prev;
-            const updated = [...prev, ...trulyNew].slice(-300);
-            try { localStorage.setItem(`cmt_ih_${uid}`, JSON.stringify(updated)); } catch { }
-            return updated;
-        });
-
-        // Fire Firestore notifications for critical and warning only
-        (async () => {
-            for (const ins of newInsights.filter(i => i.level === 'critical' || i.level === 'warning')) {
-                const prefix = ins.level === 'critical' ? 'Critical Alert' : 'Decision Support Warning';
-                try { await createNotification(uid, 'system', `${prefix}: ${ins.title}`, ins.body); }
-                catch { /* non-fatal */ }
-            }
-        })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [events, users, allFeedback, currentUser?.uid]);
 
     // Confirmation dialog state
     type ConfirmAction = { type: 'publish' | 'cancel' | 'notify'; event: EventType } | null;

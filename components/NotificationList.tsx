@@ -438,7 +438,13 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
     }, [userId]);
 
     const filteredNotifications = useMemo(() => {
-        let result = notifications;
+        // Filter out legacy Decision Support notifications from the list
+        let result = notifications.filter(n =>
+            !(n.type === 'system' && (
+                n.title.startsWith('Decision Support Warning') ||
+                n.title.startsWith('Critical Alert')
+            ))
+        );
         if (filter === 'unread') result = result.filter(n => !n.isRead);
         if (filter === 'read') result = result.filter(n => n.isRead);
         return result;
