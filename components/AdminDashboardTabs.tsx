@@ -183,8 +183,20 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [viewingDate, setViewingDate] = useState<Date>(new Date());
     const [isMobile, setIsMobile] = React.useState(false);
 
+    const isEventPast = (event: EventType) => {
+        const refDate = event.endDate || event.date;
+        const refTime = event.endTime || '23:59';
+        const endMs = new Date(`${refDate}T${refTime}`).getTime();
+        if (isNaN(endMs)) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return new Date(event.date + 'T00:00:00') < today;
+        }
+        return endMs < Date.now();
+    };
+
     const [eventFilter, setEventFilter] = useState<'all' | 'pending' | 'scheduled' | 'published'>('all');
-    const [eventSortOrder, setEventSortOrder] = useState<'asc' | 'desc' | 'newest' | 'oldest'>('newest');
+    const [eventSortOrder, setEventSortOrder] = useState<'asc' | 'desc' | 'past' | 'upcoming'>('upcoming');
     const [showSortMenu, setShowSortMenu] = useState(false);
     const [eventVisibilityFilter, setEventVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
     const [eventsPage, setEventsPage] = useState(1);
@@ -1464,6 +1476,11 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         const allFilteredSortedEvents = visibilityFilteredEvents
             .filter(event => eventFilter === 'all' ? true : event.status === eventFilter)
             .filter(event => {
+                if (eventSortOrder === 'past') return isEventPast(event);
+                if (eventSortOrder === 'upcoming') return !isEventPast(event);
+                return true;
+            })
+            .filter(event => {
                 if (!eventSearchLower) return true;
                 const cats = Array.isArray(event.category) ? event.category : [event.category];
                 return (event.name || '').toLowerCase().includes(eventSearchLower) ||
@@ -1473,12 +1490,11 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     (event.description || '').toLowerCase().includes(eventSearchLower);
             })
             .sort((a, b) => {
-                if (eventSortOrder === 'newest' || eventSortOrder === 'oldest') {
-                    const tsA = (a as any).createdAt ?? 0;
-                    const tsB = (b as any).createdAt ?? 0;
-                    const msA = typeof tsA === 'object' && tsA?.toMillis ? tsA.toMillis() : Number(tsA);
-                    const msB = typeof tsB === 'object' && tsB?.toMillis ? tsB.toMillis() : Number(tsB);
-                    return eventSortOrder === 'newest' ? msB - msA : msA - msB;
+                if (eventSortOrder === 'past') {
+                    return new Date(b.date).getTime() - new Date(a.date).getTime();
+                }
+                if (eventSortOrder === 'upcoming') {
+                    return new Date(a.date).getTime() - new Date(b.date).getTime();
                 }
                 const nameA = a.name.toLowerCase();
                 const nameB = b.name.toLowerCase();
@@ -1570,7 +1586,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     <div>
                                         <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Sort by</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {[{ id: 'newest', label: 'Newest' }, { id: 'oldest', label: 'Oldest' }, { id: 'asc', label: 'A → Z' }, { id: 'desc', label: 'Z → A' }].map(opt => (
+                                            {[{ id: 'upcoming', label: 'Upcoming' }, { id: 'past', label: 'Past Events' }, { id: 'asc', label: 'A → Z' }, { id: 'desc', label: 'Z → A' }].map(opt => (
                                                 <button key={opt.id} onClick={() => { setEventSortOrder(opt.id as any); setShowSortMenu(false); }}
                                                     className="px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
                                                     style={eventSortOrder === opt.id ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
@@ -1638,8 +1654,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             onChange={e => setEventSortOrder(e.target.value as any)}
                             className="appearance-none bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 hover:border-blue-400 rounded-full pl-4 pr-8 py-1.5 text-[13px] font-semibold text-gray-700 dark:text-gray-200 outline-none focus:ring-2 transition-all cursor-pointer shadow-sm"
                         >
-                            <option value="newest">Newest</option>
-                            <option value="oldest">Oldest</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="past">Past Events</option>
                             <option value="asc">A → Z</option>
                             <option value="desc">Z → A</option>
                         </select>
@@ -1893,20 +1909,20 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         Descending (Z-A)
                                     </button>
 
-                                    <p className="px-3 pt-2 pb-0.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">By Created Date</p>
+                                    <p className="px-3 pt-2 pb-0.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">By Timeline</p>
                                     <button
-                                        onClick={() => { setEventSortOrder('newest'); setShowSortMenu(false); }}
-                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'newest' ? 'border-2 border-violet-500 bg-violet-50/50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                        onClick={() => { setEventSortOrder('upcoming'); setShowSortMenu(false); }}
+                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'upcoming' ? 'border-2 border-violet-500 bg-violet-50/50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${eventSortOrder === 'newest' ? 'text-violet-600 dark:text-violet-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        Newest Created
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${eventSortOrder === 'upcoming' ? 'text-violet-600 dark:text-violet-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Upcoming
                                     </button>
                                     <button
-                                        onClick={() => { setEventSortOrder('oldest'); setShowSortMenu(false); }}
-                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'oldest' ? 'border-2 border-violet-500 bg-violet-50/50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                        onClick={() => { setEventSortOrder('past'); setShowSortMenu(false); }}
+                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'past' ? 'border-2 border-violet-500 bg-violet-50/50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${eventSortOrder === 'oldest' ? 'text-violet-600 dark:text-violet-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        Oldest Created
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${eventSortOrder === 'past' ? 'text-violet-600 dark:text-violet-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Past Events
                                     </button>
                                 </div>
                             </div>
