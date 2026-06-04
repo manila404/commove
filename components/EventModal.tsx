@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import RichText from './RichText';
 import { Image as ImageIcon, ArrowLeft, Share2, Heart, Phone, MessageCircle, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { EventType, Reminder, User } from '../types';
@@ -31,16 +31,16 @@ interface EventModalProps {
   onLoginRequired?: () => void;
 }
 
-const EventModal: React.FC<EventModalProps> = ({ 
-  event, 
-  onClose, 
-  isSaved, 
-  onToggleSave, 
+const EventModal: React.FC<EventModalProps> = ({
+  event,
+  onClose,
+  isSaved,
+  onToggleSave,
   isLiked,
   onToggleLike,
-  reminder, 
-  onSetReminder, 
-  onCancelReminder, 
+  reminder,
+  onSetReminder,
+  onCancelReminder,
   currentUserLocation,
   currentUser,
   isLocationLive = true,
@@ -54,10 +54,10 @@ const EventModal: React.FC<EventModalProps> = ({
   const [reminderOffset, setReminderOffset] = useState(reminder?.reminderOffset.startsWith('specific:') ? 'specific-time' : (reminder?.reminderOffset || '1-hour'));
   const [specificTime, setSpecificTime] = useState(reminder?.reminderOffset.startsWith('specific:') ? reminder.reminderOffset.split(':')[1] : '09:00');
   const [isRegistering, setIsRegistering] = useState(false);
-  const [regData, setRegData] = useState({ 
-    name: currentUser?.name || '', 
-    email: currentUser?.email || '', 
-    phoneNumber: '' 
+  const [regData, setRegData] = useState({
+    name: currentUser?.name || '',
+    email: currentUser?.email || '',
+    phoneNumber: ''
   });
   const [userReg, setUserReg] = useState<Registration | null>(null);
   const [isLoadingReg, setIsLoadingReg] = useState(false);
@@ -88,7 +88,7 @@ const EventModal: React.FC<EventModalProps> = ({
   }, [event.id, event.isPrivate]);
 
   // Derive the user's registration status directly from currentUser.registrationStatuses.
-  // This requires NO Firestore collection queries â€” the data comes from the user document
+  // This requires NO Firestore collection queries — the data comes from the user document
   // which is already loaded in app state and updates in real-time via App.tsx's user subscription.
   React.useEffect(() => {
     if (!event.isPrivate || !currentUser) {
@@ -117,82 +117,82 @@ const EventModal: React.FC<EventModalProps> = ({
   const isCheckedIn = currentUser?.checkedInEventIds?.includes(event.id);
   const isResident = currentUser?.role === 'user';
   const isFacilitatorOrAdmin = currentUser?.role === 'facilitator' || currentUser?.role === 'admin';
-  // True when all slots are filled with APPROVED participants â€” blocks new registration submissions
+  // True when all slots are filled with APPROVED participants — blocks new registration submissions
   const approvedCount = liveApprovedCount;
   const isEventFull = event.maxParticipants != null && approvedCount >= event.maxParticipants;
 
   const reminderOptions = [
-      { value: '1-minute', label: '1 minute before (Test)' },
-      { value: '30-minutes', label: '30 minutes before' },
-      { value: '1-hour', label: '1 hour before' },
-      { value: '2-hours', label: '2 hours before' },
-      { value: '1-day', label: '1 day before' },
-      { value: 'specific-time', label: 'At a preferred time...' },
+    { value: '1-minute', label: '1 minute before (Test)' },
+    { value: '30-minutes', label: '30 minutes before' },
+    { value: '1-hour', label: '1 hour before' },
+    { value: '2-hours', label: '2 hours before' },
+    { value: '1-day', label: '1 day before' },
+    { value: 'specific-time', label: 'At a preferred time...' },
   ];
 
   const handleSetReminderClick = async () => {
-      let hasNativePermission = permissions.notifications === 'granted';
-      
-      if (permissions.notifications !== 'granted') {
-          const success = await requestNotifications();
-          if (success) {
-              hasNativePermission = true;
-          }
+    let hasNativePermission = permissions.notifications === 'granted';
+
+    if (permissions.notifications !== 'granted') {
+      const success = await requestNotifications();
+      if (success) {
+        hasNativePermission = true;
       }
-      
-      const offsetValue = reminderOffset === 'specific-time' ? `specific:${specificTime}` : reminderOffset;
-      onSetReminder(event.id, offsetValue);
-      setShowReminderModal(false);
-      
-      if (!hasNativePermission) {
-          showAlert('In-App Reminder Set', 'Browser notifications are blocked, but you will still see this reminder in the app.', 'info');
-      }
+    }
+
+    const offsetValue = reminderOffset === 'specific-time' ? `specific:${specificTime}` : reminderOffset;
+    onSetReminder(event.id, offsetValue);
+    setShowReminderModal(false);
+
+    if (!hasNativePermission) {
+      showAlert('In-App Reminder Set', 'Browser notifications are blocked, but you will still see this reminder in the app.', 'info');
+    }
   };
 
   const handleOpenReminderModal = () => {
-      setShowReminderModal(true);
+    setShowReminderModal(true);
   };
 
   const handleCancelReminderClick = () => {
-      onCancelReminder(event.id);
-      setShowReminderModal(false);
+    onCancelReminder(event.id);
+    setShowReminderModal(false);
   };
 
   const handleCheckIn = async () => {
     if (!currentUser) return;
     if (isCheckedIn) return;
-    
+
     if (event.isPrivate && (!userReg || userReg.status !== 'approved')) {
-        showAlert("Check-in Failed", "You must be approved to check in to this private event.", "error");
-        return;
+      showAlert("Check-in Failed", "You must be approved to check in to this private event.", "error");
+      return;
     }
 
     try {
-        const newCheckedInIds = [...(currentUser.checkedInEventIds || []), event.id];
-        await updateUserParticipation(currentUser.uid, 'checkedIn', newCheckedInIds);
-        onToggleParticipation(event.id, 'checkedIn'); // Update local state
-        showAlert("Success", "You have successfully checked in!", "success");
+      const newCheckedInIds = [...(currentUser.checkedInEventIds || []), event.id];
+      await updateUserParticipation(currentUser.uid, 'checkedIn', newCheckedInIds);
+      onToggleParticipation(event.id, 'checkedIn'); // Update local state
+      showAlert("Success", "You have successfully checked in!", "success");
     } catch (error) {
-        showAlert("Error", "Failed to check in.", "error");
+      showAlert("Error", "Failed to check in.", "error");
     }
   };
 
   const handleGetDirections = () => {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${event.lat},${event.lng}`;
-      window.open(url, '_blank');
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${event.lat},${event.lng}`;
+    window.open(url, '_blank');
   };
 
   const checkIsLive = (date: string, startTime: string, endTime: string) => {
     if (!date || !startTime) return false;
     const now = new Date();
     const eventStart = new Date(`${date}T${startTime}`);
-    
+
     // If end time is earlier than start time (e.g. 9PM to 1AM), it means the event ends the next day.
     let eventEnd = endTime ? new Date(`${date}T${endTime}`) : new Date(eventStart.getTime() + 2 * 60 * 60 * 1000);
     if (eventEnd < eventStart) {
-        eventEnd.setDate(eventEnd.getDate() + 1);
+      eventEnd.setDate(eventEnd.getDate() + 1);
     }
-    
+
     return now >= eventStart && now <= eventEnd;
   };
 
@@ -208,7 +208,7 @@ const EventModal: React.FC<EventModalProps> = ({
     return Date.now() > endMs;
   };
   const isEnded = checkIsEnded();
-  
+
   const getExistingReminderLabel = () => {
     if (!reminder) return null;
     if (reminder.reminderOffset.startsWith('specific:')) {
@@ -262,81 +262,81 @@ const EventModal: React.FC<EventModalProps> = ({
 
       {/* Header Image Carousel */}
       <div className="flex justify-center">
-      <div className={`relative rounded-[15px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 w-[300px] h-[300px] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
-        {/* Blurred background fill â€” same image scaled+blurred so no white gaps */}
-        <img
-          src={allPhotos[activePhotoIndex] || undefined}
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60"
-          referrerPolicy="no-referrer"
-        />
-        <AnimatePresence mode="wait">
-          <motion.img
-            key={activePhotoIndex}
+        <div className={`relative rounded-[15px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 w-[300px] h-[300px] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
+          {/* Blurred background fill — same image scaled+blurred so no white gaps */}
+          <img
             src={allPhotos[activePhotoIndex] || undefined}
-            alt={`${event.name} - ${activePhotoIndex + 1}`}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="relative z-[1] w-full h-full object-contain cursor-zoom-in"
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60"
             referrerPolicy="no-referrer"
-            onClick={() => openLightbox(activePhotoIndex)}
           />
-        </AnimatePresence>
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={activePhotoIndex}
+              src={allPhotos[activePhotoIndex] || undefined}
+              alt={`${event.name} - ${activePhotoIndex + 1}`}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="relative z-[1] w-full h-full object-contain cursor-zoom-in"
+              referrerPolicy="no-referrer"
+              onClick={() => openLightbox(activePhotoIndex)}
+            />
+          </AnimatePresence>
 
-        {allPhotos.length > 1 && (
-          <>
-            <button
-              onClick={() => setActivePhotoIndex(prev => (prev - 1 + allPhotos.length) % allPhotos.length)}
-              className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-20"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button
-              onClick={() => setActivePhotoIndex(prev => (prev + 1) % allPhotos.length)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-20"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-            
-            {/* Indicators */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-              {allPhotos.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActivePhotoIndex(i)}
-                  className={`h-1.5 rounded-full transition-all ${i === activePhotoIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'}`}
-                />
-              ))}
+          {allPhotos.length > 1 && (
+            <>
+              <button
+                onClick={() => setActivePhotoIndex(prev => (prev - 1 + allPhotos.length) % allPhotos.length)}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-20"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={() => setActivePhotoIndex(prev => (prev + 1) % allPhotos.length)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-20"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+
+              {/* Indicators */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                {allPhotos.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActivePhotoIndex(i)}
+                    className={`h-1.5 rounded-full transition-all ${i === activePhotoIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {!allPhotos.length && (
+            <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+              <ImageIcon className="w-16 h-16 text-gray-400" />
             </div>
-          </>
-        )}
+          )}
 
-        {!allPhotos.length && (
-          <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-            <ImageIcon className="w-16 h-16 text-gray-400" />
-          </div>
-        )}
-        
-        {/* Event Ended overlay banner */}
-        {isEnded && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-            <div className="bg-black/70 backdrop-blur-sm px-6 py-3 rounded-full flex items-center gap-2.5 border border-white/20 shadow-xl">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-white font-black tracking-wider text-sm uppercase">Event Ended</span>
+          {/* Event Ended overlay banner */}
+          {isEnded && (
+            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+              <div className="bg-black/70 backdrop-blur-sm px-6 py-3 rounded-full flex items-center gap-2.5 border border-white/20 shadow-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-white font-black tracking-wider text-sm uppercase">Event Ended</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {isLive && !isEnded && (
-          <div className="absolute bottom-0 left-0 w-full bg-red-600/90 text-white px-4 py-3 flex items-center justify-center animate-pulse backdrop-blur-sm z-10">
-            <span className="w-2.5 h-2.5 bg-white rounded-full mr-2 shadow-[0_0_8px_white]"></span>
-            <span className="font-black tracking-[0.2em] text-sm uppercase">Happening Now</span>
-          </div>
-        )}
-      </div>
+          {isLive && !isEnded && (
+            <div className="absolute bottom-0 left-0 w-full bg-red-600/90 text-white px-4 py-3 flex items-center justify-center animate-pulse backdrop-blur-sm z-10">
+              <span className="w-2.5 h-2.5 bg-white rounded-full mr-2 shadow-[0_0_8px_white]"></span>
+              <span className="font-black tracking-[0.2em] text-sm uppercase">Happening Now</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={`px-6 pb-6 space-y-8 ${isEnded ? 'opacity-75' : ''}`}>
@@ -364,27 +364,26 @@ const EventModal: React.FC<EventModalProps> = ({
               </span>
             ))}
           </div>
-          
-          <div className="flex flex-wrap items-center gap-3 mt-4">
-              {isFacilitatorOrAdmin && event.priority && (
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${
-                      event.priority === 'urgent' ? 'bg-red-50 dark:bg-red-900/30 border-red-100 text-red-700' :
-                      event.priority === 'average' ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-100 text-orange-700' :
-                      'bg-green-50 dark:bg-green-900/30 border-green-100 text-green-700'
-                  }`}>
-                      <p className="text-sm font-bold uppercase tracking-wider">
-                          Priority: {event.priority}
-                      </p>
-                  </div>
-              )}
 
-              {isFacilitatorOrAdmin && event.requestedPublishDate && (
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800/50">
-                      <p className="text-sm font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
-                          Requested Publish: <span className="text-blue-900 dark:text-blue-100">{new Date(event.requestedPublishDate).toLocaleString()}</span>
-                      </p>
-                  </div>
-              )}
+          <div className="flex flex-wrap items-center gap-3 mt-4">
+            {isFacilitatorOrAdmin && event.priority && (
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${event.priority === 'urgent' ? 'bg-red-50 dark:bg-red-900/30 border-red-100 text-red-700' :
+                event.priority === 'average' ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-100 text-orange-700' :
+                  'bg-green-50 dark:bg-green-900/30 border-green-100 text-green-700'
+                }`}>
+                <p className="text-sm font-bold uppercase tracking-wider">
+                  Priority: {event.priority}
+                </p>
+              </div>
+            )}
+
+            {isFacilitatorOrAdmin && event.requestedPublishDate && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                <p className="text-sm font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                  Requested Publish: <span className="text-blue-900 dark:text-blue-100">{new Date(event.requestedPublishDate).toLocaleString()}</span>
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -405,7 +404,7 @@ const EventModal: React.FC<EventModalProps> = ({
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Time</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatTime(event.startTime)} â€“ {formatTime(event.endTime)}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatTime(event.startTime)} – {formatTime(event.endTime)}</p>
             </div>
           </div>
           <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 flex items-center gap-3">
@@ -455,162 +454,161 @@ const EventModal: React.FC<EventModalProps> = ({
               <p className="text-sm text-gray-400 dark:text-gray-500">Registration and participation are no longer available for past events.</p>
             </div>
           ) : (
-          <>
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Participation</h3>
-            <p className="text-xs text-gray-400 dark:text-gray-500">
-              {event.isPrivate ? 'Private event â€¢ Registration required' : 'Public event â€¢ Anyone can attend'}
-            </p>
-          </div>
+            <>
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Participation</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  {event.isPrivate ? 'Private event • Registration required' : 'Public event • Anyone can attend'}
+                </p>
+              </div>
 
-          {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
-            <div className={`p-3 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
-              <p className="font-bold text-sm">
-                {event.maxParticipants - approvedCount <= 0 
-                  ? 'Event is Full' 
-                  : `${event.maxParticipants - approvedCount} slot${event.maxParticipants - approvedCount !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
-              </p>
-            </div>
-          )}
+              {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
+                <div className={`p-3 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
+                  <p className="font-bold text-sm">
+                    {event.maxParticipants - approvedCount <= 0
+                      ? 'Event is Full'
+                      : `${event.maxParticipants - approvedCount} slot${event.maxParticipants - approvedCount !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
+                  </p>
+                </div>
+              )}
 
-          {isResident ? (
-            // RESIDENT VIEW
-            event.isPrivate ? (
-              <div className="p-8 bg-primary-50 dark:bg-primary-900/20 rounded-[20px] border-2 border-dashed border-primary-200 dark:border-primary-800/50">
-                {isLoadingReg ? (
-                  <div className="flex justify-center p-4"><Spinner /></div>
-                ) : userReg ? (
-                  // User already has a registration â€” show their status
-                  <div className={`p-6 rounded-2xl text-center shadow-sm border-2 ${
-                    userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
-                    userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
-                    'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
-                  }`}>
-                    {userReg.status === 'pending' && (
-                      <>
-                        <div className={`w-12 h-12 mx-auto mb-3 rounded-full ${isEventFull ? 'bg-red-100 dark:bg-red-900/40' : 'bg-yellow-100 dark:bg-yellow-900/40'} flex items-center justify-center`}>
-                          {isEventFull ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          )}
-                        </div>
-                        <p className="text-base font-black mb-1 tracking-tight">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
-                        <p className="text-sm font-medium opacity-80">
-                          {isEventFull ? 'Unfortunately, all slots for this event have been filled.' : 'Your request is pending approval. The organizer will review it shortly.'}
-                        </p>
-                      </>
-                    )}
-                    {userReg.status === 'approved' && (
-                      <>
-                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              {isResident ? (
+                // RESIDENT VIEW
+                event.isPrivate ? (
+                  <div className="p-8 bg-primary-50 dark:bg-primary-900/20 rounded-[20px] border-2 border-dashed border-primary-200 dark:border-primary-800/50">
+                    {isLoadingReg ? (
+                      <div className="flex justify-center p-4"><Spinner /></div>
+                    ) : userReg ? (
+                      // User already has a registration — show their status
+                      <div className={`p-6 rounded-2xl text-center shadow-sm border-2 ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
+                        userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
+                          'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
+                        }`}>
+                        {userReg.status === 'pending' && (
+                          <>
+                            <div className={`w-12 h-12 mx-auto mb-3 rounded-full ${isEventFull ? 'bg-red-100 dark:bg-red-900/40' : 'bg-yellow-100 dark:bg-yellow-900/40'} flex items-center justify-center`}>
+                              {isEventFull ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              )}
+                            </div>
+                            <p className="text-base font-black mb-1 tracking-tight">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
+                            <p className="text-sm font-medium opacity-80">
+                              {isEventFull ? 'Unfortunately, all slots for this event have been filled.' : 'Your request is pending approval. The organizer will review it shortly.'}
+                            </p>
+                          </>
+                        )}
+                        {userReg.status === 'approved' && (
+                          <>
+                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <p className="text-base font-black mb-1 tracking-tight">You are already registered!</p>
+                            <p className="text-sm font-medium opacity-80 mb-3">A slot has been assigned to you for this event.</p>
+                            <button
+                              onClick={handleCheckIn}
+                              className="w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
+                            >
+                              {isCheckedIn ? '✓ Already Checked-In' : 'Check-In to Event'}
+                            </button>
+                          </>
+                        )}
+                        {userReg.status === 'rejected' && (
+                          <>
+                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <p className="text-base font-black mb-1 tracking-tight">Registration Not Approved</p>
+                            <p className="text-sm font-medium opacity-80">Your registration for this event was not approved at this time.</p>
+                          </>
+                        )}
+                      </div>
+                    ) : isEventFull ? (
+                      // Event is full — no more registrations accepted
+                      <div className="p-6 rounded-2xl text-center bg-gray-50 dark:bg-gray-800/50 border-2 border-gray-200 dark:border-gray-700">
+                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                           </svg>
                         </div>
-                        <p className="text-base font-black mb-1 tracking-tight">You are already registered!</p>
-                        <p className="text-sm font-medium opacity-80 mb-3">A slot has been assigned to you for this event.</p>
-                        <button 
-                          onClick={handleCheckIn}
-                          className="w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
-                        >
-                          {isCheckedIn ? 'âœ“ Already Checked-In' : 'Check-In to Event'}
-                        </button>
-                      </>
-                    )}
-                    {userReg.status === 'rejected' && (
-                      <>
-                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                        <p className="text-base font-black text-gray-700 dark:text-gray-300 mb-1">Event is Full</p>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">All available slots have been filled. Registration is now closed.</p>
+                      </div>
+                    ) : (
+                      // No existing registration and slots available — show the form
+                      <div className="space-y-6">
+                        <div className="text-center">
+                          <p className="text-primary-900 dark:text-primary-100 font-bold text-lg mb-1">Request to Join</p>
+                          <p className="text-primary-600/60 dark:text-primary-400/60 text-xs font-medium uppercase tracking-tighter">Fill in your details below to register</p>
                         </div>
-                        <p className="text-base font-black mb-1 tracking-tight">Registration Not Approved</p>
-                        <p className="text-sm font-medium opacity-80">Your registration for this event was not approved at this time.</p>
-                      </>
+                        <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <input
+                              type="text" placeholder="Full Name" required
+                              value={regData.name} onChange={e => setRegData({ ...regData, name: e.target.value })}
+                              className="w-full px-5 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all"
+                            />
+                            <input
+                              type="tel" placeholder="Phone Number (Optional)"
+                              value={regData.phoneNumber} onChange={e => setRegData({ ...regData, phoneNumber: e.target.value })}
+                              className="w-full px-5 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all"
+                            />
+                          </div>
+                          <input
+                            type="email" placeholder="Email Address" required readOnly
+                            value={regData.email} onChange={e => setRegData({ ...regData, email: e.target.value })}
+                            className="w-full px-5 py-4 bg-gray-100 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all cursor-not-allowed opacity-70"
+                          />
+                          <button
+                            type="submit" disabled={isRegistering || !currentUser}
+                            className="w-full py-4 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/30 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95"
+                          >
+                            {isRegistering ? 'Submitting Request...' : 'Submit Registration Request'}
+                          </button>
+                        </form>
+                      </div>
                     )}
-                  </div>
-                ) : isEventFull ? (
-                  // Event is full â€” no more registrations accepted
-                  <div className="p-6 rounded-2xl text-center bg-gray-50 dark:bg-gray-800/50 border-2 border-gray-200 dark:border-gray-700">
-                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
-                    <p className="text-base font-black text-gray-700 dark:text-gray-300 mb-1">Event is Full</p>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">All available slots have been filled. Registration is now closed.</p>
                   </div>
                 ) : (
-                  // No existing registration and slots available â€” show the form
-                  <div className="space-y-6">
-                    <div className="text-center">
-                      <p className="text-primary-900 dark:text-primary-100 font-bold text-lg mb-1">Request to Join</p>
-                      <p className="text-primary-600/60 dark:text-primary-400/60 text-xs font-medium uppercase tracking-tighter">Fill in your details below to register</p>
-                    </div>
-                    <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <input 
-                          type="text" placeholder="Full Name" required
-                          value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})}
-                          className="w-full px-5 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all"
-                        />
-                        <input 
-                          type="tel" placeholder="Phone Number (Optional)"
-                          value={regData.phoneNumber} onChange={e => setRegData({...regData, phoneNumber: e.target.value})}
-                          className="w-full px-5 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all"
-                        />
-                      </div>
-                      <input 
-                        type="email" placeholder="Email Address" required readOnly
-                        value={regData.email} onChange={e => setRegData({...regData, email: e.target.value})}
-                        className="w-full px-5 py-4 bg-gray-100 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all cursor-not-allowed opacity-70"
-                      />
-                      <button 
-                        type="submit" disabled={isRegistering || !currentUser}
-                        className="w-full py-4 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/30 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95"
-                      >
-                        {isRegistering ? 'Submitting Request...' : 'Submit Registration Request'}
-                      </button>
-                    </form>
+                  // Public Event - No Registration for Residents
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => onToggleParticipation(event.id, 'interested')}
+                      className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white'}`}
+                    >
+                      {isInterested ? '✓ Interested' : 'Interested?'}
+                    </button>
                   </div>
-                )}
-              </div>
-            ) : (
-              // Public Event - No Registration for Residents
-              <div className="flex gap-3">
-                <button
-                  onClick={() => onToggleParticipation(event.id, 'interested')}
-                  className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white'}`}
-                >
-                  {isInterested ? 'âœ“ Interested' : 'Interested?'}
-                </button>
-              </div>
-            )
-          ) : (
-            // ADMIN / FACILITATOR / GUEST VIEW
-            <div className="flex gap-3">
-              {!isGuest && (
-                <button
-                  onClick={handleCheckIn}
-                  className="flex-1 py-3 bg-gray-900 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-black transition-all active:scale-95"
-                >
-                  {isCheckedIn ? 'âœ“ Checked-in' : 'Check-In Now (Staff)'}
-                </button>
+                )
+              ) : (
+                // ADMIN / FACILITATOR / GUEST VIEW
+                <div className="flex gap-3">
+                  {!isGuest && (
+                    <button
+                      onClick={handleCheckIn}
+                      className="flex-1 py-3 bg-gray-900 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-black transition-all active:scale-95"
+                    >
+                      {isCheckedIn ? '✓ Checked-in' : 'Check-In Now (Staff)'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => isGuest ? onLoginRequired?.() : onToggleParticipation(event.id, 'interested')}
+                    className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-gray-900 border-gray-900 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-gray-900 text-gray-900 dark:text-white hover:bg-gray-900 hover:text-white'}`}
+                  >
+                    {isInterested ? '✓ Interested' : 'Interested?'}
+                  </button>
+                </div>
               )}
-              <button
-                onClick={() => isGuest ? onLoginRequired?.() : onToggleParticipation(event.id, 'interested')}
-                className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-gray-900 border-gray-900 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-gray-900 text-gray-900 dark:text-white hover:bg-gray-900 hover:text-white'}`}
-              >
-                {isInterested ? 'âœ“ Interested' : 'Interested?'}
-              </button>
-            </div>
-          )}
-          </>
+            </>
           )}
         </div>
 
@@ -619,8 +617,8 @@ const EventModal: React.FC<EventModalProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">Location</h3>
             <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-lg">
-               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-               <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Live GPS</span>
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Live GPS</span>
             </div>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500">
@@ -666,7 +664,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between"
               >
                 <div className="flex flex-col items-start">
-                  <span>{existingReminderLabel ? `Reminder set â€” ${existingReminderLabel}` : 'Set Reminder'}</span>
+                  <span>{existingReminderLabel ? `Reminder set — ${existingReminderLabel}` : 'Set Reminder'}</span>
                   <span className="text-[11px] font-normal text-gray-400 mt-0.5">Notify when the event starts, at your chosen time</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -694,9 +692,9 @@ const EventModal: React.FC<EventModalProps> = ({
     try {
       let age;
       if (currentUser.birthday) {
-          age = calculateAge(currentUser.birthday);
+        age = calculateAge(currentUser.birthday);
       }
-      
+
       const newReg = await submitRegistration({
         eventId: event.id,
         userId: currentUser.uid,
@@ -709,7 +707,7 @@ const EventModal: React.FC<EventModalProps> = ({
       });
       setUserReg(newReg);
       showAlert("Registration Submitted", "Your registration is pending approval.", "success");
-      
+
       // Notify the event creator
       if (event.createdBy) {
         await createNotification(
@@ -812,135 +810,134 @@ const EventModal: React.FC<EventModalProps> = ({
             <p className="text-xs text-gray-400 dark:text-gray-500">Registration and participation are no longer available.</p>
           </div>
         ) : (
-        <>
-        <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Participation</h3>
-        <p className={`text-xs font-bold uppercase tracking-widest ${event.isPrivate ? 'text-orange-500' : 'text-primary-600'}`}>
-          {event.isPrivate ? 'Private Event â€¢ Registration Required' : 'Public Event â€¢ Anyone Can Attend'}
-        </p>
-
-        {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
-          <div className={`p-2.5 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
-            <p className="font-bold text-sm">
-              {event.maxParticipants - approvedCount <= 0 
-                ? 'Event is Full' 
-                : `${event.maxParticipants - approvedCount} slot${event.maxParticipants - approvedCount !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
+          <>
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Participation</h3>
+            <p className={`text-xs font-bold uppercase tracking-widest ${event.isPrivate ? 'text-orange-500' : 'text-primary-600'}`}>
+              {event.isPrivate ? 'Private Event • Registration Required' : 'Public Event • Anyone Can Attend'}
             </p>
-          </div>
-        )}
-        
-        {isResident ? (
-          // RESIDENT VIEW
-          event.isPrivate ? (
-            <div className="p-5 bg-primary-50 dark:bg-primary-900/20 rounded-3xl border border-primary-100 dark:border-primary-800">
-              {isLoadingReg ? (
-                <div className="flex justify-center p-4"><Spinner /></div>
-              ) : userReg ? (
-                // User already has a registration â€” show their current status
-                <div className={`p-4 rounded-2xl text-center shadow-sm border ${
-                  userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
-                  userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
-                  'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
-                }`}>
-                  {userReg.status === 'pending' && (
-                    <>
-                      <p className="font-black mb-1">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
-                      <p className="text-xs font-medium opacity-80">
-                        {isEventFull ? 'Unfortunately, all slots have been filled.' : 'Your request is pending approval from the organizer.'}
-                      </p>
-                    </>
-                  )}
-                  {userReg.status === 'approved' && (
-                    <>
-                      <p className="font-black mb-1">You are already registered!</p>
-                      <p className="text-xs font-medium opacity-80 mb-3">A slot has been assigned to you for this event.</p>
-                      <button 
-                        onClick={handleCheckIn}
-                        className="w-full py-2.5 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
+
+            {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
+              <div className={`p-2.5 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
+                <p className="font-bold text-sm">
+                  {event.maxParticipants - approvedCount <= 0
+                    ? 'Event is Full'
+                    : `${event.maxParticipants - approvedCount} slot${event.maxParticipants - approvedCount !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
+                </p>
+              </div>
+            )}
+
+            {isResident ? (
+              // RESIDENT VIEW
+              event.isPrivate ? (
+                <div className="p-5 bg-primary-50 dark:bg-primary-900/20 rounded-3xl border border-primary-100 dark:border-primary-800">
+                  {isLoadingReg ? (
+                    <div className="flex justify-center p-4"><Spinner /></div>
+                  ) : userReg ? (
+                    // User already has a registration — show their current status
+                    <div className={`p-4 rounded-2xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
+                      userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
+                        'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
+                      }`}>
+                      {userReg.status === 'pending' && (
+                        <>
+                          <p className="font-black mb-1">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
+                          <p className="text-xs font-medium opacity-80">
+                            {isEventFull ? 'Unfortunately, all slots have been filled.' : 'Your request is pending approval from the organizer.'}
+                          </p>
+                        </>
+                      )}
+                      {userReg.status === 'approved' && (
+                        <>
+                          <p className="font-black mb-1">You are already registered!</p>
+                          <p className="text-xs font-medium opacity-80 mb-3">A slot has been assigned to you for this event.</p>
+                          <button
+                            onClick={handleCheckIn}
+                            className="w-full py-2.5 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
+                          >
+                            {isCheckedIn ? '✓ Checked-In' : 'Check-In Now'}
+                          </button>
+                        </>
+                      )}
+                      {userReg.status === 'rejected' && (
+                        <>
+                          <p className="font-black mb-1">Registration Not Approved</p>
+                          <p className="text-xs font-medium opacity-80">Your registration was not approved at this time.</p>
+                        </>
+                      )}
+                    </div>
+                  ) : isEventFull ? (
+                    // Event is full — block new registrations
+                    <div className="p-4 rounded-2xl text-center bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                      <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                      <p className="font-black text-gray-700 dark:text-gray-300 text-sm mb-1">Event is Full</p>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">All available slots have been filled. Registration is now closed.</p>
+                    </div>
+                  ) : (
+                    // No registration yet and slots available — show the form
+                    <form onSubmit={handleRegisterSubmit} className="space-y-3">
+                      <p className="text-center text-sm font-bold text-primary-800 dark:text-primary-200 mb-1">Request to Attend</p>
+                      <input
+                        type="text" placeholder="Full Name" required
+                        value={regData.name} onChange={e => setRegData({ ...regData, name: e.target.value })}
+                        className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-primary-500 outline-none transition-all"
+                      />
+                      <input
+                        type="email" placeholder="Email Address" required readOnly
+                        value={regData.email}
+                        className="w-full p-3 text-sm border-2 border-gray-100 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-800 shadow-sm outline-none cursor-not-allowed opacity-70"
+                      />
+                      <input
+                        type="tel" placeholder="Phone Number (Optional)"
+                        value={regData.phoneNumber} onChange={e => setRegData({ ...regData, phoneNumber: e.target.value })}
+                        className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-primary-500 outline-none transition-all"
+                      />
+                      <button
+                        type="submit" disabled={isRegistering || !currentUser}
+                        className="w-full py-3 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/20 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95"
                       >
-                        {isCheckedIn ? 'âœ“ Checked-In' : 'Check-In Now'}
+                        {isRegistering ? 'Submitting Request...' : 'Request to Attend'}
                       </button>
-                    </>
+                    </form>
                   )}
-                  {userReg.status === 'rejected' && (
-                    <>
-                      <p className="font-black mb-1">Registration Not Approved</p>
-                      <p className="text-xs font-medium opacity-80">Your registration was not approved at this time.</p>
-                    </>
-                  )}
-                </div>
-              ) : isEventFull ? (
-                // Event is full â€” block new registrations
-                <div className="p-4 rounded-2xl text-center bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                  <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  </div>
-                  <p className="font-black text-gray-700 dark:text-gray-300 text-sm mb-1">Event is Full</p>
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">All available slots have been filled. Registration is now closed.</p>
                 </div>
               ) : (
-                // No registration yet and slots available â€” show the form
-                <form onSubmit={handleRegisterSubmit} className="space-y-3">
-                  <p className="text-center text-sm font-bold text-primary-800 dark:text-primary-200 mb-1">Request to Attend</p>
-                  <input 
-                    type="text" placeholder="Full Name" required
-                    value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})}
-                    className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-primary-500 outline-none transition-all"
-                  />
-                  <input 
-                    type="email" placeholder="Email Address" required readOnly
-                    value={regData.email}
-                    className="w-full p-3 text-sm border-2 border-gray-100 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-800 shadow-sm outline-none cursor-not-allowed opacity-70"
-                  />
-                  <input 
-                    type="tel" placeholder="Phone Number (Optional)"
-                    value={regData.phoneNumber} onChange={e => setRegData({...regData, phoneNumber: e.target.value})}
-                    className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-primary-500 outline-none transition-all"
-                  />
-                  <button 
-                    type="submit" disabled={isRegistering || !currentUser}
-                    className="w-full py-3 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/20 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95"
+                // Public Event - Mobile Resident View
+                <div className="flex flex-col gap-2.5">
+                  <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl border border-gray-100 dark:border-gray-800 text-center">
+                    <p className="text-gray-900 dark:text-white font-bold text-sm italic opacity-70">Registration not required for public events.</p>
+                  </div>
+                  <button
+                    onClick={() => onToggleParticipation(event.id, 'interested')}
+                    className={`w-full py-3 md:py-4 rounded-2xl border-2 font-black transition-all ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-lg' : 'bg-white dark:bg-gray-800 border-primary-600 text-primary-600 hover:bg-primary-700 hover:text-white'}`}
                   >
-                    {isRegistering ? 'Submitting Request...' : 'Request to Attend'}
+                    {isInterested ? '✓ I am Interested' : 'Express Interest'}
                   </button>
-                </form>
-              )}
-            </div>
-          ) : (
-            // Public Event - Mobile Resident View
-            <div className="flex flex-col gap-2.5">
-               <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl border border-gray-100 dark:border-gray-800 text-center">
-                  <p className="text-gray-900 dark:text-white font-bold text-sm italic opacity-70">Registration not required for public events.</p>
-               </div>
-               <button 
-                onClick={() => onToggleParticipation(event.id, 'interested')}
-                className={`w-full py-3 md:py-4 rounded-2xl border-2 font-black transition-all ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-lg' : 'bg-white dark:bg-gray-800 border-primary-600 text-primary-600 hover:bg-primary-700 hover:text-white'}`}
-              >
-                {isInterested ? 'âœ“ I am Interested' : 'Express Interest'}
-              </button>
-            </div>
-          )
-        ) : (
-          // ADMIN / FACILITATOR / GUEST MOBILE VIEW
-          <div className="flex flex-col gap-2.5">
-            {!isGuest && (
-              <button
-                onClick={handleCheckIn}
-                className="w-full py-2.5 md:py-3.5 bg-primary-600 text-white text-sm md:text-base font-bold rounded-2xl shadow-lg hover:bg-primary-700 transition-all active:scale-95"
-              >
-                {isCheckedIn ? 'âœ“ Checked-in (Staff)' : 'Check-In Now (Staff)'}
-              </button>
+                </div>
+              )
+            ) : (
+              // ADMIN / FACILITATOR / GUEST MOBILE VIEW
+              <div className="flex flex-col gap-2.5">
+                {!isGuest && (
+                  <button
+                    onClick={handleCheckIn}
+                    className="w-full py-2.5 md:py-3.5 bg-primary-600 text-white text-sm md:text-base font-bold rounded-2xl shadow-lg hover:bg-primary-700 transition-all active:scale-95"
+                  >
+                    {isCheckedIn ? '✓ Checked-in (Staff)' : 'Check-In Now (Staff)'}
+                  </button>
+                )}
+                <button
+                  onClick={() => isGuest ? onLoginRequired?.() : onToggleParticipation(event.id, 'interested')}
+                  className={`w-full py-2.5 md:py-3.5 rounded-2xl border-2 text-sm md:text-base font-bold transition-all ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-md' : 'bg-white border-primary-600 text-primary-600 hover:bg-primary-700 hover:text-white'}`}
+                >
+                  {isInterested ? 'Interested' : 'Interested?'}
+                </button>
+              </div>
             )}
-            <button
-              onClick={() => isGuest ? onLoginRequired?.() : onToggleParticipation(event.id, 'interested')}
-              className={`w-full py-2.5 md:py-3.5 rounded-2xl border-2 text-sm md:text-base font-bold transition-all ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-md' : 'bg-white border-primary-600 text-primary-600 hover:bg-primary-700 hover:text-white'}`}
-            >
-              {isInterested ? 'Interested' : 'Interested?'}
-            </button>
-          </div>
-        )}
-        </>
+          </>
         )}
       </div>
 
@@ -949,11 +946,11 @@ const EventModal: React.FC<EventModalProps> = ({
         <div className="flex items-center justify-between">
           <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Location at a Glance</h3>
           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-2 py-1 md:px-3 md:py-1.5 rounded-xl">
-             <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider">Live GPS</span>
-             <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600">
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-[9px] md:text-[10px] font-bold text-gray-700 dark:text-gray-300">Online</span>
-             </div>
+            <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider">Live GPS</span>
+            <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600">
+              <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-[9px] md:text-[10px] font-bold text-gray-700 dark:text-gray-300">Online</span>
+            </div>
           </div>
         </div>
         <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">
@@ -973,39 +970,38 @@ const EventModal: React.FC<EventModalProps> = ({
       <div className="space-y-2.5">
         <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">Get Directions</p>
         <div className="flex flex-col gap-2.5">
-          <button 
+          <button
             onClick={handleGetDirections}
             className="w-full py-2.5 md:py-3.5 bg-green-600 text-white text-sm md:text-base font-bold rounded-2xl shadow-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2"
           >
             Google Maps
           </button>
-          <button 
+          <button
             onClick={() => onToggleSave(event.id)}
             className="w-full py-2.5 md:py-3.5 bg-primary-600 text-white text-sm md:text-base font-bold rounded-2xl shadow-lg hover:bg-primary-700 transition-all"
           >
             {isSaved ? 'Unsave Event' : 'Save Event'}
           </button>
           {!isEnded && (
-          <button 
-            onClick={handleOpenReminderModal}
-            className={`w-full py-2.5 md:py-3.5 rounded-2xl border-2 text-sm md:text-base font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${
-              existingReminderLabel 
-                ? 'bg-green-600 border-green-600 text-white shadow-green-500/20' 
+            <button
+              onClick={handleOpenReminderModal}
+              className={`w-full py-2.5 md:py-3.5 rounded-2xl border-2 text-sm md:text-base font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${existingReminderLabel
+                ? 'bg-green-600 border-green-600 text-white shadow-green-500/20'
                 : 'bg-white border-gray-200 text-gray-400 hover:border-primary-400 hover:text-primary-600'
-            }`}
-          >
-            {existingReminderLabel ? (
-              <>
-                <ShieldCheckIcon className="w-4 h-4 md:w-5 md:h-5 fill-white" />
-                <span>{existingReminderLabel}</span>
-              </>
-            ) : (
-              <>
-                <BellIcon className="w-4 h-4 md:w-5 md:h-5" />
-                <span>Set Reminder</span>
-              </>
-            )}
-          </button>
+                }`}
+            >
+              {existingReminderLabel ? (
+                <>
+                  <ShieldCheckIcon className="w-4 h-4 md:w-5 md:h-5 fill-white" />
+                  <span>{existingReminderLabel}</span>
+                </>
+              ) : (
+                <>
+                  <BellIcon className="w-4 h-4 md:w-5 md:h-5" />
+                  <span>Set Reminder</span>
+                </>
+              )}
+            </button>
           )}
         </div>
       </div>
@@ -1039,7 +1035,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 {reminder ? 'Manage Reminder' : 'Set Reminder'}
               </h3>
             </div>
-            <button 
+            <button
               onClick={() => setShowReminderModal(false)}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
             >
@@ -1051,7 +1047,7 @@ const EventModal: React.FC<EventModalProps> = ({
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Reminder Time</label>
               <div className="relative group">
-                <select 
+                <select
                   value={reminderOffset}
                   onChange={(e) => setReminderOffset(e.target.value)}
                   className="w-full p-4 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-primary-500 rounded-2xl font-bold text-gray-700 dark:text-gray-200 outline-none transition-all appearance-none"
@@ -1078,15 +1074,15 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           <div className="flex flex-col gap-3 pt-4">
-            <button 
+            <button
               onClick={handleSetReminderClick}
               className="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-2xl shadow-lg shadow-primary-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
             >
               {reminder ? 'Update Reminder' : 'Set Reminder'}
             </button>
-            
+
             {reminder && (
-              <button 
+              <button
                 onClick={handleCancelReminderClick}
                 className="w-full py-4 bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 font-bold rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
               >
@@ -1099,7 +1095,7 @@ const EventModal: React.FC<EventModalProps> = ({
     </motion.div>
   );
 
-  // Shared lightbox â€” used by both desktop and mobile
+  // Shared lightbox — used by both desktop and mobile
   const lightbox = (
     <AnimatePresence>
       {lightboxOpen && (
@@ -1225,7 +1221,7 @@ const EventModal: React.FC<EventModalProps> = ({
         </div>
 
         <div className="p-4 space-y-5">
-          {/* Image Carousel â€” desktop card style */}
+          {/* Image Carousel — desktop card style */}
           <div className="flex justify-center">
             <div className={`relative rounded-[15px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 w-[260px] h-[260px] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
               <img
@@ -1324,7 +1320,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">Time</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatTime(event.startTime)} â€“ {formatTime(event.endTime)}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatTime(event.startTime)} – {formatTime(event.endTime)}</p>
                 </div>
               </div>
               <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-3 flex items-center gap-3">
@@ -1379,7 +1375,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Participation</h3>
                     <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {event.isPrivate ? 'Private â€¢ Reg. required' : 'Public â€¢ Anyone can attend'}
+                      {event.isPrivate ? 'Private • Reg. required' : 'Public • Anyone can attend'}
                     </p>
                   </div>
 
@@ -1399,11 +1395,10 @@ const EventModal: React.FC<EventModalProps> = ({
                         {isLoadingReg ? (
                           <div className="flex justify-center p-4"><Spinner /></div>
                         ) : userReg ? (
-                          <div className={`p-5 rounded-2xl text-center shadow-sm border-2 ${
-                            userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
+                          <div className={`p-5 rounded-2xl text-center shadow-sm border-2 ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                             userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
-                            'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
-                          }`}>
+                              'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
+                            }`}>
                             {userReg.status === 'pending' && (
                               <>
                                 <div className={`w-10 h-10 mx-auto mb-2 rounded-full ${isEventFull ? 'bg-red-100 dark:bg-red-900/40' : 'bg-yellow-100 dark:bg-yellow-900/40'} flex items-center justify-center`}>
@@ -1425,7 +1420,7 @@ const EventModal: React.FC<EventModalProps> = ({
                                 <p className="text-sm font-black mb-1">You are already registered!</p>
                                 <p className="text-xs font-medium opacity-80 mb-3">A slot has been assigned to you.</p>
                                 <button onClick={handleCheckIn} className="w-full py-2.5 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95">
-                                  {isCheckedIn ? 'âœ“ Already Checked-In' : 'Check-In to Event'}
+                                  {isCheckedIn ? '✓ Already Checked-In' : 'Check-In to Event'}
                                 </button>
                               </>
                             )}
@@ -1454,8 +1449,8 @@ const EventModal: React.FC<EventModalProps> = ({
                               <p className="text-primary-600/60 dark:text-primary-400/60 text-xs font-medium uppercase tracking-tighter">Fill in your details below to register</p>
                             </div>
                             <form onSubmit={handleRegisterSubmit} className="space-y-3">
-                              <input type="text" placeholder="Full Name" required value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all" />
-                              <input type="tel" placeholder="Phone Number (Optional)" value={regData.phoneNumber} onChange={e => setRegData({...regData, phoneNumber: e.target.value})} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all" />
+                              <input type="text" placeholder="Full Name" required value={regData.name} onChange={e => setRegData({ ...regData, name: e.target.value })} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all" />
+                              <input type="tel" placeholder="Phone Number (Optional)" value={regData.phoneNumber} onChange={e => setRegData({ ...regData, phoneNumber: e.target.value })} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all" />
                               <input type="email" placeholder="Email Address" required readOnly value={regData.email} className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold outline-none cursor-not-allowed opacity-70" />
                               <button type="submit" disabled={isRegistering || !currentUser} className="w-full py-3 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/20 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95">
                                 {isRegistering ? 'Submitting...' : 'Submit Registration Request'}
@@ -1467,17 +1462,17 @@ const EventModal: React.FC<EventModalProps> = ({
                     ) : (
                       <div className="flex gap-3">
                         <button onClick={() => onToggleParticipation(event.id, 'interested')} className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-primary-600 border-primary-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white'}`}>
-                          {isInterested ? 'âœ“ Interested' : 'Interested?'}
+                          {isInterested ? '✓ Interested' : 'Interested?'}
                         </button>
                       </div>
                     )
                   ) : (
                     <div className="flex gap-3">
                       <button onClick={handleCheckIn} className="flex-1 py-3 bg-gray-900 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-black transition-all active:scale-95">
-                        {isCheckedIn ? 'âœ“ Checked-in' : 'Check-In Now (Staff)'}
+                        {isCheckedIn ? '✓ Checked-in' : 'Check-In Now (Staff)'}
                       </button>
                       <button onClick={() => onToggleParticipation(event.id, 'interested')} className={`flex-1 py-3 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 ${isInterested ? 'bg-gray-900 border-gray-900 text-white shadow-md' : 'bg-white dark:bg-gray-800 border-gray-900 text-gray-900 dark:text-white hover:bg-gray-900 hover:text-white'}`}>
-                        {isInterested ? 'âœ“ Interested' : 'Interested?'}
+                        {isInterested ? '✓ Interested' : 'Interested?'}
                       </button>
                     </div>
                   )}

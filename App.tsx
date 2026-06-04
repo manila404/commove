@@ -220,6 +220,7 @@ const App: React.FC = () => {
     const [pinnedEventIds, setPinnedEventIds] = useState<string[]>([]);
 
     const [showProfilePanel, setShowProfilePanel] = useState(false);
+    const [adminActiveTab, setAdminActiveTab] = useState<'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights'>('analytics');
     const [showEditProfileModal, setShowEditProfileModal] = useState(false);
     const [showCalendarEventsPopup, setShowCalendarEventsPopup] = useState(false);
     const [calendarPopupDate, setCalendarPopupDate] = useState<Date | null>(null);
@@ -663,16 +664,30 @@ const App: React.FC = () => {
 
     // Restore event-dependent state after events load
     useEffect(() => {
-        if (events.length > 0 && typeof window !== 'undefined' && window.history.state) {
-            const state = window.history.state;
-            const view = state.view;
-            
-            if (view === 'event-details' && state.eventId && !selectedEvent) {
-                const event = events.find(e => e.id === state.eventId);
-                if (event) setSelectedEvent(event);
-            } else if (view === 'manageRegistrations' && state.eventId && !managingEventRegistrations) {
-                const event = events.find(e => e.id === state.eventId);
-                if (event) setManagingEventRegistrations(event);
+        if (events.length > 0 && typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const urlEventId = params.get('event');
+
+            if (urlEventId) {
+                const event = events.find(e => e.id === urlEventId);
+                if (event) {
+                    setSelectedEvent(event);
+                    // Sync history state
+                    if (!window.history.state || window.history.state.eventId !== urlEventId) {
+                        window.history.replaceState({ ...window.history.state, view: 'event-details', eventId: urlEventId }, '');
+                    }
+                }
+            } else if (window.history.state) {
+                const state = window.history.state;
+                const view = state.view;
+                
+                if (view === 'event-details' && state.eventId && !selectedEvent) {
+                    const event = events.find(e => e.id === state.eventId);
+                    if (event) setSelectedEvent(event);
+                } else if (view === 'manageRegistrations' && state.eventId && !managingEventRegistrations) {
+                    const event = events.find(e => e.id === state.eventId);
+                    if (event) setManagingEventRegistrations(event);
+                }
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1026,7 +1041,12 @@ const App: React.FC = () => {
             const view = state.view;
 
             // Derive all overlay states directly from the history view
-            setSelectedEvent(null); // Modals are usually closed on back
+            if (view === 'event-details' && state.eventId) {
+                const event = events.find(e => e.id === state.eventId);
+                if (event) setSelectedEvent(event);
+            } else {
+                setSelectedEvent(null);
+            }
             setShowPermitDashboard(view === 'permit');
             setShowMyEvents(view === 'my-events');
             setShowNotificationSettings(view === 'notification-settings');
@@ -1105,7 +1125,7 @@ const App: React.FC = () => {
         }
 
         try {
-            window.history.pushState({ view: tab }, '');
+            window.history.pushState({ view: tab }, '', '/');
         } catch (e) {
             console.warn("History pushState failed", e);
         }
@@ -1164,7 +1184,7 @@ const App: React.FC = () => {
 
         // Default: open EventModal
         try {
-            window.history.pushState({ view: 'event-details', eventId: event.id }, '');
+            window.history.pushState({ view: 'event-details', eventId: event.id }, '', `?event=${event.id}`);
         } catch (e) { }
         setSelectedEvent(event);
 
@@ -1217,7 +1237,17 @@ const App: React.FC = () => {
         try {
             // Always use replaceState — history.back() can exit the app entirely
             // if the user opened the event directly or after a page refresh
-            window.history.replaceState({ view: 'feed' }, '', '/');
+            let prevView = 'feed';
+            let prevPath = '/';
+            if (wasInMyEvents) {
+                prevView = 'my-events';
+            } else if (wasInPermit) {
+                prevView = 'permit';
+            } else if (wasInPopular) {
+                prevView = 'popular-events';
+                prevPath = '/popular';
+            }
+            window.history.replaceState({ view: prevView }, '', prevPath);
         } catch (e) { }
 
         // Immediate state restoration to prevent flickering or accidental feed redirect
@@ -2043,6 +2073,12 @@ const App: React.FC = () => {
                             pendingFacilitatorCount={pendingFacilitatorCount}
                             unreadNotificationCount={unreadNotificationCount}
                             isStaff={isStaff}
+                            adminActiveTab={adminActiveTab}
+                            onAdminTabChange={(tab) => {
+                                setAdminActiveTab(tab);
+                                handleTabChange('feed');
+                            }}
+                            canManageUsers={currentUser?.role === 'admin'}
                         />
                         <main ref={outerContainerRef} className={`flex-1 min-h-0 transition-all duration-300 scroll-smooth ${activeTab === 'nearby'
                             ? 'h-full overflow-hidden'
@@ -2353,6 +2389,8 @@ const App: React.FC = () => {
                                         onEventDeleted={handleEventDeleted}
                                         onClose={handleCloseAllModals}
                                         onManageRegistrations={handleManageRegistrations}
+                                        externalDashboardTab={adminActiveTab}
+                                        onExternalTabChange={setAdminActiveTab}
                                     />
                                 </div>
                             )}

@@ -77,6 +77,8 @@ interface AdminPanelProps {
     onEventDeleted: (eventId: string, recurrenceGroupId?: string) => Promise<boolean>;
     onClose: () => void;
     onManageRegistrations?: (event: EventType) => void;
+    externalDashboardTab?: DashboardTab;
+    onExternalTabChange?: (tab: DashboardTab) => void;
 }
 
 const PESO_REQUIREMENTS = [
@@ -99,7 +101,7 @@ const DEFAULT_REQUIREMENTS = [
 
 type DashboardTab = 'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights';
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCreated, onEventUpdated, onEventDeleted, onClose, onManageRegistrations }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCreated, onEventUpdated, onEventDeleted, onClose, onManageRegistrations, externalDashboardTab, onExternalTabChange }) => {
     const { showAlert, showConfirm } = useAlert();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'list' | 'create' | 'users' | 'requests'>('dashboard');
     const [requestedDashboardTab, setRequestedDashboardTab] = useState<'analytics' | 'events' | 'users' | undefined>(undefined);
@@ -215,6 +217,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             setRequestedDashboardTab(undefined);
         }
     }, [requestedDashboardTab]);
+
+    // Sync external tab → internal when controlled from sidebar
+    useEffect(() => {
+        if (externalDashboardTab !== undefined && externalDashboardTab !== dashboardActiveTab) {
+            setDashboardActiveTab(externalDashboardTab);
+            setActiveTab('dashboard');
+        }
+    }, [externalDashboardTab]);
+
+    // Listen for sidebar action events
+    useEffect(() => {
+        const handleCreate = () => { setEditingEvent(null); switchTab('create'); };
+        const handleRefresh = () => fetchUsers();
+        window.addEventListener('admin-create-event', handleCreate);
+        window.addEventListener('admin-refresh', handleRefresh);
+        return () => {
+            window.removeEventListener('admin-create-event', handleCreate);
+            window.removeEventListener('admin-refresh', handleRefresh);
+        };
+    }, []);
 
     const dashboardAvailableTabs: DashboardTab[] = ['analytics', 'events', 'calendar', 'reports'];
     if (canManageUsers) {
@@ -790,13 +812,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
 
     const renderDashboard = () => (
         <div className="flex flex-col h-full min-h-0">
-            {/* Tab bar — always visible, never scrolls away */}
-            <div className="shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-2 flex items-center justify-between gap-4">
+            {/* Tab bar — mobile only; desktop tabs are in the sidebar */}
+            <div className="md:hidden shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between gap-4">
                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar flex-1 md:flex-none md:w-fit">
                     {dashboardAvailableTabs.map((tab) => (
                         <button
                             key={tab}
-                            onClick={() => setDashboardActiveTab(tab)}
+                            onClick={() => { setDashboardActiveTab(tab); onExternalTabChange?.(tab); }}
                             className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors whitespace-nowrap ${
                                 dashboardActiveTab === tab
                                     ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold'
@@ -807,8 +829,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                         </button>
                     ))}
                 </div>
-                {/* Desktop-only action buttons aligned with tabs */}
-                <div className="hidden md:flex items-center gap-2 shrink-0">
+                {/* Desktop action buttons moved to sidebar */}
+                <div className="hidden items-center gap-2 shrink-0">
                     {(canManageUsers || isFacilitator) && (
                         <button
                             onClick={fetchUsers}
