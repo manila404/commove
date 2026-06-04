@@ -115,6 +115,10 @@ export function calculateSearchScore(event: EventType, query: string): number {
   checkField(event.description, 3);
   checkField(event.venue, 2);
   checkField(event.leadOffice, 2);
+  checkField(event.status, 2);
+  
+  const accessType = event.isPrivate ? 'private' : 'public';
+  checkField(accessType, 2);
 
   return score;
 }

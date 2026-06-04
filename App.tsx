@@ -2418,15 +2418,18 @@ const App: React.FC = () => {
                             {activeTab === 'calendar' && (
                                 <div key="calendar" className="px-4 md:px-8 pt-8 md:pt-10 pb-28 md:pb-12 animate-fade-in">
                                     <CalendarView
-                                        events={events.filter(e => {
-                                            if (isStaff) {
-                                                if (currentUser?.role === 'admin') return true;
-                                                if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
-                                            }
-                                            const isPublished = e.status === 'published';
-                                            const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
-                                            return isPublished || isScheduled;
-                                        })}
+                                        events={(() => {
+                                            const visible = events.filter(e => {
+                                                if (isStaff) {
+                                                    if (currentUser?.role === 'admin') return true;
+                                                    if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
+                                                }
+                                                const isPublished = e.status === 'published';
+                                                const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
+                                                return isPublished || isScheduled;
+                                            });
+                                            return searchQuery ? smartSearchEvents(visible, searchQuery) : visible;
+                                        })()}
                                         currentMonth={currentMonth}
                                         setCurrentMonth={setCurrentMonth}
                                         onDateSelect={handleDateSelect}
@@ -2444,7 +2447,7 @@ const App: React.FC = () => {
                                         const clickedMs = calendarPopupDate.getTime();
 
                                         // Visibility filter (same logic as calendar)
-                                        const visible = events.filter(e => {
+                                        let visible = events.filter(e => {
                                             if (isStaff) {
                                                 if (currentUser?.role === 'admin') return true;
                                                 if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
@@ -2453,6 +2456,10 @@ const App: React.FC = () => {
                                             const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
                                             return isPublished || isScheduled;
                                         });
+                                        
+                                        if (searchQuery) {
+                                            visible = smartSearchEvents(visible, searchQuery);
+                                        }
 
                                         // Check whether an event covers the clicked date
                                         const coversDate = (e: typeof events[0]) => {
@@ -2542,7 +2549,7 @@ const App: React.FC = () => {
                                 <NearbyView
                                     userLocation={userLocation}
                                     isLocationLive={isLocationLive}
-                                    events={events}
+                                    events={searchQuery ? smartSearchEvents(events, searchQuery) : events}
                                     onEventSelect={handleOpenEvent}
                                     onToggleSave={handleToggleSaveEvent}
                                     savedEventIds={currentUser?.savedEventIds || []}

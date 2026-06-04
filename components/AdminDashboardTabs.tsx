@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { EventType, User } from '../types';
-import { XMarkIcon, formatDisplayDate, MoreVerticalIcon } from '../constants';
+import { formatTime, formatDisplayDate, XMarkIcon, MoreVerticalIcon } from '../constants';
+import { smartSearchEvents } from '../utils/searchUtils';
 import { getEventAlerts } from '../utils/eventAlerts';
 import type { EventAlert } from '../utils/eventAlerts';
 import { Star, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon, Search, X, Clock, Trash2 } from 'lucide-react';
@@ -1396,24 +1397,18 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             : eventVisibilityFilter === 'public' ? events.filter(e => !e.isPrivate)
                 : events.filter(e => !!e.isPrivate);
 
-        const eventSearchLower = eventSearchQuery.trim().toLowerCase();
-        const allFilteredSortedEvents = visibilityFilteredEvents
+        let allFilteredSortedEvents = visibilityFilteredEvents
             .filter(event => eventFilter === 'all' ? true : event.status === eventFilter)
             .filter(event => {
                 if (eventSortOrder === 'past') return isEventPast(event);
                 if (eventSortOrder === 'upcoming') return !isEventPast(event);
                 return true;
-            })
-            .filter(event => {
-                if (!eventSearchLower) return true;
-                const cats = Array.isArray(event.category) ? event.category : [event.category];
-                return (event.name || '').toLowerCase().includes(eventSearchLower) ||
-                    cats.some(c => (c || '').toLowerCase().includes(eventSearchLower)) ||
-                    (event.venue || '').toLowerCase().includes(eventSearchLower) ||
-                    (event.city || '').toLowerCase().includes(eventSearchLower) ||
-                    (event.description || '').toLowerCase().includes(eventSearchLower);
-            })
-            .sort((a, b) => {
+            });
+
+        if (eventSearchQuery.trim()) {
+            allFilteredSortedEvents = smartSearchEvents(allFilteredSortedEvents, eventSearchQuery);
+        } else {
+            allFilteredSortedEvents.sort((a, b) => {
                 if (eventSortOrder === 'past') {
                     return new Date(b.date).getTime() - new Date(a.date).getTime();
                 }
@@ -1425,6 +1420,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 if (eventSortOrder === 'asc') return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
                 return nameA > nameB ? -1 : nameA < nameB ? 1 : 0;
             });
+        }
+
         const totalPages = Math.ceil(allFilteredSortedEvents.length / EVENTS_PER_PAGE);
         const paginatedEvents = allFilteredSortedEvents.slice((eventsPage - 1) * EVENTS_PER_PAGE, eventsPage * EVENTS_PER_PAGE);
         const visibilityFilteredPending = eventVisibilityFilter === 'all' ? pendingRequests
