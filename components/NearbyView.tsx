@@ -13,6 +13,8 @@ interface NearbyViewProps {
     onEventSelect: (event: EventType) => void;
     onToggleSave: (eventId: string) => void;
     savedEventIds: string[];
+    focusLocation?: { lat: number; lng: number } | null;
+    onFocusConsumed?: () => void;
 }
 
 const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -26,8 +28,15 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
     return R * c;
 };
 
-const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocationLive, onEventSelect, onToggleSave, onOpenScanner, savedEventIds }) => {
+const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocationLive, onEventSelect, onToggleSave, onOpenScanner, savedEventIds, focusLocation, onFocusConsumed }) => {
     const [showEventList, setShowEventList] = useState(false);
+
+    React.useEffect(() => {
+        if (focusLocation && onFocusConsumed) {
+            const timer = setTimeout(onFocusConsumed, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [focusLocation, onFocusConsumed]);
 
     // 1. Prepare ALL valid events for the Map
     const now = new Date();
@@ -70,6 +79,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                     className="w-full h-full"
                     filterPastEvents={true}
                     onEventSelect={onEventSelect}
+                    centerOnEvent={focusLocation ?? undefined}
                 />
             </div>
 

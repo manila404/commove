@@ -211,6 +211,7 @@ const App: React.FC = () => {
 
     const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null); // New state for Calendar filter
     const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
+    const [mapFocusLocation, setMapFocusLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [pendingFacilitatorCount, setPendingFacilitatorCount] = useState(0);
 
     // Overlay Views initialized from history
@@ -1256,6 +1257,13 @@ const App: React.FC = () => {
         if (wasInPopular) setShowViewAllPopular(true);
     }, [showMyEvents, showPermitDashboard, showViewAllPopular]);
 
+    const handleViewEventOnMap = useCallback((event: EventType) => {
+        setSelectedEvent(null);
+        try { window.history.replaceState({ view: 'nearby' }, '', '/'); } catch (e) { }
+        setActiveTab('nearby');
+        setMapFocusLocation({ lat: event.lat, lng: event.lng });
+    }, []);
+
     const handleOpenViewAllPopular = () => {
         try {
             window.history.pushState({ view: 'popular-events' }, '', '/popular');
@@ -1485,7 +1493,8 @@ const App: React.FC = () => {
             setIsGuest(false);
             return;
         }
-        const currentSaved = new Set<string>(currentUser.savedEventIds || []);
+        const previousSavedIds = currentUser.savedEventIds || [];
+        const currentSaved = new Set<string>(previousSavedIds);
         const isSaving = !currentSaved.has(eventId);
         if (currentSaved.has(eventId)) {
             currentSaved.delete(eventId);
@@ -1494,16 +1503,19 @@ const App: React.FC = () => {
         }
         const newSavedArray = Array.from(currentSaved);
         setCurrentUser({ ...currentUser, savedEventIds: newSavedArray });
-        await updateUserSavedEvents(currentUser.uid, currentSaved);
-
-        // Increment or decrement saveCount on the event document
-        incrementEventCounter(eventId, 'saveCount', isSaving ? 1 : -1);
-
-        const event = events.find(e => e.id === eventId);
-        if (isSaving) {
-            toast.success("Event Saved", { description: `${event?.name || 'Event'} has been added to your saved events.` });
-        } else {
-            toast.info("Event Removed", { description: `${event?.name || 'Event'} has been removed from your saved events.` });
+        try {
+            await updateUserSavedEvents(currentUser.uid, currentSaved);
+            incrementEventCounter(eventId, 'saveCount', isSaving ? 1 : -1);
+            const event = events.find(e => e.id === eventId);
+            if (isSaving) {
+                toast.success("Event Saved", { description: `${event?.name || 'Event'} has been added to your saved events.` });
+            } else {
+                toast.info("Event Removed", { description: `${event?.name || 'Event'} has been removed from your saved events.` });
+            }
+        } catch (error: any) {
+            console.error('[save] write failed:', error?.code, error?.message);
+            setCurrentUser(prev => prev ? { ...prev, savedEventIds: previousSavedIds } : prev);
+            toast.error("Could not save event. Please try again.");
         }
     };
 
@@ -1512,7 +1524,8 @@ const App: React.FC = () => {
             setIsGuest(false);
             return;
         }
-        const currentLiked = new Set<string>(currentUser.likedEventIds || []);
+        const previousLikedIds = currentUser.likedEventIds || [];
+        const currentLiked = new Set<string>(previousLikedIds);
         const isLiking = !currentLiked.has(eventId);
         if (currentLiked.has(eventId)) {
             currentLiked.delete(eventId);
@@ -1521,11 +1534,16 @@ const App: React.FC = () => {
         }
         const newLikedArray = Array.from(currentLiked);
         setCurrentUser({ ...currentUser, likedEventIds: newLikedArray });
-        await updateUserLikes(currentUser.uid, new Set(newLikedArray));
-        await incrementEventCounter(eventId, 'likeCount', isLiking ? 1 : -1);
-
-        if (isLiking) {
-            toast.success("Event Liked", { description: "Event added to your likes." });
+        try {
+            await updateUserLikes(currentUser.uid, new Set(newLikedArray));
+            incrementEventCounter(eventId, 'likeCount', isLiking ? 1 : -1);
+            if (isLiking) {
+                toast.success("Event Liked", { description: "Event added to your likes." });
+            }
+        } catch (error: any) {
+            console.error('[like] write failed:', error?.code, error?.message);
+            setCurrentUser(prev => prev ? { ...prev, likedEventIds: previousLikedIds } : prev);
+            toast.error("Could not update like. Please try again.");
         }
     };
 
@@ -1567,10 +1585,18 @@ const App: React.FC = () => {
             return;
         }
 
+        const previousReminders = currentUser.reminders || {};
         const newReminder: Reminder = { eventId, remindAt, reminderOffset };
-        const updatedReminders = { ...currentUser.reminders, [eventId]: newReminder };
+        const updatedReminders = { ...previousReminders, [eventId]: newReminder };
         setCurrentUser({ ...currentUser, reminders: updatedReminders });
-        await updateUserReminders(currentUser.uid, updatedReminders);
+        try {
+            await updateUserReminders(currentUser.uid, updatedReminders);
+        } catch (error: any) {
+            console.error('[reminder] write failed:', error?.code, error?.message);
+            setCurrentUser(prev => prev ? { ...prev, reminders: previousReminders } : prev);
+            toast.error("Could not save reminder. Please try again.");
+            return;
+        }
 
         const getReminderLabel = (offset: string) => {
             if (offset.startsWith('specific:')) {
@@ -1626,11 +1652,18 @@ const App: React.FC = () => {
 
     const handleCancelReminder = async (eventId: string) => {
         if (!currentUser) return;
-        const updatedReminders = { ...currentUser.reminders };
+        const previousReminders = currentUser.reminders || {};
+        const updatedReminders = { ...previousReminders };
         delete updatedReminders[eventId];
         setCurrentUser({ ...currentUser, reminders: updatedReminders });
-        await updateUserReminders(currentUser.uid, updatedReminders);
-        notifiedCustomReminders.current.delete(eventId);
+        try {
+            await updateUserReminders(currentUser.uid, updatedReminders);
+            notifiedCustomReminders.current.delete(eventId);
+        } catch (error: any) {
+            console.error('[cancel-reminder] write failed:', error?.code, error?.message);
+            setCurrentUser(prev => prev ? { ...prev, reminders: previousReminders } : prev);
+            toast.error("Could not cancel reminder. Please try again.");
+        }
     };
 
     const handleToggleParticipation = async (eventId: string, type: 'interested' | 'checkedIn') => {
@@ -1640,37 +1673,31 @@ const App: React.FC = () => {
         }
 
         const field = `${type}EventIds` as keyof User;
-        const currentIds = (currentUser[field] as string[]) || [];
+        const previousIds = (currentUser[field] as string[]) || [];
+        const isAlreadyIn = previousIds.includes(eventId);
+        const newIds = isAlreadyIn ? previousIds.filter(id => id !== eventId) : [...previousIds, eventId];
 
-        let newIds: string[];
-        const isAlreadyIn = currentIds.includes(eventId);
-
-        if (isAlreadyIn) {
-            newIds = currentIds.filter(id => id !== eventId);
-        } else {
-            newIds = [...currentIds, eventId];
-        }
-
-        const updatedUser = { ...currentUser, [field]: newIds };
-        setCurrentUser(updatedUser);
-        await updateUserParticipation(currentUser.uid, type, newIds);
-
-        // Sync engagement counters on the event document
-        if (type === 'interested') {
-            incrementEventCounter(eventId, 'interestedCount', isAlreadyIn ? -1 : 1);
-        } else if (type === 'checkedIn') {
-            incrementEventCounter(eventId, 'checkInCount', isAlreadyIn ? -1 : 1);
-        }
-
-        const labels = {
-            interested: isAlreadyIn ? "Removed from Interested" : "Marked as Interested",
-            checkedIn: isAlreadyIn ? "Checked-out" : "Checked-in Successfully"
-        };
-
-        if (isAlreadyIn) {
-            toast.info(labels[type]);
-        } else {
-            toast.success(labels[type]);
+        setCurrentUser({ ...currentUser, [field]: newIds });
+        try {
+            await updateUserParticipation(currentUser.uid, type, newIds);
+            if (type === 'interested') {
+                incrementEventCounter(eventId, 'interestedCount', isAlreadyIn ? -1 : 1);
+            } else if (type === 'checkedIn') {
+                incrementEventCounter(eventId, 'checkInCount', isAlreadyIn ? -1 : 1);
+            }
+            const labels = {
+                interested: isAlreadyIn ? "Removed from Interested" : "Marked as Interested",
+                checkedIn: isAlreadyIn ? "Checked-out" : "Checked-in Successfully"
+            };
+            if (isAlreadyIn) {
+                toast.info(labels[type]);
+            } else {
+                toast.success(labels[type]);
+            }
+        } catch (error) {
+            console.error("handleToggleParticipation error", error);
+            setCurrentUser(prev => prev ? { ...prev, [field]: previousIds } : prev);
+            toast.error("Could not update participation. Please try again.");
         }
     };
 
@@ -2537,6 +2564,8 @@ const App: React.FC = () => {
                                     onToggleSave={handleToggleSaveEvent}
                                     savedEventIds={currentUser?.savedEventIds || []}
                                     onOpenScanner={handleOpenScanner}
+                                    focusLocation={mapFocusLocation}
+                                    onFocusConsumed={() => setMapFocusLocation(null)}
                                 />
                             )}
 
@@ -2654,6 +2683,7 @@ const App: React.FC = () => {
                         setSelectedEvent(null);
                         setIsGuest(false);
                     }}
+                    onViewOnMap={() => handleViewEventOnMap(selectedEvent)}
                 />
             )}
 

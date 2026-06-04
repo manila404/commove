@@ -29,6 +29,7 @@ interface EventModalProps {
   isLocationLive?: boolean;
   onToggleParticipation: (eventId: string, type: 'interested' | 'registered' | 'checkedIn') => void;
   onLoginRequired?: () => void;
+  onViewOnMap?: () => void;
 }
 
 const EventModal: React.FC<EventModalProps> = ({
@@ -46,6 +47,7 @@ const EventModal: React.FC<EventModalProps> = ({
   isLocationLive = true,
   onToggleParticipation,
   onLoginRequired,
+  onViewOnMap,
 }) => {
   const isGuest = !currentUser;
   const { showAlert } = useAlert();
@@ -648,8 +650,20 @@ const EventModal: React.FC<EventModalProps> = ({
               </div>
               <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
             </button>
+            {onViewOnMap && (
+              <button
+                onClick={onViewOnMap}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between"
+              >
+                <div className="flex flex-col items-start">
+                  <span>View on Map</span>
+                  <span className="text-[11px] font-normal text-gray-400 mt-0.5">Go back to the map and see this event's location</span>
+                </div>
+                <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              </button>
+            )}
             <button
-              onClick={() => onToggleSave(event.id)}
+              onClick={() => isGuest ? onLoginRequired?.() : onToggleSave(event.id)}
               className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between"
             >
               <div className="flex flex-col items-start">
@@ -660,7 +674,7 @@ const EventModal: React.FC<EventModalProps> = ({
             </button>
             {!isEnded && (
               <button
-                onClick={handleOpenReminderModal}
+                onClick={() => isGuest ? onLoginRequired?.() : handleOpenReminderModal()}
                 className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between"
               >
                 <div className="flex flex-col items-start">
@@ -1508,7 +1522,16 @@ const EventModal: React.FC<EventModalProps> = ({
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 </button>
-                <button onClick={() => onToggleSave(event.id)} className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between">
+                {onViewOnMap && (
+                  <button onClick={onViewOnMap} className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between">
+                    <div className="flex flex-col items-start">
+                      <span>View on Map</span>
+                      <span className="text-[11px] font-normal text-gray-400 mt-0.5">Go back to the map and see this event's location</span>
+                    </div>
+                    <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  </button>
+                )}
+                <button onClick={() => isGuest ? onLoginRequired?.() : onToggleSave(event.id)} className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between">
                   <div className="flex flex-col items-start">
                     <span>{isSaved ? 'Unsave Event' : 'Save Event'}</span>
                     <span className="text-[11px] font-normal text-gray-400 mt-0.5">{isSaved ? 'Remove from saved list' : 'Bookmark to revisit anytime'}</span>
@@ -1516,7 +1539,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 </button>
                 {!isEnded && (
-                  <button onClick={handleOpenReminderModal} className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between">
+                  <button onClick={() => isGuest ? onLoginRequired?.() : handleOpenReminderModal()} className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all active:scale-95 flex items-center justify-between">
                     <div className="flex flex-col items-start">
                       <span>{existingReminderLabel ? existingReminderLabel : 'Set Reminder'}</span>
                       <span className="text-[11px] font-normal text-gray-400 mt-0.5">Notify when the event starts</span>

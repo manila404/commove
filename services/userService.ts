@@ -211,55 +211,47 @@ export const deleteUser = async (uid: string): Promise<void> => {
     }
 };
 
+/** Validates that the Firebase Auth session is live and matches the given uid.
+ *  Calling getIdToken() (without force=true) returns the cached token if it is
+ *  still valid, and automatically refreshes it if it is about to expire.
+ *  This ensures Firestore sees a valid request.auth on every write. */
+const assertAuth = async (uid: string): Promise<void> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error('User is not authenticated. Please sign in again.');
+    await user.getIdToken();          // refresh token if near-expiry
+    if (user.uid !== uid) throw new Error('Auth UID mismatch. Please sign in again.');
+};
+
 export const updateUserSavedEvents = async (uid: string, eventIds: Set<string>): Promise<void> => {
-    try {
-        if (!uid) throw new Error("User ID is required to update saved events");
-        
-        const userDocRef = doc(db, usersCollectionRef, uid);
-        await setDoc(userDocRef, {
-            savedEventIds: Array.from(eventIds)
-        }, { merge: true });
-    } catch (error: any) {
-        if (error.code === 'permission-denied' || error.message?.includes('permission')) {
-             console.debug("Update saved events blocked by security rules.");
-            return;
-        }
-        console.error("Error updating saved events:", error);
-    }
+    if (!uid) throw new Error("User ID is required to update saved events");
+    await assertAuth(uid);
+    const userDocRef = doc(db, usersCollectionRef, uid);
+    await setDoc(userDocRef, {
+        savedEventIds: Array.from(eventIds)
+    }, { merge: true });
 };
 
 export const updateUserLikes = async (uid: string, eventIds: Set<string>): Promise<void> => {
-    try {
-        if (!uid) throw new Error("User ID is required to update liked events");
-        
-        const userDocRef = doc(db, usersCollectionRef, uid);
-        await setDoc(userDocRef, {
-            likedEventIds: Array.from(eventIds)
-        }, { merge: true });
-    } catch (error: any) {
-        if (error.code === 'permission-denied' || error.message?.includes('permission')) {
-             console.debug("Update liked events blocked by security rules.");
-            return;
-        }
-        console.error("Error updating liked events:", error);
-    }
+    if (!uid) throw new Error("User ID is required to update liked events");
+    await assertAuth(uid);
+    const userDocRef = doc(db, usersCollectionRef, uid);
+    await setDoc(userDocRef, {
+        likedEventIds: Array.from(eventIds)
+    }, { merge: true });
 };
 
 export const updateUserParticipation = async (
-    uid: string, 
-    type: 'interested' | 'checkedIn', 
+    uid: string,
+    type: 'interested' | 'checkedIn',
     eventIds: string[]
 ): Promise<void> => {
-    try {
-        if (!uid) return;
-        const userDocRef = doc(db, usersCollectionRef, uid);
-        const field = `${type}EventIds`;
-        await setDoc(userDocRef, {
-            [field]: eventIds
-        }, { merge: true });
-    } catch (error: any) {
-        console.error(`Error updating ${type} events:`, error);
-    }
+    if (!uid) throw new Error("User ID is required");
+    await assertAuth(uid);
+    const userDocRef = doc(db, usersCollectionRef, uid);
+    const field = `${type}EventIds`;
+    await setDoc(userDocRef, {
+        [field]: eventIds
+    }, { merge: true });
 };
 
 export const addUserViewedEvent = async (uid: string, eventId: string): Promise<void> => {
@@ -295,21 +287,13 @@ export const getPendingFacilitators = async (): Promise<User[]> => {
 };
 
 export const updateUserReminders = async (uid: string, reminders: Record<string, Reminder>): Promise<void> => {
-    try {
-        if (!uid) throw new Error("User ID is required to update reminders");
-
-        const cleanedReminders = sanitizeUserData(reminders);
-        const userDocRef = doc(db, usersCollectionRef, uid);
-        await setDoc(userDocRef, {
-            reminders: cleanedReminders
-        }, { merge: true });
-    } catch (error: any) {
-        if (error.code === 'permission-denied' || error.message?.includes('permission')) {
-             console.debug("Update reminders blocked by security rules.");
-            return;
-        }
-        console.error("Error updating reminders:", error);
-    }
+    if (!uid) throw new Error("User ID is required to update reminders");
+    await assertAuth(uid);
+    const cleanedReminders = sanitizeUserData(reminders);
+    const userDocRef = doc(db, usersCollectionRef, uid);
+    await setDoc(userDocRef, {
+        reminders: cleanedReminders
+    }, { merge: true });
 };
 
 export const updateUserPreferences = async (uid: string, preferences: string[]): Promise<void> => {
