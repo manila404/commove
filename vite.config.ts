@@ -25,6 +25,7 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          stream: path.resolve(__dirname, 'utils/stream-shim.js'),
         }
       }
     };

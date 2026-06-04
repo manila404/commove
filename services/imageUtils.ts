@@ -37,3 +37,25 @@ export const resizeImage = (file: File, maxWidth: number = 1024, quality: number
         reader.onerror = (error) => reject(new Error("Failed to read file"));
     });
 };
+
+export const isBase64ImageUrl = (value?: string | null): value is string => {
+    return typeof value === 'string' && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(value);
+};
+
+export const dataURLtoBlob = (dataUrl: string): Blob => {
+    const [header, base64Data] = dataUrl.split(',');
+    const mimeMatch = header.match(/^data:(.+);base64$/);
+
+    if (!mimeMatch || !base64Data) {
+        throw new Error('Invalid image data URL.');
+    }
+
+    const binary = atob(base64Data);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+
+    return new Blob([bytes], { type: mimeMatch[1] });
+};

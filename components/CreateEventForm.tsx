@@ -10,7 +10,8 @@ import { addEvent, updateEvent } from '../services/eventService';
 import { getAdmins } from '../services/userService';
 import { createNotification, notifyEventUpdated } from '../services/notificationService';
 import { CATEGORIES } from '../constants';
-import { resizeImage } from '../services/imageUtils';
+import { isBase64ImageUrl, resizeImage } from '../services/imageUtils';
+import { uploadEventImage } from '../services/sanityService';
 import { searchAddressGeoapify } from '../services/osmService';
 import Spinner from './Spinner';
 import { DateTimeRow } from './EventDateTimePicker';
@@ -43,6 +44,18 @@ const SAMPLE_LOCATIONS = [
   { name: 'SM City Bacoor',   address: 'Tirona Hwy, Habay II, Bacoor, Cavite', lat: 14.4442, lng: 120.9458 },
   { name: 'Bacoor Coliseum',  address: 'Molino III, Bacoor, Cavite', lat: 14.3980, lng: 120.9760 },
 ];
+
+const uploadLocalEventImages = async (imageUrl: string, additionalImageUrls: string[]) => {
+  const uploadedImageUrl = isBase64ImageUrl(imageUrl) ? await uploadEventImage(imageUrl) : imageUrl;
+  const uploadedAdditionalImageUrls = await Promise.all(
+    additionalImageUrls.map(image => isBase64ImageUrl(image) ? uploadEventImage(image) : image)
+  );
+
+  return {
+    imageUrl: uploadedImageUrl,
+    additionalImageUrls: uploadedAdditionalImageUrls,
+  };
+};
 
 const initialFormData = {
   name: '',
@@ -341,12 +354,14 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
     setIsLoading(true);
     try {
+      const uploadedImages = await uploadLocalEventImages(formData.imageUrl, formData.additionalImageUrls);
       const publishTimestamp = isScheduled && scheduleDate && scheduleTime 
          ? new Date(`${scheduleDate}T${scheduleTime}:00`).getTime() 
          : null;
 
       const payload = {
         ...formData,
+        ...uploadedImages,
         lat: Number(formData.lat),
         lng: Number(formData.lng),
         maxParticipants: isPublic ? null : Number(formData.maxParticipants),
