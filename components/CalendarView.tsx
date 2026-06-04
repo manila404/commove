@@ -78,7 +78,7 @@ function buildDayMap(
     }
   }
 
-  // ── Step 3: Recurring events — one per group per visible month ──
+  // ── Step 3: Recurring events — show all occurrences ──
   for (const [, occurrences] of recurringGroups) {
     if (occurrences.length === 0) continue;
 
@@ -88,27 +88,28 @@ function buildDayMap(
       : freq === 'monthly_date' || freq === 'monthly_day' ? '↻ Monthly'
       : '↻ Recurring';
 
-    // Find occurrences that fall inside the visible grid range
+    // Find occurrences that fall inside or overlap the visible grid range
     const inView = occurrences.filter(ev => {
-      const d = new Date(ev.date + 'T00:00:00');
-      return d >= visibleStart && d <= visibleEnd;
+      const start = new Date(ev.date + 'T00:00:00');
+      const end = ev.endDate ? new Date(ev.endDate + 'T00:00:00') : start;
+      return end >= visibleStart && start <= visibleEnd;
     });
 
-    if (inView.length === 0) continue;
-
-    // Show only the FIRST occurrence per calendar month within the visible range
-    // so that a weekly event doesn't appear on every Tuesday of the month.
-    const seenMonths = new Set<string>(); // "YYYY-MM"
-    // Sort by date ascending
-    inView.sort((a, b) => a.date.localeCompare(b.date));
-
     for (const ev of inView) {
-      const monthKey = ev.date.slice(0, 7); // "YYYY-MM"
-      if (!seenMonths.has(monthKey)) {
-        seenMonths.add(monthKey);
-        addToDay(ev.date, ev, label);
+      const start = new Date(ev.date + 'T00:00:00');
+      const end = ev.endDate ? new Date(ev.endDate + 'T00:00:00') : start;
+
+      // Clamp to visible range
+      const loopStart = start < visibleStart ? new Date(visibleStart) : new Date(start);
+      const loopEnd = end > visibleEnd ? new Date(visibleEnd) : new Date(end);
+
+      // Span all days of the occurrence
+      const cur = new Date(loopStart);
+      while (cur <= loopEnd) {
+        const ymd = toYMD(cur);
+        addToDay(ymd, ev, label);
+        cur.setDate(cur.getDate() + 1);
       }
-      // Additional occurrences of the same group in the same month are skipped
     }
   }
 
