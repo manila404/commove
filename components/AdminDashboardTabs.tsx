@@ -2170,7 +2170,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </div>
 
                         {/* ── Table card ── */}
-                        <div className="bg-white dark:bg-[#111827] overflow-hidden">
+                        <div className="bg-white dark:bg-[#111827] overflow-visible min-h-[400px]">
                             {isLoadingUsers ? (
                                 <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div></div>
                             ) : userError ? (
