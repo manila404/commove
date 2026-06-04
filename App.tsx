@@ -195,11 +195,11 @@ const App: React.FC = () => {
     });
 
     // UI State - Managed via History
-    const [activeTab, setActiveTab] = useState<'feed' | 'calendar' | 'chat' | 'nearby' | 'notifications'>(() => {
+    const [activeTab, setActiveTab] = useState<'feed' | 'calendar' | 'nearby' | 'notifications'>(() => {
         try {
             if (typeof window !== 'undefined' && window.history.state?.view) {
                 const view = window.history.state.view;
-                if (['feed', 'calendar', 'chat', 'nearby', 'notifications', 'profile'].includes(view)) {
+                if (['feed', 'calendar', 'nearby', 'notifications', 'profile'].includes(view)) {
                     return view as any;
                 }
             }
@@ -221,6 +221,7 @@ const App: React.FC = () => {
     const [pinnedEventIds, setPinnedEventIds] = useState<string[]>([]);
 
     const [showProfilePanel, setShowProfilePanel] = useState(false);
+    const [isChatOpen, setIsChatOpen] = useState(false);
     const [adminActiveTab, setAdminActiveTab] = useState<'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights'>('analytics');
     const [showEditProfileModal, setShowEditProfileModal] = useState(false);
     const [showCalendarEventsPopup, setShowCalendarEventsPopup] = useState(false);
@@ -1106,7 +1107,7 @@ const App: React.FC = () => {
 
     // --- Navigation Handlers ---
 
-    const handleTabChange = useCallback((tab: 'feed' | 'calendar' | 'chat' | 'nearby' | 'notifications') => {
+    const handleTabChange = useCallback((tab: 'feed' | 'calendar' | 'nearby' | 'notifications') => {
         setShowProfilePanel(false);
 
         if (activeTab === tab) {
@@ -2094,7 +2095,7 @@ const App: React.FC = () => {
                 <>
                     <div className={`flex flex-1 min-h-0 ${activeTab === 'nearby' ? 'overflow-hidden' : ''}`}>
                         <Sidebar
-                            activeTab={activeTab as 'feed' | 'calendar' | 'chat' | 'nearby' | 'notifications'}
+                            activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
                             onTabChange={handleTabChange}
                             onOpenScanner={handleOpenScanner}
                             pendingFacilitatorCount={pendingFacilitatorCount}
@@ -2504,16 +2505,6 @@ const App: React.FC = () => {
                                 />
                             )}
 
-                            {activeTab === 'chat' && (currentUser || isGuest) && currentUser?.role !== 'admin' && (
-                                <div key="chat" className="h-full min-h-0 flex flex-col animate-fade-in">
-                                    <ChatBot
-                                        events={events}
-                                        onEventSelect={handleOpenEvent}
-                                        onClose={() => handleTabChange('feed')}
-                                    />
-                                </div>
-                            )}
-
                             {activeTab === 'notifications' && (
                                 <div key="notifications" className="px-4 md:px-8 pt-8 md:pt-10 animate-fade-in">
                                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Notifications</h2>
@@ -2624,7 +2615,7 @@ const App: React.FC = () => {
 
             {!activeOverlay && (
                 <BottomNav
-                    activeTab={activeTab as 'feed' | 'calendar' | 'chat' | 'nearby' | 'notifications'}
+                    activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
                     onTabChange={handleTabChange}
                     onOpenScanner={handleOpenScanner}
                     onNotificationClick={handleOpenNotifications}
@@ -2760,6 +2751,47 @@ const App: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Embedded Floating Chatbot (Resident users only) */}
+            {currentUser && !isGuest && currentUser.role === 'user' && (
+                <>
+                    {/* Floating Toggle Button */}
+                    <button
+                        onClick={() => setIsChatOpen(prev => !prev)}
+                        className="fixed bottom-24 right-6 md:bottom-6 md:right-6 z-[4900] flex items-center justify-center w-14 h-14 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-transform overflow-hidden cursor-pointer bg-gradient-to-br from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white"
+                        title="AI Assistant"
+                    >
+                        {isChatOpen ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                        )}
+                    </button>
+
+                    {/* Chat Panel Window */}
+                    <AnimatePresence>
+                        {isChatOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 50, scale: 0.95 }}
+                                transition={{ duration: 0.2 }}
+                                className="fixed inset-0 w-full h-full md:inset-auto md:bottom-24 md:right-6 z-[5500] md:w-96 md:h-[600px] md:max-h-[70vh] bg-white dark:bg-gray-950 md:rounded-3xl md:border md:border-gray-100 md:dark:border-gray-800 md:shadow-2xl overflow-hidden flex flex-col"
+                            >
+                                <ChatBot
+                                    events={events}
+                                    onEventSelect={handleOpenEvent}
+                                    onClose={() => setIsChatOpen(false)}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </>
             )}
 
         </div>

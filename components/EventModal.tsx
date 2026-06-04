@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import RichText from './RichText';
 import { Image as ImageIcon, ArrowLeft, Share2, Heart, Phone, MessageCircle, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { EventType, Reminder, User } from '../types';
+import { getCategoryStyle } from '../utils/categoryStyles';
 import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, BellIcon, StarIcon, ShieldCheckIcon, formatDisplayDate, formatTime, CommoveLogo } from '../constants';
 import InteractiveMap from './InteractiveMap';
 import { useAlert } from '../contexts/AlertContext';
@@ -361,7 +362,7 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
           <div className="flex flex-wrap gap-2 pt-1">
             {(Array.isArray(event.category) ? event.category : [event.category]).map(cat => (
-              <span key={cat} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium rounded-full">
+              <span key={cat} className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getCategoryStyle(cat).badge}`}>
                 {cat}
               </span>
             ))}
@@ -745,7 +746,7 @@ const EventModal: React.FC<EventModalProps> = ({
       <div className="space-y-1.5">
         <div className="mb-3 flex flex-wrap gap-2">
           {(Array.isArray(event.category) ? event.category : [event.category]).map(cat => (
-            <span key={cat} className="px-4 py-1.5 bg-primary-600 text-white text-xs font-bold rounded-full shadow-md">
+            <span key={cat} className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getCategoryStyle(cat).badge}`}>
               {cat}
             </span>
           ))}
@@ -1312,7 +1313,7 @@ const EventModal: React.FC<EventModalProps> = ({
               </div>
               <div className="flex flex-wrap gap-2 pt-0.5">
                 {(Array.isArray(event.category) ? event.category : [event.category]).map(cat => (
-                  <span key={cat} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium rounded-full">{cat}</span>
+                  <span key={cat} className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getCategoryStyle(cat).badge}`}>{cat}</span>
                 ))}
               </div>
             </div>

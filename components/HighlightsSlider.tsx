@@ -2,33 +2,12 @@ import React, { useRef, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { DisplayEventType } from '../types';
 import { formatDisplayDate } from '../constants';
+import { getCategoryStyle } from '../utils/categoryStyles';
 
 interface HighlightsSliderProps {
   events: DisplayEventType[];
   onEventSelect: (event: DisplayEventType) => void;
 }
-
-const CATEGORY_STYLES: Record<string, { gradient: string; fadeColor: string }> = {
-  'Conference':           { gradient: 'from-[#60a5fa] to-[#3b82f6]', fadeColor: '#3b82f6' },
-  'Sports':               { gradient: 'from-[#818cf8] to-[#6366f1]', fadeColor: '#6366f1' },
-  'Business':             { gradient: 'from-[#64748b] to-[#475569]', fadeColor: '#475569' },
-  'Social Welfare':       { gradient: 'from-[#38bdf8] to-[#0ea5e9]', fadeColor: '#0ea5e9' },
-  'Health and Wellness':  { gradient: 'from-[#c084fc] to-[#a855f7]', fadeColor: '#a855f7' },
-  'Concerts':             { gradient: 'from-[#818cf8] to-[#6366f1]', fadeColor: '#6366f1' },
-  'Workshop':             { gradient: 'from-[#fb923c] to-[#f97316]', fadeColor: '#f97316' },
-  'Government Services':  { gradient: 'from-[#fbbf24] to-[#f59e0b]', fadeColor: '#f59e0b' },
-  'Civil Registry':       { gradient: 'from-[#f87171] to-[#ef4444]', fadeColor: '#ef4444' },
-  'Community Services':   { gradient: 'from-[#818cf8] to-[#6366f1]', fadeColor: '#6366f1' },
-  'Recreation':           { gradient: 'from-[#818cf8] to-[#6366f1]', fadeColor: '#6366f1' },
-};
-
-const FALLBACK_STYLES = [
-  { gradient: 'from-[#60a5fa] to-[#3b82f6]', fadeColor: '#3b82f6' },
-  { gradient: 'from-[#818cf8] to-[#6366f1]', fadeColor: '#6366f1' },
-  { gradient: 'from-[#818cf8] to-[#6366f1]', fadeColor: '#6366f1' },
-  { gradient: 'from-[#fb923c] to-[#f97316]', fadeColor: '#f97316' },
-  { gradient: 'from-[#c084fc] to-[#a855f7]', fadeColor: '#a855f7' },
-];
 
 const CIRCLE_LAYOUTS = [
   [
@@ -65,8 +44,7 @@ const EventCard: React.FC<{
   index: number;
   onEventSelect: (e: DisplayEventType) => void;
 }> = ({ event, index, onEventSelect }) => {
-  const firstCategory = Array.isArray(event.category) ? event.category[0] : event.category;
-  const style = CATEGORY_STYLES[firstCategory] ?? FALLBACK_STYLES[index % FALLBACK_STYLES.length];
+  const style = getCategoryStyle(event.category);
   const circles = CIRCLE_LAYOUTS[index % CIRCLE_LAYOUTS.length];
   const subtitle = event.venue
     ? `${event.venue} • ${formatDisplayDate(event.date, event.endDate)}`
@@ -74,7 +52,7 @@ const EventCard: React.FC<{
 
   return (
     <div
-      className={`relative flex-shrink-0 w-full flex flex-col rounded-2xl overflow-hidden cursor-pointer group/card transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:brightness-110 bg-gradient-to-br ${style.gradient}`}
+      className={`relative flex-shrink-0 w-full flex flex-col rounded-2xl overflow-hidden cursor-pointer group/card transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:brightness-110 bg-gradient-to-br ${style.bg}`}
       style={{ minHeight: '300px' }}
       onClick={() => onEventSelect(event)}
     >

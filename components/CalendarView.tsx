@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import type { EventType } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon } from '../constants';
+import { getCategoryStyle } from '../utils/categoryStyles';
 
 interface CalendarViewProps {
   events: EventType[];
@@ -165,23 +166,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     [events, gridStart, gridEnd]
   );
 
-  const getCategoryColor = (
-    categories: string[],
-    isPast: boolean
-  ): string => {
-    if (isPast)
-      return 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500';
-    if (categories.includes('Concerts'))
-      return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200';
-    if (categories.includes('Cafe'))
-      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200';
-    if (categories.includes('Health and Wellness'))
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200';
-    if (categories.includes('Gaming') || categories.includes('Technology'))
-      return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200';
-    return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200';
-  };
-
   const renderHeader = () => (
     <div className="flex items-center justify-between py-4 px-2 mb-2">
       <div className="flex items-center gap-2 md:gap-4">
@@ -298,16 +282,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     ? `${label} · ${event.name}`
                     : event.name;
 
-                const pillStyle = isPastDay
-                  ? { backgroundColor: '#d1d5db', color: '#9ca3af' }
-                  : { backgroundColor: '#0052A3', color: '#ffffff' };
+                const categoryStyle = getCategoryStyle(categories);
 
                 return (
                   <div
                     key={`${event.id}-${ymd}`}
                     title={displayText}
-                    className="text-[9px] md:text-xs px-1 md:px-1.5 py-0.5 rounded truncate font-medium"
-                    style={pillStyle}
+                    className={`text-[9px] md:text-xs px-1 md:px-1.5 py-0.5 rounded truncate font-medium ${
+                      isPastDay
+                        ? 'bg-gray-200 text-gray-400 dark:bg-gray-750 dark:text-gray-500 line-through opacity-75'
+                        : `bg-gradient-to-br ${categoryStyle.bg} text-white shadow-sm`
+                    }`}
                   >
                     {displayText}
                   </div>

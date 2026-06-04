@@ -59,15 +59,15 @@ const maskKey = (k: string) =>
 
 // ── Animated orb ──────────────────────────────────────────────────────────────
 const AnimatedOrb = () => (
-  <div className="relative w-[70px] h-[70px] mx-auto mb-5" style={{ aspectRatio: '1' }}>
+  <div className="relative w-[50px] h-[50px] mx-auto mb-3" style={{ aspectRatio: '1' }}>
     <div className="absolute inset-0 rounded-full animate-pulse" style={{
       background: 'radial-gradient(circle, #93c5fd 0%, #3b82f6 60%, #1d4ed8 100%)',
-      filter: 'blur(18px)', transform: 'scale(1.6)', opacity: 0.5,
+      filter: 'blur(12px)', transform: 'scale(1.4)', opacity: 0.5,
     }} />
     <div className="absolute inset-0 rounded-full shadow-xl" style={{
       background: 'radial-gradient(circle at 35% 30%, #bfdbfe, #3b82f6 55%, #1e40af 100%)',
     }} />
-    <div className="absolute top-2.5 left-3 w-4 h-2.5 rounded-full bg-white opacity-30" style={{ filter: 'blur(4px)' }} />
+    <div className="absolute top-1.5 left-2 w-3 h-2 rounded-full bg-white opacity-30" style={{ filter: 'blur(3px)' }} />
   </div>
 );
 
@@ -237,7 +237,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
 
   // ── Shared input bar ──────────────────────────────────────────────────────
   const InputBar = (
-    <div className="flex-shrink-0 bg-white dark:bg-gray-950 pt-3 pb-20 md:pb-5 border-t border-gray-100 dark:border-gray-800">
+    <div className="flex-shrink-0 bg-white dark:bg-gray-950 pt-3 pb-4 md:pb-4 border-t border-gray-100 dark:border-gray-800">
       <div className="w-full max-w-5xl mx-auto px-4 md:px-8">
         <input
           ref={inputRef}
@@ -249,8 +249,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
           placeholder={available ? "Ask me anything about events..." : "Connect your API key to start"}
           className="w-full text-sm px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:border-blue-300 dark:focus:border-blue-700 text-gray-700 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-colors disabled:opacity-50 mb-3 shadow-sm"
         />
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-gray-400 dark:text-gray-500 text-xs">
+        <div className="flex items-center justify-end md:justify-between">
+          <div className="hidden md:flex items-center gap-4 text-gray-400 dark:text-gray-500 text-xs">
             <button onClick={() => setShowKeyPanel(true)}
               className="flex items-center gap-1.5 font-medium hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
               <BookOpen size={15} /><span>Library</span>
@@ -276,47 +276,68 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
 
       {showKeyPanel && KeyPanel}
 
-      {/* ── WELCOME STATE — no scrolling, everything fits ── */}
-      {!hasChat && (
-        <div className="flex flex-col flex-1 min-h-0">
+      {/* Global Header with Back and Close button */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 bg-white/80 dark:bg-gray-950 z-10">
+        {hasChat && (
+          <button onClick={() => setMessages([])} title="Back to welcome"
+            className="p-2 -ml-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+            <ArrowLeft size={18} />
+          </button>
+        )}
+        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: 'radial-gradient(circle at 35% 30%, #c4b5fd, #7c3aed 60%, #4338ca 100%)' }}>
+          <Bot size={14} className="text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none">Commove Assistant</p>
+          <p className="text-xs text-gray-400 mt-0.5">{available ? 'Events in Bacoor, Cavite' : 'API key required'}</p>
+        </div>
+        <button onClick={onClose} title="Close Chat"
+          className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+          <X size={18} />
+        </button>
+      </div>
 
-          {/* Orb + heading — less top padding on mobile */}
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-5 min-h-0 pt-6 md:pt-16">
+      {/* ── WELCOME STATE — scrollable and compact ── */}
+      {!hasChat && (
+        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+
+          {/* Orb + heading — compact padding */}
+          <div className="flex-shrink-0 flex flex-col items-center justify-center text-center px-5 py-6">
             <AnimatedOrb />
-            <h1 className="text-lg md:text-2xl font-semibold text-gray-900 leading-tight">
+            <h1 className="text-base md:text-lg font-bold text-gray-900 dark:text-white leading-snug">
               Hi! I'm your Assistant.<br />How can I help you today?
             </h1>
-            <p className="mt-1.5 text-xs text-gray-400 max-w-xs leading-relaxed">
+            <p className="mt-1 text-xs text-gray-400 max-w-xs leading-relaxed">
               Ask me anything about events in Bacoor and I'll provide real-time answers
             </p>
           </div>
 
           {/* Quick Actions — horizontal snap-scroll */}
-          {/* Mobile: 1 card visible (80vw); Desktop: 3 cards visible (32% each) */}
-          <div className="flex-shrink-0 w-full pb-3 md:pb-6">
-            <div className="mb-2 px-4 md:px-8 max-w-5xl mx-auto">
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Quick Actions</span>
+          <div className="flex-shrink-0 w-full pb-4">
+            <div className="mb-2 px-4 max-w-5xl mx-auto text-center md:text-left">
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quick Actions</span>
             </div>
             <div
-              className="flex gap-2.5 overflow-x-auto overflow-y-hidden snap-x snap-mandatory px-4 md:px-8 py-1"
+              className="flex gap-2.5 overflow-x-auto overflow-y-hidden snap-x snap-mandatory px-4 py-1"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {QUICK_ACTIONS.map(qa => (
                 <button
                   key={qa.id}
                   onClick={() => available ? handleSend(qa.query) : setShowKeyPanel(true)}
-                  className="relative flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-left bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md active:scale-[0.99] transition-all snap-start flex-shrink-0 w-[72vw] md:w-[32%]"
+                  className="relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md active:scale-[0.99] transition-all snap-start flex-shrink-0 w-[180px]"
                 >
                   {/* ↗ arrow top-right */}
-                  <div className="absolute top-2.5 right-2.5 text-gray-300 dark:text-gray-600">
-                    <ArrowUpRight size={12} />
+                  <div className="absolute top-2 right-2 text-gray-300 dark:text-gray-600">
+                    <ArrowUpRight size={10} />
                   </div>
                   {/* Emoji icon */}
-                  <span className="text-2xl leading-none flex-shrink-0">{qa.emoji}</span>
+                  <span className="text-xl leading-none flex-shrink-0">{qa.emoji}</span>
                   {/* Text */}
-                  <div className="min-w-0 pr-3">
-                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-snug">{qa.title}</p>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">{qa.subtitle}</p>
+                  <div className="min-w-0 pr-1.5">
+                    <p className="text-[11px] font-semibold text-gray-800 dark:text-gray-100 leading-snug truncate">{qa.title}</p>
+                    <p className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5 leading-snug truncate">{qa.subtitle}</p>
                   </div>
                 </button>
               ))}
@@ -328,21 +349,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
       {/* ── CHAT STATE ── */}
       {hasChat && (
         <>
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 bg-white/80 dark:bg-gray-950">
-            <button onClick={() => setMessages([])} title="Back to welcome"
-              className="p-2 -ml-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
-              <ArrowLeft size={18} />
-            </button>
-            <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: 'radial-gradient(circle at 35% 30%, #c4b5fd, #7c3aed 60%, #4338ca 100%)' }}>
-              <Bot size={14} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none">Commove Assistant</p>
-              <p className="text-xs text-gray-400 mt-0.5">{available ? 'Events in Bacoor, Cavite' : 'API key required'}</p>
-            </div>
-          </div>
-
           <div className="flex-1 overflow-y-auto px-5 md:px-12 py-5 min-h-0" style={{ scrollbarWidth: 'thin' }}>
             {chatMessages.map(msg => (
               <div key={msg.id} className={`flex items-end gap-2 mb-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
