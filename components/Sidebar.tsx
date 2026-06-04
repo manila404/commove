@@ -11,7 +11,7 @@ const BotIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
-type AppTab = 'feed' | 'calendar' | 'chat' | 'nearby' | 'notifications';
+type AppTab = 'feed' | 'calendar' | 'nearby' | 'notifications';
 type AdminTab = 'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights';
 
 interface SidebarProps {
@@ -38,7 +38,6 @@ const ADMIN_TABS: { tab: AdminTab; label: string; icon: React.ReactNode }[] = [
 const NAV_ITEMS = (isStaff: boolean) => [
     { tab: 'feed' as AppTab,          label: 'Feed',           icon: (cls: string) => <HomeIcon className={cls} /> },
     { tab: 'calendar' as AppTab,      label: 'Calendar',       icon: (cls: string) => <CalendarIcon className={cls} /> },
-    ...(!isStaff ? [{ tab: 'chat' as AppTab, label: 'AI Assistant', icon: (cls: string) => <BotIcon className={cls} /> }] : []),
     { tab: 'notifications' as AppTab, label: 'Notifications',  icon: (cls: string) => <BellIcon className={cls} /> },
     { tab: 'nearby' as AppTab,        label: 'Nearby',         icon: (cls: string) => <LocationIcon className={cls} /> },
 ];
