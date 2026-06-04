@@ -17,6 +17,7 @@ import ConfirmationDialog from './ConfirmationDialog';
 
 interface AdminDashboardTabsProps {
     events: EventType[];
+    allEvents: EventType[]; // Full non-deduplicated list for recurring count badges
     users: User[];
     pendingRequests: EventType[];
     onApprove: (event: EventType) => void;
@@ -42,7 +43,7 @@ interface AdminDashboardTabsProps {
     onDeleteUser: (userId: string) => void;
     canManageUsers: boolean;
     activeTab: 'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights';
-    setActiveTab: (tab: 'analytics' | 'demographics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights') => void;
+    setActiveTab: (tab: 'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights') => void;
     initialTab?: 'analytics' | 'events' | 'users';
     onInitialTabConsumed?: () => void;
     highlightUserId?: string;
@@ -83,13 +84,27 @@ const getInsightFirstSeenAt = (stableId: string): Date => {
 };
 
 const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
-    events, users, pendingRequests, onApprove, onReject, onEditEvent, onDeleteEvent, onViewQRCode, onViewParticipants,
+    events, allEvents, users, pendingRequests, onApprove, onReject, onEditEvent, onDeleteEvent, onViewQRCode, onViewParticipants,
     onSchedule, onPreviewEvent,
     filteredUsers, userSearchQuery, setUserSearchQuery, userFilter, setUserFilter,
     isLoadingUsers, userError, fetchUsers, handleRoleUpdate, onApproveFacilitator, onRejectFacilitator, onDeleteUser, canManageUsers,
     activeTab, setActiveTab, initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed, onManageRegistrations, currentUser,
     onCancelEvent, onNotifyUpdate
 }) => {
+    const getRecurringSeriesCount = (event: EventType): number => {
+        if (!event.recurrenceGroupId) return 0;
+        return allEvents.filter(e => e.recurrenceGroupId === event.recurrenceGroupId).length;
+    };
+
+    const getRecurrenceFrequencyLabel = (event: EventType): string => {
+        if (!event.recurrenceGroupId) return '';
+        const matching = allEvents.find(e => e.recurrenceGroupId === event.recurrenceGroupId && e.recurrenceRule?.frequency);
+        const freq = matching?.recurrenceRule?.frequency || event.recurrenceRule?.frequency;
+        if (freq === 'weekly') return 'Weekly';
+        if (freq === 'monthly_date' || freq === 'monthly_day') return 'Monthly';
+        return '';
+    };
+
     // ── Alert chip renderer ───────────────────────────────────────────────────
     const AlertChip = ({ alert }: { alert: EventAlert }) => (
         <span
@@ -236,7 +251,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     }, [cardDetailDrawer?.title, currentUser?.uid]); // runs each time a different card is opened
 
     // User management extra state
-    const [userSortOrder, setUserSortOrder] = useState<'newest' | 'oldest'>('newest');
+    const [userSortOrder, setUserSortOrder] = useState<'newest' | 'oldest' | 'asc' | 'desc'>('newest');
     const [userPage, setUserPage] = useState(1);
     const [showPendingFacilitatorFilter, setShowPendingFacilitatorFilter] = useState(false);
     const [showUserFilterDropdown, setShowUserFilterDropdown] = useState(false);
@@ -854,6 +869,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const participants = residents.filter(u =>
         (u.checkedInEventIds && u.checkedInEventIds.some(id => events.some(e => e.id === id))) ||
         (u.interestedEventIds && u.interestedEventIds.some(id => events.some(e => e.id === id)))
+    );
+    const pendingFacilitators = users.filter(u =>
+        u.facilitatorRequestStatus === 'pending' ||
+        (u.role === 'user' && (u.idUrl || u.faceUrl || (u as any).facilitatorIdUrl) && u.facilitatorRequestStatus !== 'approved' && u.facilitatorRequestStatus !== 'rejected')
     );
 
     // 1. Monthly Trends (Check-ins and Events per month)
@@ -1722,7 +1741,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         {visibilityFilteredPending.map(event => (
                             <div key={event.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-gray-100 dark:border-gray-800/60 rounded-xl bg-gray-50/50 dark:bg-gray-800/30 gap-4">
                                 <div className="flex items-center gap-4 min-w-0">
-                                    <img src={event.imageUrl || undefined} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                                    {event.imageUrl ? (
+                                        <img src={event.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                                    ) : (
+                                        <div className="w-12 h-12 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-100/50 dark:border-blue-900/30 text-[#0052A3] dark:text-blue-400 font-bold flex items-center justify-center text-lg flex-shrink-0 select-none">
+                                            {event.name ? event.name.charAt(0).toUpperCase() : '?'}
+                                        </div>
+                                    )}
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <h4 className="font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-none">{event.name}</h4>
@@ -1731,6 +1756,12 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             {event.status === 'draft' && <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Draft</span>}
                                             {event.status === 'pending' && <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Pending Approval</span>}
                                             {event.status === 'rejected' && <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Rejected</span>}
+                                            {event.recurrenceGroupId && (() => {
+                                                const seriesCount = getRecurringSeriesCount(event);
+                                                if (seriesCount <= 1) return null;
+                                                const freqLabel = getRecurrenceFrequencyLabel(event);
+                                                return <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">{seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring</span>;
+                                            })()}
                                         </div>
                                         <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{event.organizer || 'Unknown'} • {formatDisplayDate(event.date)}</p>
                                         {/* Rule-based alert chips */}
@@ -1912,11 +1943,19 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 <span className="text-[14px] font-semibold text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer block leading-snug" onClick={() => onPreviewEvent && onPreviewEvent(event)}>
                                                     {event.name}
                                                 </span>
-                                                {(() => {
-                                                    const alerts = getEventAlerts(event, events);
-                                                    if (!alerts.length) return null;
-                                                    return <div className="flex flex-wrap gap-1 mt-1">{alerts.map(a => <AlertChip key={a.id} alert={a} />)}</div>;
-                                                })()}
+                                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                                    {event.recurrenceGroupId && (() => {
+                                                        const seriesCount = getRecurringSeriesCount(event);
+                                                        if (seriesCount <= 1) return null;
+                                                        const freqLabel = getRecurrenceFrequencyLabel(event);
+                                                        return <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[9px] font-black uppercase rounded-md flex-shrink-0">{seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring</span>;
+                                                    })()}
+                                                    {(() => {
+                                                        const alerts = getEventAlerts(event, events);
+                                                        if (!alerts.length) return null;
+                                                        return alerts.map(a => <AlertChip key={a.id} alert={a} />);
+                                                    })()}
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -2060,10 +2099,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
     const renderUsers = () => {
         // Filter logic: Include those explicitly pending OR those with an ID URL but no role yet (fallback for sync issues)
-        const pendingFacilitators = users.filter(u =>
-            u.facilitatorRequestStatus === 'pending' ||
-            (u.role === 'user' && (u.idUrl || u.faceUrl || (u as any).facilitatorIdUrl) && u.facilitatorRequestStatus !== 'approved' && u.facilitatorRequestStatus !== 'rejected')
-        );
 
         // Apply active filter: pending facilitator shortcut overrides userFilter
         const activeFilteredUsers = showPendingFacilitatorFilter
@@ -2759,13 +2794,25 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 pendingRequests.map(event => (
                                     <div key={event.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700/50 p-4">
                                         <div className="flex gap-3 mb-3">
-                                            {event.imageUrl && <img src={event.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />}
+                                            {event.imageUrl ? (
+                                                <img src={event.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                                            ) : (
+                                                <div className="w-12 h-12 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-100/50 dark:border-blue-900/30 text-[#0052A3] dark:text-blue-400 font-bold flex items-center justify-center text-lg flex-shrink-0 select-none">
+                                                    {event.name ? event.name.charAt(0).toUpperCase() : '?'}
+                                                </div>
+                                            )}
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-center gap-2 flex-wrap mb-0.5">
                                                     <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{event.name}</p>
                                                     {event.priority === 'urgent' && <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-[9px] font-black uppercase rounded-md flex-shrink-0">Urgent</span>}
                                                     {event.priority === 'average' && <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-[9px] font-black uppercase rounded-md flex-shrink-0">Average</span>}
                                                     <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[9px] font-black uppercase rounded-md flex-shrink-0">Pending</span>
+                                                    {event.recurrenceGroupId && (() => {
+                                                        const seriesCount = getRecurringSeriesCount(event);
+                                                        if (seriesCount <= 1) return null;
+                                                        const freqLabel = getRecurrenceFrequencyLabel(event);
+                                                        return <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[9px] font-black uppercase rounded-md flex-shrink-0">{seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring</span>;
+                                                    })()}
                                                 </div>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400">{event.organizer || 'Unknown'} • {formatDisplayDate(event.date)}</p>
                                                 {(() => {

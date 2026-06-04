@@ -74,7 +74,7 @@ interface AdminPanelProps {
     events: EventType[];
     onEventCreated: (event: EventType) => void;
     onEventUpdated: (event: EventType) => void;
-    onEventDeleted: (eventId: string) => Promise<boolean>;
+    onEventDeleted: (eventId: string, recurrenceGroupId?: string) => Promise<boolean>;
     onClose: () => void;
     onManageRegistrations?: (event: EventType) => void;
 }
@@ -269,10 +269,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     let baseRequests: EventType[] = [];
     if (currentUser.role === 'facilitator') {
         // Facilitators see their own pending/rejected/draft events so they can track or resubmit them
-        baseRequests = events.filter(e => (e.status === 'pending' || e.status === 'rejected' || e.status === 'draft') && e.createdBy === currentUser.uid);
+        baseRequests = deduplicateRecurringEvents(events.filter(e => (e.status === 'pending' || e.status === 'rejected' || e.status === 'draft') && e.createdBy === currentUser.uid));
     } else if (currentUser.role === 'admin') {
         // Admins see all pending events to approve them, PLUS their own local drafts
-        baseRequests = events.filter(e => e.status === 'pending' || (e.status === 'draft' && e.createdBy === currentUser.uid));
+        baseRequests = deduplicateRecurringEvents(events.filter(e => e.status === 'pending' || (e.status === 'draft' && e.createdBy === currentUser.uid)));
     }
 
     // Filter Requests based on Department and Search
@@ -510,9 +510,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         try { window.history.pushState({ view: 'admin', tab: 'dashboard' }, ''); } catch {}
     };
 
-    const handleDeleteEvent = async (eventId: string) => {
+    const handleDeleteEvent = async (eventId: string, recurrenceGroupId?: string) => {
         showConfirm('Delete Event?', 'This action cannot be undone.', async () => {
-            const success = await onEventDeleted(eventId);
+            const success = await onEventDeleted(eventId, recurrenceGroupId);
             if (success && editingEvent?.id === eventId) {
                 setEditingEvent(null);
                 setRequestedDashboardTab('events');
@@ -532,7 +532,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                 ? (nextStatus === 'scheduled' ? "Event Scheduled!" : "Event Published!")
                 : "Event Forwarded to Admin!";
 
-            await updateEventStatus(event.id, nextStatus);
+            await updateEventStatus(event.id, nextStatus, undefined, undefined, event.recurrenceGroupId);
             onEventUpdated({ ...event, status: nextStatus, rejectionReason: undefined });
 
             if (event.createdBy) {
@@ -579,7 +579,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                 return;
             }
 
-            await updateEventStatus(schedulingEvent.id, 'scheduled', undefined, publishAt);
+            await updateEventStatus(schedulingEvent.id, 'scheduled', undefined, publishAt, schedulingEvent.recurrenceGroupId);
             onEventUpdated({ ...schedulingEvent, status: 'scheduled', publishAt });
 
             if (schedulingEvent.createdBy) {
@@ -609,8 +609,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const handleConfirmReject = async () => {
         if (!rejectingEventId) return;
         try {
-            await updateEventStatus(rejectingEventId, 'rejected', rejectionReason);
             const event = events.find(e => e.id === rejectingEventId);
+            await updateEventStatus(rejectingEventId, 'rejected', rejectionReason, undefined, event?.recurrenceGroupId);
             if (event) {
                 onEventUpdated({ ...event, status: 'rejected', rejectionReason });
 
@@ -636,7 +636,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         if (!cancellingEvent) return;
         setIsCancelling(true);
         try {
-            await updateEventStatus(cancellingEvent.id, 'cancelled', cancelReason || 'Event has been cancelled.');
+            await updateEventStatus(cancellingEvent.id, 'cancelled', cancelReason || 'Event has been cancelled.', undefined, cancellingEvent.recurrenceGroupId);
             onEventUpdated({ ...cancellingEvent, status: 'cancelled', rejectionReason: cancelReason || undefined });
 
             // Fan-out notifications to affected residents (saved + interested)
@@ -918,6 +918,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
 
             <AdminDashboardTabs
                 events={accessibleEvents}
+                allEvents={events}
                 users={users}
                 pendingRequests={filteredRequests}
                 onApprove={handleApprove}

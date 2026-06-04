@@ -127,9 +127,8 @@ export const updateEvent = async (eventId: string, eventData: Partial<EventType>
     }
 };
 
-export const updateEventStatus = async (eventId: string, status: EventStatus, rejectionReason?: string, publishAt?: number | null): Promise<void> => {
+export const updateEventStatus = async (eventId: string, status: EventStatus, rejectionReason?: string, publishAt?: number | null, recurrenceGroupId?: string): Promise<void> => {
     try {
-        const eventDocRef = doc(db, 'events', eventId);
         const updateData: any = { status };
         if (status === 'rejected') {
             updateData.rejectionReason = rejectionReason || 'No reason provided';
@@ -140,7 +139,20 @@ export const updateEventStatus = async (eventId: string, status: EventStatus, re
         if (publishAt !== undefined) {
             updateData.publishAt = publishAt;
         }
-        await updateDoc(eventDocRef, updateData);
+
+        // Batch-update all events in the recurrence group
+        if (recurrenceGroupId) {
+            const q = query(eventsCollectionRef, where("recurrenceGroupId", "==", recurrenceGroupId));
+            const snap = await getDocs(q);
+            const batch = writeBatch(db);
+            snap.docs.forEach(d => {
+                batch.update(d.ref, updateData);
+            });
+            await batch.commit();
+        } else {
+            const eventDocRef = doc(db, 'events', eventId);
+            await updateDoc(eventDocRef, updateData);
+        }
     } catch (error) {
         console.error("Error updating event status:", error);
         throw error;

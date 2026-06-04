@@ -1650,14 +1650,38 @@ const App: React.FC = () => {
     };
 
     const handleEventUpdated = (updatedEvent: EventType) => {
-        setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+        setEvents(prev => prev.map(e => {
+            if (e.id === updatedEvent.id) return updatedEvent;
+            // Propagate status/rejectionReason/publishAt to all events in the same recurrence group
+            if (updatedEvent.recurrenceGroupId && e.recurrenceGroupId === updatedEvent.recurrenceGroupId) {
+                return {
+                    ...e,
+                    status: updatedEvent.status,
+                    rejectionReason: updatedEvent.rejectionReason,
+                    publishAt: updatedEvent.publishAt,
+                };
+            }
+            return e;
+        }));
         toast.success("Event Updated", { description: `${updatedEvent.name} has been updated.` });
     };
 
-    const handleEventDeleted = async (eventId: string) => {
+    const handleEventDeleted = async (eventId: string, recurrenceGroupId?: string) => {
         try {
-            await deleteEvent(eventId);
-            setEvents(prev => prev.filter(e => e.id !== eventId));
+            if (recurrenceGroupId) {
+                // Batch delete all events in the recurrence group
+                const { collection: firestoreCollection, query: firestoreQuery, where: firestoreWhere, getDocs: firestoreGetDocs, writeBatch: firestoreWriteBatch } = await import('firebase/firestore');
+                const { db } = await import('./services/firebase');
+                const q = firestoreQuery(firestoreCollection(db, 'events'), firestoreWhere('recurrenceGroupId', '==', recurrenceGroupId));
+                const snap = await firestoreGetDocs(q);
+                const batch = firestoreWriteBatch(db);
+                snap.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+                setEvents(prev => prev.filter(e => e.recurrenceGroupId !== recurrenceGroupId));
+            } else {
+                await deleteEvent(eventId);
+                setEvents(prev => prev.filter(e => e.id !== eventId));
+            }
             return true;
         } catch (e) {
             showAlert("Error", "Failed to delete event", "error");

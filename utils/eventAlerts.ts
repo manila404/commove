@@ -54,19 +54,7 @@ export const getEventAlerts = (event: EventType, allEvents: EventType[]): EventA
             });
         }
 
-        // 1c. Missing required documents
-        const requiredDocs = (event as any).department === 'PESO Department'
-            ? REQUIRED_DOCS_PESO
-            : REQUIRED_DOCS_DEFAULT;
-        const missingCount = requiredDocs.filter(key => !(event as any)[key]).length;
-        if (missingCount > 0) {
-            alerts.push({
-                id: 'missing-docs',
-                severity: 'warning',
-                label: `${missingCount} Doc${missingCount > 1 ? 's' : ''} Missing`,
-                detail: `${missingCount} required document${missingCount > 1 ? 's are' : ' is'} not uploaded yet.`,
-            });
-        }
+        // (Documents check removed — admin does not need this badge)
 
         // 2 & 3. Duplicate detection + Venue conflict
         // Same published/scheduled event at same venue on same date
