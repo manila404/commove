@@ -1,4 +1,7 @@
-const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from './firebase';
+
+const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_ATTEMPTS  = 5;
 
 // ─── Persistent OTP-verification tracking ────────────────────────────────────
@@ -22,7 +25,10 @@ export const clearLoginInProgress = ()            => sessionStorage.removeItem('
 export const isLoginInProgress    = ()            => sessionStorage.getItem('otp_login') === '1';
 
 interface OTPRecord {
+    userId:    string;
+    email:     string;
     code:      string;
+    createdAt: number;
     expiresAt: number;
     attempts:  number;
 }
@@ -33,33 +39,51 @@ const toKey = (email: string) =>
 export const generateOTP = (): string =>
     Math.floor(100000 + Math.random() * 900000).toString();
 
-export const storeOTP = async (email: string, otp: string): Promise<void> => {
+export const storeOTP = async (email: string, otp: string, uid?: string): Promise<void> => {
+    // If uid is provided (SignIn), use it. Otherwise (SignUp), use formatted email.
+    const docId = uid || toKey(email);
     const record: OTPRecord = {
+        userId:    uid || docId,
+        email:     email,
         code:      otp,
+        createdAt: Date.now(),
         expiresAt: Date.now() + OTP_EXPIRY_MS,
         attempts:  0,
     };
-    sessionStorage.setItem(toKey(email), JSON.stringify(record));
+    
+    try {
+        await setDoc(doc(db, "otpCodes", docId), record);
+    } catch (err) {
+        console.error("Failed to store OTP in Firestore:", err);
+    }
     // DEV: log so you can verify the code matches the email
     console.info(`[OTP] Stored code for ${email}: ${otp}`);
 };
 
 export type OTPResult = 'valid' | 'invalid' | 'expired' | 'too_many_attempts' | 'not_found';
 
-export const verifyOTP = async (email: string, entered: string): Promise<OTPResult> => {
-    const raw = sessionStorage.getItem(toKey(email));
-    if (!raw) return 'not_found';
+export const verifyOTP = async (email: string, entered: string, uid?: string): Promise<OTPResult> => {
+    const docId = uid || toKey(email);
+    const docRef = doc(db, "otpCodes", docId);
+    
+    try {
+        const snapshot = await getDoc(docRef);
+        if (!snapshot.exists()) return 'not_found';
 
-    const record: OTPRecord = JSON.parse(raw);
+        const record = snapshot.data() as OTPRecord;
 
-    if (record.attempts >= MAX_ATTEMPTS) return 'too_many_attempts';
-    if (Date.now() > record.expiresAt)   return 'expired';
+        if (record.attempts >= MAX_ATTEMPTS) return 'too_many_attempts';
+        if (Date.now() > record.expiresAt)   return 'expired';
 
-    record.attempts++;
-    sessionStorage.setItem(toKey(email), JSON.stringify(record));
+        if (record.code !== entered.trim()) {
+            await updateDoc(docRef, { attempts: record.attempts + 1 });
+            return 'invalid';
+        }
 
-    if (record.code !== entered.trim()) return 'invalid';
-
-    sessionStorage.removeItem(toKey(email)); // invalidate after successful use
-    return 'valid';
+        await deleteDoc(docRef); // invalidate after successful use
+        return 'valid';
+    } catch (err) {
+        console.error("Failed to verify OTP from Firestore:", err);
+        return 'not_found';
+    }
 };

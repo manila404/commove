@@ -5,6 +5,7 @@ import { sendOTPEmail } from '../services/emailService';
 interface OTPVerificationProps {
     email:       string;
     userName:    string;
+    uid?:        string;
     onVerified:  () => void;
     onBack:      () => void;
 }
@@ -14,7 +15,7 @@ const RESEND_COOLDOWN = 60;  // seconds before resend is allowed
 const EXPIRY_SECONDS  = 600; // 10 minutes
 
 const OTPVerification: React.FC<OTPVerificationProps> = ({
-    email, userName, onVerified, onBack,
+    email, userName, uid, onVerified, onBack,
 }) => {
     const [digits, setDigits]           = useState<string[]>(Array(OTP_LENGTH).fill(''));
     const [error, setError]             = useState('');
@@ -102,7 +103,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({
         setIsVerifying(true);
         setError('');
 
-        const result: OTPResult = await verifyOTP(email, entered);
+        const result: OTPResult = await verifyOTP(email, entered, uid);
 
         setIsVerifying(false);
 
@@ -129,7 +130,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({
         setError('');
 
         const otp  = generateOTP();
-        await storeOTP(email, otp);
+        await storeOTP(email, otp, uid);
         const ok   = await sendOTPEmail(email, otp, userName);
 
         setIsResending(false);

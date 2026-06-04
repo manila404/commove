@@ -78,7 +78,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
 
             // Send OTP — user stays Firebase-authenticated but app access is gated
             const otp = generateOTP();
-            await storeOTP(email, otp);
+            await storeOTP(email, otp, credential.user.uid);
             const sent = await sendOTPEmail(email, otp, credential.user.displayName ?? email.split('@')[0]);
             if (!sent) {
                 clearLoginInProgress();
@@ -148,6 +148,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
             <OTPVerification
                 email={email}
                 userName={auth.currentUser?.displayName ?? email.split('@')[0]}
+                uid={auth.currentUser?.uid}
                 onVerified={() => {
                     if (auth.currentUser) markOTPVerified(auth.currentUser.uid);
                     clearLoginInProgress();

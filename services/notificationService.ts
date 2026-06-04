@@ -221,7 +221,8 @@ export const getNotifications = async (userId: string): Promise<AppNotification[
  */
 export const subscribeToNotifications = (
     userId: string,
-    callback: (notifications: AppNotification[]) => void
+    callback: (notifications: AppNotification[]) => void,
+    onError?: (error: any) => void
 ): Unsubscribe => {
     // We remove the server-side orderBy to avoid the need for a composite index immediately.
     // Index creation can take minutes and causes the query to fail (returning [] in my error handler) until ready.
@@ -240,6 +241,7 @@ export const subscribeToNotifications = (
         },
         (error) => {
             console.error('Notification listener error:', error);
+            if (onError) onError(error);
             // Don't call callback([]) here to avoid wiping the UI if it's just a temporary glitch
         }
     );
