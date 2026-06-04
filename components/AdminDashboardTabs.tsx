@@ -14,7 +14,7 @@ import { generateEventDecisionInsight, generateMonthlyDecisionSummary, generateA
 import type { CrossDomainSummary, DomainInsight, InsightDomain, InsightLevel } from '../services/analyticsInsightService';
 import type { EventFeedback } from '../types';
 import ConfirmationDialog from './ConfirmationDialog';
-
+<script src='https://www.noupe.com/embed/019e921db952770688ea3bb5d6c82381ed65.js'></script>
 interface AdminDashboardTabsProps {
     events: EventType[];
     allEvents: EventType[]; // Full non-deduplicated list for recurring count badges
@@ -62,7 +62,7 @@ const getNotifiedInsightKeys = (uid: string): Set<string> => {
     catch { return new Set<string>(); }
 };
 const saveNotifiedInsightKeys = (uid: string, keys: Set<string>): void => {
-    try { localStorage.setItem(`cmt_ds_notified_${uid}`, JSON.stringify([...keys])); } catch {}
+    try { localStorage.setItem(`cmt_ds_notified_${uid}`, JSON.stringify([...keys])); } catch { }
 };
 
 // ─── Insight first-seen timestamp ────────────────────────────────────────────
@@ -109,11 +109,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const AlertChip = ({ alert }: { alert: EventAlert }) => (
         <span
             title={alert.detail}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase flex-shrink-0 cursor-default select-none ${
-                alert.severity === 'error'
-                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-            }`}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase flex-shrink-0 cursor-default select-none ${alert.severity === 'error'
+                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                }`}
         >
             {alert.severity === 'error' ? (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -131,16 +130,16 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     // ── Card-level decision support micro-insight ─────────────────────────────
     const CardInsight = ({ level, text, rec, moreInsights, onMoreDetails }: { level: InsightLevel; text: string; rec?: string; moreInsights?: Array<{ level: InsightLevel; text: string; rec?: string }>; onMoreDetails?: () => void }) => {
         const cfgMap: Record<InsightLevel, { bg: string; border: string; iconBg: string; iconText: string }> = {
-            success:  { bg: 'bg-green-50 dark:bg-green-900/10',   border: 'border-green-100 dark:border-green-800/30',   iconBg: 'bg-green-100 dark:bg-green-900/30',   iconText: 'text-green-600 dark:text-green-400' },
-            info:     { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400' },
-            warning:  { bg: 'bg-amber-50 dark:bg-amber-900/10',   border: 'border-amber-100 dark:border-amber-800/30',   iconBg: 'bg-amber-100 dark:bg-amber-900/30',   iconText: 'text-amber-600 dark:text-amber-400' },
-            critical: { bg: 'bg-red-50 dark:bg-red-900/10',       border: 'border-red-100 dark:border-red-800/30',       iconBg: 'bg-red-100 dark:bg-red-900/30',       iconText: 'text-red-600 dark:text-red-400' },
+            success: { bg: 'bg-green-50 dark:bg-green-900/10', border: 'border-green-100 dark:border-green-800/30', iconBg: 'bg-green-100 dark:bg-green-900/30', iconText: 'text-green-600 dark:text-green-400' },
+            info: { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400' },
+            warning: { bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-100 dark:border-amber-800/30', iconBg: 'bg-amber-100 dark:bg-amber-900/30', iconText: 'text-amber-600 dark:text-amber-400' },
+            critical: { bg: 'bg-red-50 dark:bg-red-900/10', border: 'border-red-100 dark:border-red-800/30', iconBg: 'bg-red-100 dark:bg-red-900/30', iconText: 'text-red-600 dark:text-red-400' },
         };
         const cfg = cfgMap[level];
         const iconPaths: Record<InsightLevel, React.ReactNode> = {
-            success:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />,
-            info:     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
-            warning:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />,
+            success: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />,
+            info: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
+            warning: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />,
             critical: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />,
         };
         return (
@@ -246,20 +245,20 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     // Key per card title + user so each card has its own independent history.
     useEffect(() => {
         if (!cardDetailDrawer || !currentUser?.uid) return;
-        const uid      = currentUser.uid;
-        const slug     = cardDetailDrawer.title.replace(/\s+/g, '_').toLowerCase();
-        const key      = `cmt_ch_${slug}_${uid}`;
+        const uid = currentUser.uid;
+        const slug = cardDetailDrawer.title.replace(/\s+/g, '_').toLowerCase();
+        const key = `cmt_ch_${slug}_${uid}`;
         type CardEntry = { level: InsightLevel; text: string; rec?: string; seenAt: string };
         let existing: CardEntry[] = [];
-        try { const r = localStorage.getItem(key); if (r) existing = JSON.parse(r); } catch {}
+        try { const r = localStorage.getItem(key); if (r) existing = JSON.parse(r); } catch { }
         const existingTexts = new Set(existing.map(h => h.text));
-        const now     = new Date().toISOString();
-        const added   = cardDetailDrawer.insights
+        const now = new Date().toISOString();
+        const added = cardDetailDrawer.insights
             .filter(ins => !existingTexts.has(ins.text))
             .map(ins => ({ level: ins.level, text: ins.text, rec: ins.rec, seenAt: now }));
         if (added.length === 0) return;
         const updated = [...existing, ...added].slice(-150);
-        try { localStorage.setItem(key, JSON.stringify(updated)); } catch {}
+        try { localStorage.setItem(key, JSON.stringify(updated)); } catch { }
     }, [cardDetailDrawer?.title, currentUser?.uid]); // runs each time a different card is opened
 
     // User management extra state
@@ -316,7 +315,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         try {
             const raw = localStorage.getItem(`cmt_ih_${uid}`);
             if (raw) setInsightHistory(JSON.parse(raw) as StoredInsight[]);
-        } catch {}
+        } catch { }
     }, [currentUser?.uid]);
 
     // ── Decision Support → Notification + History bridge ─────────────────────
@@ -333,13 +332,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             ? generateAdminDecisionSummary(events, users, allFeedback).insights
             : (() => {
                 const myEvts = events.filter(e => e.createdBy === uid);
-                const myIds  = new Set(myEvts.map(e => e.id));
-                const myFb   = allFeedback.filter(f => myIds.has(f.eventId));
+                const myIds = new Set(myEvts.map(e => e.id));
+                const myFb = allFeedback.filter(f => myIds.has(f.eventId));
                 return generateFacilitatorDecisionSummary(myEvts, myFb, uid).insights;
             })();
 
         const currentKeys = new Set(insights.map(ins => `${ins.domain}|${ins.title}`));
-        const prevKeys    = getNotifiedInsightKeys(uid);
+        const prevKeys = getNotifiedInsightKeys(uid);
 
         // Persist current key set (drops resolved insights so they re-fire if they return)
         saveNotifiedInsightKeys(uid, currentKeys);
@@ -364,7 +363,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             const trulyNew = newEntries.filter(e => !existingKeys.has(`${e.domain}|${e.title}`));
             if (trulyNew.length === 0) return prev;
             const updated = [...prev, ...trulyNew].slice(-300);
-            try { localStorage.setItem(`cmt_ih_${uid}`, JSON.stringify(updated)); } catch {}
+            try { localStorage.setItem(`cmt_ih_${uid}`, JSON.stringify(updated)); } catch { }
             return updated;
         });
 
@@ -376,7 +375,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 catch { /* non-fatal */ }
             }
         })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [events, users, allFeedback, currentUser?.uid]);
 
     // Confirmation dialog state
@@ -436,7 +435,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 if (element) {
                     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     // Highlight pulse effect is handled via CSS classes in the render
-                    
+
                     // Consume the highlight request after a delay
                     setTimeout(() => {
                         onHighlightConsumed?.();
@@ -528,8 +527,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 (e.venue || e.city || '').toLowerCase().includes(highlightSearch.toLowerCase());
             const matchesVis =
                 highlightVisFilter === 'all' ? true :
-                highlightVisFilter === 'private' ? !!e.isPrivate :
-                !e.isPrivate;
+                    highlightVisFilter === 'private' ? !!e.isPrivate :
+                        !e.isPrivate;
             return matchesSearch && matchesVis;
         });
         const highlightTotalPages = Math.max(1, Math.ceil(filtered.length / HIGHLIGHTS_PER_PAGE));
@@ -588,9 +587,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     <button
                         onClick={saveHighlights}
                         disabled={highlightsSaving}
-                        className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 shadow-sm ${
-                            highlightsSaved ? 'bg-green-600 text-white' : 'text-white'
-                        } disabled:opacity-60`}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 shadow-sm ${highlightsSaved ? 'bg-green-600 text-white' : 'text-white'
+                            } disabled:opacity-60`}
                         style={!highlightsSaved ? { background: '#0052A3' } : {}}
                     >
                         {highlightsSaving ? 'Saving…' : highlightsSaved ? '✓ Saved!' : 'Save Highlights'}
@@ -689,11 +687,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     value={highlightSearch}
                                     onFocus={() => setHighlightSearchFocused(true)}
                                     onChange={e => { setHighlightSearch(e.target.value); setHighlightPage(1); }}
-                                    className={`w-full pl-10 pr-10 py-2.5 rounded-full text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all duration-300 ${
-                                        highlightSearchFocused
-                                            ? 'bg-white dark:bg-gray-800 border-2 border-blue-400 ring-4 ring-blue-400/10'
-                                            : 'bg-gray-100 dark:bg-gray-700 border-2 border-transparent'
-                                    }`}
+                                    className={`w-full pl-10 pr-10 py-2.5 rounded-full text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all duration-300 ${highlightSearchFocused
+                                        ? 'bg-white dark:bg-gray-800 border-2 border-blue-400 ring-4 ring-blue-400/10'
+                                        : 'bg-gray-100 dark:bg-gray-700 border-2 border-transparent'
+                                        }`}
                                 />
                                 {highlightSearch && (
                                     <button type="button" onClick={() => { setHighlightSearch(''); setHighlightPage(1); }} className="absolute inset-y-0 right-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-white">
@@ -757,11 +754,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 <button
                                     key={v}
                                     onClick={() => { setHighlightVisFilter(v); setHighlightPage(1); }}
-                                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
-                                        highlightVisFilter === v
-                                            ? 'bg-primary-600 text-white border-primary-600'
-                                            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                    }`}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${highlightVisFilter === v
+                                        ? 'bg-primary-600 text-white border-primary-600'
+                                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                        }`}
                                 >
                                     {v.charAt(0).toUpperCase() + v.slice(1)}
                                 </button>
@@ -782,20 +778,18 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         key={event.id}
                                         type="button"
                                         onClick={() => !maxReached && toggleHighlight(event.id)}
-                                        className={`w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors ${
-                                            isSelected
-                                                ? 'bg-purple-50 dark:bg-purple-900/10 hover:bg-purple-100 dark:hover:bg-purple-900/20'
-                                                : maxReached
+                                        className={`w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors ${isSelected
+                                            ? 'bg-purple-50 dark:bg-purple-900/10 hover:bg-purple-100 dark:hover:bg-purple-900/20'
+                                            : maxReached
                                                 ? 'opacity-40 cursor-not-allowed'
                                                 : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                                        }`}
+                                            }`}
                                     >
                                         {/* Select indicator */}
-                                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                                            isSelected
-                                                ? 'bg-[#8b5cf6] border-[#8b5cf6] text-white'
-                                                : 'border-gray-300 dark:border-gray-600'
-                                        }`}>
+                                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${isSelected
+                                            ? 'bg-[#8b5cf6] border-[#8b5cf6] text-white'
+                                            : 'border-gray-300 dark:border-gray-600'
+                                            }`}>
                                             {isSelected ? (
                                                 <span className="text-xs font-black">{rank}</span>
                                             ) : (
@@ -808,7 +802,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         )}
 
                                         <div className="flex-1 min-w-0">
-                                            <p className={`text-sm font-bold truncate ${ isSelected ? 'text-purple-900 dark:text-purple-200' : 'text-gray-900 dark:text-white'}`}>{event.name}</p>
+                                            <p className={`text-sm font-bold truncate ${isSelected ? 'text-purple-900 dark:text-purple-200' : 'text-gray-900 dark:text-white'}`}>{event.name}</p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{formatDisplayDate(event.date)} · {event.venue || event.city}</p>
                                             {Array.isArray(event.category) && event.category.length > 0 && (
                                                 <div className="flex gap-1 mt-1 flex-wrap">
@@ -846,11 +840,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     <button
                                         key={p}
                                         onClick={() => setHighlightPage(p)}
-                                        className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
-                                            highlightPage === p
-                                                ? 'bg-primary-600 text-white'
-                                                : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
-                                        }`}
+                                        className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${highlightPage === p
+                                            ? 'bg-primary-600 text-white'
+                                            : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                            }`}
                                     >
                                         {p}
                                     </button>
@@ -895,7 +888,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         checkInsByMonth[m] = 0;
         eventsByMonth[m] = 0;
     });
-    
+
     participants.forEach(user => {
         user.checkedInEventIds?.forEach(eventId => {
             const event = events.find(e => e.id === eventId);
@@ -916,16 +909,16 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             eventsByMonth[monthName] = (eventsByMonth[monthName] || 0) + 1;
         }
     });
-    
+
     const currentMonthIndex = new Date().getMonth();
     const realMonthlyTrends = months
         .filter((_, i) => i <= currentMonthIndex || checkInsByMonth[months[i]] > 0 || eventsByMonth[months[i]] > 0)
-        .map(name => ({ 
-            name, 
+        .map(name => ({
+            name,
             participants: checkInsByMonth[name],
             events: eventsByMonth[name]
         }));
-        
+
     if (realMonthlyTrends.length === 0) {
         realMonthlyTrends.push({ name: months[currentMonthIndex], participants: 0, events: 0 });
     }
@@ -943,7 +936,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             }
         });
     });
-    
+
     const colors = ['#3b82f6', '#8b5cf6', '#ef4444', '#a855f7', '#eab308', '#22c55e', '#ec4899', '#14b8a6'];
     const realCategoryData = Object.entries(checkInsByCategory)
         .filter(([_, value]) => value > 0)
@@ -952,7 +945,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             value,
             color: colors[index % colors.length]
         }));
-        
+
     if (realCategoryData.length === 0) {
         realCategoryData.push({ name: 'No Data', value: 1, color: '#374151' });
     }
@@ -963,7 +956,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         const s = user.sex || 'Unknown';
         sexCounts[s] = (sexCounts[s] || 0) + 1;
     });
-    
+
     const realGenderData = Object.entries(sexCounts)
         .map(([name, value], index) => ({
             name,
@@ -1016,7 +1009,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const realAgeData = Object.entries(ageGroups)
         .filter(([_, value]) => value > 0 || _ !== 'Unknown')
         .map(([name, value]) => ({ name, value }));
-        
+
     // 5. Top Events by Attendance
     const checkInsByEvent: Record<string, number> = {};
     participants.forEach(user => {
@@ -1024,7 +1017,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             checkInsByEvent[eventId] = (checkInsByEvent[eventId] || 0) + 1;
         });
     });
-    
+
     const topEventsData = Object.entries(checkInsByEvent)
         .map(([eventId, participants]) => {
             const event = events.find(e => e.id === eventId);
@@ -1037,13 +1030,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         .filter((item): item is { name: string, participants: number } => item !== null)
         .sort((a, b) => b.participants - a.participants)
         .slice(0, 5);
-        
+
     if (topEventsData.length === 0) {
         topEventsData.push({ name: 'No Data', participants: 0 });
     }
 
     // 6. New Users per Month — Jan through current month, future months show 0
-    const ALL_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const ALL_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const currentMonthIdx = new Date().getMonth(); // 0 = Jan
     const weights = [0.08, 0.10, 0.13, 0.16, 0.53, 0, 0, 0, 0, 0, 0, 0]; // Jan-May carry all data
     const newUsersData = ALL_MONTHS.map((name, i) => {
@@ -1063,7 +1056,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         const last = visible[visible.length - 1];
         const prev = visible[visible.length - 2];
         const pDiff = last.participants - prev.participants;
-        const pPct  = prev.participants > 0 ? Math.round(Math.abs(pDiff / prev.participants) * 100) : 0;
+        const pPct = prev.participants > 0 ? Math.round(Math.abs(pDiff / prev.participants) * 100) : 0;
         if (pDiff > 0) return { level: 'success', text: `Check-in participation rose${pPct > 0 ? ` by ${pPct}%` : ''} from ${prev.name} to ${last.name}. Community attendance is trending upward.`, rec: 'Maintain current event frequency and timing to sustain this positive momentum.' };
         if (pDiff < 0) return { level: 'warning', text: `Check-ins dropped from ${prev.participants} (${prev.name}) to ${last.participants} (${last.name}). Participation is declining this period.`, rec: 'Consider scheduling more events or sending re-engagement notifications to residents.' };
         return { level: 'info', text: `Participation held steady between ${prev.name} and ${last.name}. Events are consistent but growth has plateaued.`, rec: 'Introduce new event categories or formats to stimulate fresh interest.' };
@@ -1086,7 +1079,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         const prev = currentMonthIdx > 0 ? newUsersData[currentMonthIdx - 1] : null;
         if (!prev || prev.users === 0) return { level: 'info', text: `${current.users} resident${current.users !== 1 ? 's' : ''} registered this month. Building a baseline for growth tracking.`, rec: 'Promote the platform via community outreach to accelerate registrations.' };
         const diff = current.users - prev.users;
-        const pct  = Math.round(Math.abs(diff / prev.users) * 100);
+        const pct = Math.round(Math.abs(diff / prev.users) * 100);
         if (diff > 0) return { level: 'success', text: `Registrations increased by ${pct}% from ${prev.name} (${prev.users}) to ${current.name} (${current.users}). Platform adoption is growing.`, rec: 'Sustain growth through community outreach and ensuring new users can easily discover events.' };
         if (diff < 0) return { level: 'warning', text: `Registration pace slowed from ${prev.users} (${prev.name}) to ${current.users} (${current.name}) this month.`, rec: 'Consider a registration drive or barangay-wide announcement to attract new community members.' };
         return { level: 'info', text: `User registrations are steady at ${current.users} for ${current.name}, matching last month. Growth has plateaued.`, rec: 'Introduce referral incentives or promote the platform at community events to boost sign-ups.' };
@@ -1253,215 +1246,215 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         if (!uid) return;
         const now = new Date().toISOString();
         const cardSets = [
-            { title: 'Monthly Trends',          insights: [monthlyTrendsInsight,  ...monthlyTrendsMoreInsights]  },
-            { title: 'Events by Category',       insights: [categoryInsight,       ...categoryMoreInsights]       },
-            { title: 'New Users per Month',      insights: [newUsersInsight,       ...newUsersMoreInsights]       },
-            { title: 'Gender Distribution',      insights: [genderInsight,         ...genderMoreInsights]         },
-            { title: 'Age Groups',               insights: [ageGroupInsight,       ...ageGroupMoreInsights]       },
-            { title: 'Top Events by Attendance', insights: [topEventsInsight,      ...topEventsMoreInsights]      },
+            { title: 'Monthly Trends', insights: [monthlyTrendsInsight, ...monthlyTrendsMoreInsights] },
+            { title: 'Events by Category', insights: [categoryInsight, ...categoryMoreInsights] },
+            { title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights] },
+            { title: 'Gender Distribution', insights: [genderInsight, ...genderMoreInsights] },
+            { title: 'Age Groups', insights: [ageGroupInsight, ...ageGroupMoreInsights] },
+            { title: 'Top Events by Attendance', insights: [topEventsInsight, ...topEventsMoreInsights] },
         ];
         cardSets.forEach(({ title, insights }) => {
             const slug = title.replace(/\s+/g, '_').toLowerCase();
-            const key  = `cmt_ch_${slug}_${uid}`;
+            const key = `cmt_ch_${slug}_${uid}`;
             type CardEntry = { level: InsightLevel; text: string; rec?: string; seenAt: string };
             let existing: CardEntry[] = [];
-            try { const r = localStorage.getItem(key); if (r) existing = JSON.parse(r); } catch {}
+            try { const r = localStorage.getItem(key); if (r) existing = JSON.parse(r); } catch { }
             const existingTexts = new Set(existing.map(h => h.text));
             const added = insights
                 .filter(ins => ins?.text && !existingTexts.has(ins.text))
                 .map(ins => ({ level: ins.level, text: ins.text, rec: ins.rec, seenAt: now }));
             if (added.length === 0) return;
             const updated = [...existing, ...added].slice(-150);
-            try { localStorage.setItem(key, JSON.stringify(updated)); } catch {}
+            try { localStorage.setItem(key, JSON.stringify(updated)); } catch { }
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [events, users, currentUser?.uid]);
 
     const renderAnalytics = () => {
-        const totalViews      = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
-        const totalSaves      = events.reduce((s, e) => s + safeNum(e.saveCount), 0);
+        const totalViews = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
+        const totalSaves = events.reduce((s, e) => s + safeNum(e.saveCount), 0);
         const totalInterested = events.reduce((s, e) => s + safeNum(e.interestedCount), 0);
-        const totalCheckIns   = events.reduce((s, e) => s + safeNum(e.checkInCount), 0);
-        const ratedEvents     = events.filter(e => safeNum(e.feedbackCount) > 0);
+        const totalCheckIns = events.reduce((s, e) => s + safeNum(e.checkInCount), 0);
+        const ratedEvents = events.filter(e => safeNum(e.feedbackCount) > 0);
         const overallAvgRating = ratedEvents.length === 0 ? null :
             ratedEvents.reduce((s, e) => s + safeNum(e.averageRating), 0) / ratedEvents.length;
 
         return (
-        <div className="flex flex-col gap-6 mt-6">
+            <div className="flex flex-col gap-6 mt-6">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Monthly Trends</h3>
-                    <div className="h-64 min-h-[260px] w-full relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={realMonthlyTrends} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
-                                <defs>
-                                    <linearGradient id="colorParticipants" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} dx={isMobile ? 0 : 0} />
-                                <RechartsTooltip />
-                                <Area type="monotone" dataKey="participants" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorParticipants)" strokeWidth={2} dot={{ r: 4, fill: 'white', stroke: '#8b5cf6', strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                                <Area type="monotone" dataKey="events" stroke="#3b82f6" fillOpacity={1} fill="url(#colorEvents)" strokeWidth={2} dot={{ r: 4, fill: 'white', stroke: '#3b82f6', strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
+                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Monthly Trends</h3>
+                        <div className="h-64 min-h-[260px] w-full relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={realMonthlyTrends} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                                    <defs>
+                                        <linearGradient id="colorParticipants" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} dx={isMobile ? 0 : 0} />
+                                    <RechartsTooltip />
+                                    <Area type="monotone" dataKey="participants" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorParticipants)" strokeWidth={2} dot={{ r: 4, fill: 'white', stroke: '#8b5cf6', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                    <Area type="monotone" dataKey="events" stroke="#3b82f6" fillOpacity={1} fill="url(#colorEvents)" strokeWidth={2} dot={{ r: 4, fill: 'white', stroke: '#3b82f6', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <CardInsight {...monthlyTrendsInsight} moreInsights={monthlyTrendsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Monthly Trends', insights: [monthlyTrendsInsight, ...monthlyTrendsMoreInsights] })} />
                     </div>
-                    <CardInsight {...monthlyTrendsInsight} moreInsights={monthlyTrendsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Monthly Trends', insights: [monthlyTrendsInsight, ...monthlyTrendsMoreInsights]})} />
-                </div>
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Events by Category</h3>
-                    <div className="h-64 min-h-[260px] w-full flex items-center justify-center relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie 
-                                    data={realCategoryData} 
-                                    cx="50%" 
-                                    cy="50%" 
-                                    outerRadius={80} 
-                                    dataKey="value"
-                                    label={({ name, percent, x, y, textAnchor }) => (
-                                        <text x={x} y={y} textAnchor={textAnchor} fill="#6b7280" fontSize={10} fontWeight={500}>
-                                            {`${name} ${(percent * 100).toFixed(0)}%`}
-                                        </text>
-                                    )}
-                                    labelLine={true}
-                                >
-                                    {realCategoryData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <RechartsTooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <CardInsight {...categoryInsight} moreInsights={categoryMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Events by Category', insights: [categoryInsight, ...categoryMoreInsights]})} />
-                </div>
-            </div>
-
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">New Users per Month</h3>
-                {/* Mobile: horizontally scrollable so all 12 months are visible */}
-                <div className="overflow-x-auto md:overflow-visible" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    <div className="h-64 min-h-[260px] relative" style={{ minWidth: isMobile ? '640px' : '100%', width: isMobile ? '640px' : '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={newUsersData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }} barCategoryGap="40%">
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} dy={5} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} width={36} />
-                                <RechartsTooltip />
-                                <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={28} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
+                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Events by Category</h3>
+                        <div className="h-64 min-h-[260px] w-full flex items-center justify-center relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={realCategoryData}
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={80}
+                                        dataKey="value"
+                                        label={({ name, percent, x, y, textAnchor }) => (
+                                            <text x={x} y={y} textAnchor={textAnchor} fill="#6b7280" fontSize={10} fontWeight={500}>
+                                                {`${name} ${(percent * 100).toFixed(0)}%`}
+                                            </text>
+                                        )}
+                                        labelLine={true}
+                                    >
+                                        {realCategoryData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <RechartsTooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <CardInsight {...categoryInsight} moreInsights={categoryMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Events by Category', insights: [categoryInsight, ...categoryMoreInsights] })} />
                     </div>
                 </div>
-                {isMobile && (
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 text-center">← Swipe to see all months →</p>
-                )}
-                <CardInsight {...newUsersInsight} moreInsights={newUsersMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights]})} />
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Gender Distribution */}
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Gender Distribution</h3>
-                    <div className="h-64 min-h-[260px] flex items-center justify-center relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={realGenderData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {realGenderData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <RechartsTooltip />
-                                <Legend verticalAlign="bottom" height={36}/>
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">New Users per Month</h3>
+                    {/* Mobile: horizontally scrollable so all 12 months are visible */}
+                    <div className="overflow-x-auto md:overflow-visible" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        <div className="h-64 min-h-[260px] relative" style={{ minWidth: isMobile ? '640px' : '100%', width: isMobile ? '640px' : '100%' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={newUsersData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }} barCategoryGap="40%">
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} dy={5} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} width={36} />
+                                    <RechartsTooltip />
+                                    <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={28} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
-                    <CardInsight {...genderInsight} moreInsights={genderMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Gender Distribution', insights: [genderInsight, ...genderMoreInsights]})} />
+                    {isMobile && (
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 text-center">← Swipe to see all months →</p>
+                    )}
+                    <CardInsight {...newUsersInsight} moreInsights={newUsersMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights] })} />
                 </div>
 
-                {/* Age Distribution */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Gender Distribution */}
+                    <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
+                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Gender Distribution</h3>
+                        <div className="h-64 min-h-[260px] flex items-center justify-center relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={realGenderData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {realGenderData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <RechartsTooltip />
+                                    <Legend verticalAlign="bottom" height={36} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <CardInsight {...genderInsight} moreInsights={genderMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Gender Distribution', insights: [genderInsight, ...genderMoreInsights] })} />
+                    </div>
+
+                    {/* Age Distribution */}
+                    <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
+                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Age Groups</h3>
+                        <div className="h-64 min-h-[260px] relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={realAgeData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} width={30} />
+                                    <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                    <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <CardInsight {...ageGroupInsight} moreInsights={ageGroupMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Age Groups', insights: [ageGroupInsight, ...ageGroupMoreInsights] })} />
+                    </div>
+                </div>
+
+                {/* Top Events */}
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Age Groups</h3>
+                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Top Events by Attendance</h3>
                     <div className="h-64 min-h-[260px] relative">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={realAgeData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} width={30} />
-                                <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <CardInsight {...ageGroupInsight} moreInsights={ageGroupMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Age Groups', insights: [ageGroupInsight, ...ageGroupMoreInsights]})} />
-                </div>
-            </div>
-
-            {/* Top Events */}
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Top Events by Attendance</h3>
-                <div className="h-64 min-h-[260px] relative">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={topEventsData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }} barCategoryGap="40%">
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} />
-                            <RechartsTooltip />
-                            <Bar dataKey="participants" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={28} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-                <CardInsight {...topEventsInsight} moreInsights={topEventsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Top Events by Attendance', insights: [topEventsInsight, ...topEventsMoreInsights]})} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Users by Role</h3>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={usersByRole} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                            <BarChart data={topEventsData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }} barCategoryGap="40%">
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} />
                                 <RechartsTooltip />
-                                <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="participants" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={28} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
+                    <CardInsight {...topEventsInsight} moreInsights={topEventsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Top Events by Attendance', insights: [topEventsInsight, ...topEventsMoreInsights] })} />
                 </div>
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 min-w-0">
-                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Resident Engagement (Events Attended)</h3>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={engagementData} layout="vertical" margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
-                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 70 : 80} />
-                                <RechartsTooltip />
-                                <Bar dataKey="users" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={20} />
-                            </BarChart>
-                        </ResponsiveContainer>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
+                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Users by Role</h3>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={usersByRole} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} />
+                                    <RechartsTooltip />
+                                    <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 min-w-0">
+                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Resident Engagement (Events Attended)</h3>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={engagementData} layout="vertical" margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
+                                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 70 : 80} />
+                                    <RechartsTooltip />
+                                    <Bar dataKey="users" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={20} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
         );
     };
 
@@ -1470,7 +1463,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const renderEvents = () => {
         const visibilityFilteredEvents = eventVisibilityFilter === 'all' ? events
             : eventVisibilityFilter === 'public' ? events.filter(e => !e.isPrivate)
-            : events.filter(e => !!e.isPrivate);
+                : events.filter(e => !!e.isPrivate);
 
         const eventSearchLower = eventSearchQuery.trim().toLowerCase();
         const allFilteredSortedEvents = visibilityFilteredEvents
@@ -1505,342 +1498,342 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         const paginatedEvents = allFilteredSortedEvents.slice((eventsPage - 1) * EVENTS_PER_PAGE, eventsPage * EVENTS_PER_PAGE);
         const visibilityFilteredPending = eventVisibilityFilter === 'all' ? pendingRequests
             : eventVisibilityFilter === 'public' ? pendingRequests.filter(e => !e.isPrivate)
-            : pendingRequests.filter(e => !!e.isPrivate);
+                : pendingRequests.filter(e => !!e.isPrivate);
 
         return (
-        <div className="mt-6 space-y-6">
-            {/* ── Unified toolbar (matches reference design) ── */}
-            <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
-                {/* Title + count */}
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white whitespace-nowrap">
-                    All Events{' '}
-                    <span className="text-gray-400 font-normal text-sm ml-2">({allFilteredSortedEvents.length} Events)</span>
-                </h2>
-                {/* Pending Approvals — rounded-full like "Check Products" */}
-                {canManageUsers && pendingRequests.length > 0 && (
-                    <button
-                        onClick={() => setPendingDrawerOpen(true)}
-                        className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold text-white whitespace-nowrap transition-all hover:opacity-90 active:scale-95 shadow-sm"
-                        style={{ background: '#0052A3' }}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Pending Approvals
-                        <span className="bg-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center" style={{ color: '#0052A3' }}>{pendingRequests.length}</span>
-                    </button>
-                )}
-                {/* Search bar with filter button INSIDE — matches reference exactly */}
-                <div className="relative w-full sm:flex-1 sm:min-w-0" ref={eventSearchRef}>
-                    <div className="bg-white dark:bg-gray-800 rounded-full py-1 px-1.5 border border-gray-200 dark:border-gray-700 flex items-center gap-2">
-                        <div className="relative flex-1 flex items-center ml-2">
-                            <Search size={13} className="text-gray-400 flex-shrink-0" />
-                            <input
-                                type="text"
-                                placeholder="Search events, venues, categories..."
-                                value={eventSearchQuery}
-                                onFocus={() => setEventSearchFocused(true)}
-                                onChange={e => { setEventSearchQuery(e.target.value); setEventsPage(1); }}
-                                className="w-full bg-transparent border-none pl-2.5 pr-2 py-1.5 text-[13px] text-gray-700 dark:text-gray-200 outline-none placeholder-gray-400"
-                            />
-                            {eventSearchQuery && (
-                                <button type="button" onClick={() => setEventSearchQuery('')} className="flex-shrink-0 text-gray-400 hover:text-gray-600 pr-1">
-                                    <X size={13} />
-                                </button>
-                            )}
-                        </div>
-                        {/* Filter button — circular, inside search bar */}
-                        <div className="relative flex-shrink-0">
-                            <button
-                                onClick={e => { e.stopPropagation(); setShowSortMenu(v => !v); setEventSearchFocused(false); }}
-                                className="h-8 w-8 rounded-full flex items-center justify-center text-white hover:opacity-90 transition-all active:scale-95"
-                                style={{ background: '#0052A3' }}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 10h12M9 15h6" /></svg>
-                            </button>
-                            {showSortMenu && (
-                                <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 z-[300]">
-                                    {/* View filter */}
-                                    <div className="mb-4">
-                                        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">View</p>
-                                        <div className="flex gap-2">
-                                            {[{ key: 'all' as const, label: 'All' }, { key: 'public' as const, label: 'Public' }, { key: 'private' as const, label: 'Private' }].map(tab => (
-                                                <button key={tab.key} onClick={() => setEventVisibilityFilter(tab.key)}
-                                                    className="flex-1 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
-                                                    style={eventVisibilityFilter === tab.key ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
-                                                >{tab.label}</button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    {/* Status filter */}
-                                    <div className="mb-4">
-                                        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Status</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {[{ id: 'all', label: 'All' }, { id: 'pending', label: 'Pending' }, { id: 'scheduled', label: 'Scheduled' }, { id: 'published', label: 'Published' }].map(opt => (
-                                                <button key={opt.id} onClick={() => { setEventFilter(opt.id as any); setShowSortMenu(false); }}
-                                                    className="px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
-                                                    style={eventFilter === opt.id ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
-                                                >{opt.label}</button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    {/* Sort */}
-                                    <div>
-                                        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Sort by</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {[{ id: 'upcoming', label: 'Upcoming' }, { id: 'past', label: 'Past Events' }, { id: 'asc', label: 'A → Z' }, { id: 'desc', label: 'Z → A' }].map(opt => (
-                                                <button key={opt.id} onClick={() => { setEventSortOrder(opt.id as any); setShowSortMenu(false); }}
-                                                    className="px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
-                                                    style={eventSortOrder === opt.id ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
-                                                >{opt.label}</button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    {/* Search suggestions dropdown */}
-                    {eventSearchFocused && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 z-[200]">
-                            <div className="flex items-center justify-between mb-3">
-                                <h4 className="text-[12px] font-medium text-gray-500">Recent Searches</h4>
-                                {eventSearchHistory.length > 0 && (
-                                    <button onClick={clearEventSearchHistory} className="text-[11px] font-bold text-blue-600 hover:text-blue-700 transition">Clear All</button>
+            <div className="mt-6 space-y-6">
+                {/* ── Unified toolbar (matches reference design) ── */}
+                <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+                    {/* Title + count */}
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                        All Events{' '}
+                        <span className="text-gray-400 font-normal text-sm ml-2">({allFilteredSortedEvents.length} Events)</span>
+                    </h2>
+                    {/* Pending Approvals — rounded-full like "Check Products" */}
+                    {canManageUsers && pendingRequests.length > 0 && (
+                        <button
+                            onClick={() => setPendingDrawerOpen(true)}
+                            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold text-white whitespace-nowrap transition-all hover:opacity-90 active:scale-95 shadow-sm"
+                            style={{ background: '#0052A3' }}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            Pending Approvals
+                            <span className="bg-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center" style={{ color: '#0052A3' }}>{pendingRequests.length}</span>
+                        </button>
+                    )}
+                    {/* Search bar with filter button INSIDE — matches reference exactly */}
+                    <div className="relative w-full sm:flex-1 sm:min-w-0" ref={eventSearchRef}>
+                        <div className="bg-white dark:bg-gray-800 rounded-full py-1 px-1.5 border border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                            <div className="relative flex-1 flex items-center ml-2">
+                                <Search size={13} className="text-gray-400 flex-shrink-0" />
+                                <input
+                                    type="text"
+                                    placeholder="Search events, venues, categories..."
+                                    value={eventSearchQuery}
+                                    onFocus={() => setEventSearchFocused(true)}
+                                    onChange={e => { setEventSearchQuery(e.target.value); setEventsPage(1); }}
+                                    className="w-full bg-transparent border-none pl-2.5 pr-2 py-1.5 text-[13px] text-gray-700 dark:text-gray-200 outline-none placeholder-gray-400"
+                                />
+                                {eventSearchQuery && (
+                                    <button type="button" onClick={() => setEventSearchQuery('')} className="flex-shrink-0 text-gray-400 hover:text-gray-600 pr-1">
+                                        <X size={13} />
+                                    </button>
                                 )}
                             </div>
-                            {eventSearchHistory.length > 0 ? (
-                                <div className="space-y-1 mb-4">
-                                    {eventSearchHistory.map((term, i) => (
-                                        <div key={term + i} className="flex items-center justify-between px-2 py-1.5 hover:bg-blue-50 rounded-xl cursor-pointer group transition" onClick={() => { setEventSearchQuery(term); saveEventSearchHistory(term); setEventSearchFocused(false); }}>
-                                            <div className="flex items-center gap-2">
-                                                <Clock size={11} className="text-gray-300" />
-                                                <span className="text-[13px] text-gray-600 font-medium">{term}</span>
+                            {/* Filter button — circular, inside search bar */}
+                            <div className="relative flex-shrink-0">
+                                <button
+                                    onClick={e => { e.stopPropagation(); setShowSortMenu(v => !v); setEventSearchFocused(false); }}
+                                    className="h-8 w-8 rounded-full flex items-center justify-center text-white hover:opacity-90 transition-all active:scale-95"
+                                    style={{ background: '#0052A3' }}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 10h12M9 15h6" /></svg>
+                                </button>
+                                {showSortMenu && (
+                                    <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 z-[300]">
+                                        {/* View filter */}
+                                        <div className="mb-4">
+                                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">View</p>
+                                            <div className="flex gap-2">
+                                                {[{ key: 'all' as const, label: 'All' }, { key: 'public' as const, label: 'Public' }, { key: 'private' as const, label: 'Private' }].map(tab => (
+                                                    <button key={tab.key} onClick={() => setEventVisibilityFilter(tab.key)}
+                                                        className="flex-1 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
+                                                        style={eventVisibilityFilter === tab.key ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
+                                                    >{tab.label}</button>
+                                                ))}
                                             </div>
-                                            <button onClick={e => { e.stopPropagation(); }} className="opacity-0 group-hover:opacity-100">
-                                                <X size={10} className="text-gray-300 hover:text-red-500" />
+                                        </div>
+                                        {/* Status filter */}
+                                        <div className="mb-4">
+                                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Status</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {[{ id: 'all', label: 'All' }, { id: 'pending', label: 'Pending' }, { id: 'scheduled', label: 'Scheduled' }, { id: 'published', label: 'Published' }].map(opt => (
+                                                    <button key={opt.id} onClick={() => { setEventFilter(opt.id as any); setShowSortMenu(false); }}
+                                                        className="px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
+                                                        style={eventFilter === opt.id ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
+                                                    >{opt.label}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        {/* Sort */}
+                                        <div>
+                                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Sort by</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {[{ id: 'upcoming', label: 'Upcoming' }, { id: 'past', label: 'Past Events' }, { id: 'asc', label: 'A → Z' }, { id: 'desc', label: 'Z → A' }].map(opt => (
+                                                    <button key={opt.id} onClick={() => { setEventSortOrder(opt.id as any); setShowSortMenu(false); }}
+                                                        className="px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
+                                                        style={eventSortOrder === opt.id ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
+                                                    >{opt.label}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        {/* Search suggestions dropdown */}
+                        {eventSearchFocused && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 z-[200]">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-[12px] font-medium text-gray-500">Recent Searches</h4>
+                                    {eventSearchHistory.length > 0 && (
+                                        <button onClick={clearEventSearchHistory} className="text-[11px] font-bold text-blue-600 hover:text-blue-700 transition">Clear All</button>
+                                    )}
+                                </div>
+                                {eventSearchHistory.length > 0 ? (
+                                    <div className="space-y-1 mb-4">
+                                        {eventSearchHistory.map((term, i) => (
+                                            <div key={term + i} className="flex items-center justify-between px-2 py-1.5 hover:bg-blue-50 rounded-xl cursor-pointer group transition" onClick={() => { setEventSearchQuery(term); saveEventSearchHistory(term); setEventSearchFocused(false); }}>
+                                                <div className="flex items-center gap-2">
+                                                    <Clock size={11} className="text-gray-300" />
+                                                    <span className="text-[13px] text-gray-600 font-medium">{term}</span>
+                                                </div>
+                                                <button onClick={e => { e.stopPropagation(); }} className="opacity-0 group-hover:opacity-100">
+                                                    <X size={10} className="text-gray-300 hover:text-red-500" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-gray-400 text-center py-3 mb-3">No recent searches</p>
+                                )}
+                                {eventSearchQuery.trim() && (
+                                    <>
+                                        <h4 className="text-[12px] font-medium text-gray-500 mb-3">Suggested Events</h4>
+                                        <div className="space-y-2 max-h-52 overflow-y-auto">
+                                            {events.filter(e => (e.name || '').toLowerCase().includes(eventSearchQuery.toLowerCase())).slice(0, 5).map(ev => (
+                                                <div key={ev.id} className="flex items-center gap-3 p-2 hover:bg-blue-50 rounded-xl cursor-pointer transition" onClick={() => { setEventSearchQuery(ev.name); saveEventSearchHistory(ev.name); setEventSearchFocused(false); }}>
+                                                    <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                                        {ev.imageUrl ? <img src={ev.imageUrl} alt={ev.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Search size={12} className="text-gray-400" /></div>}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[13px] font-bold text-gray-800 truncate">{ev.name}</p>
+                                                        <p className="text-[10px] text-gray-400">{formatDisplayDate(ev.date)}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    {/* Sort by label + select — matches reference exactly */}
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="text-[13px] text-gray-500 font-medium">Sort by:</span>
+                        <div className="relative">
+                            <select
+                                value={eventSortOrder}
+                                onChange={e => setEventSortOrder(e.target.value as any)}
+                                className="appearance-none bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 hover:border-blue-400 rounded-full pl-4 pr-8 py-1.5 text-[13px] font-semibold text-gray-700 dark:text-gray-200 outline-none focus:ring-2 transition-all cursor-pointer shadow-sm"
+                            >
+                                <option value="upcoming">Upcoming</option>
+                                <option value="past">Past Events</option>
+                                <option value="asc">A → Z</option>
+                                <option value="desc">Z → A</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* My Private Events — Creator Management Panel */}
+                {eventVisibilityFilter === 'private' && currentUser && onManageRegistrations && (() => {
+                    const myPrivateEvents = events.filter(e =>
+                        e.isPrivate && e.createdBy === currentUser.uid
+                    );
+                    if (myPrivateEvents.length === 0) return null;
+                    return (
+                        <div className="animate-fade-in-up">
+                            <div className="bg-gradient-to-br from-purple-50 to-orange-50 dark:from-purple-900/20 dark:to-orange-900/20 rounded-2xl border border-purple-100 dark:border-purple-800/40 overflow-hidden shadow-sm">
+                                <div className="px-4 py-3 flex items-center gap-3 border-b border-purple-100/60 dark:border-purple-800/30">
+                                    <div className="w-8 h-8 bg-purple-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-purple-500/30">
+                                        <Shield className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-black text-gray-900 dark:text-white">My Private Events</h3>
+                                        <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Manage registrations for your events</p>
+                                    </div>
+                                    <span className="ml-auto text-[10px] font-black text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40 px-2 py-1 rounded-full">
+                                        {myPrivateEvents.length} event{myPrivateEvents.length !== 1 ? 's' : ''}
+                                    </span>
+                                </div>
+                                <div className="divide-y divide-purple-100/40 dark:divide-purple-800/20">
+                                    {myPrivateEvents.map(evt => (
+                                        <div key={evt.id} className="px-4 py-3 flex items-center gap-3 hover:bg-white/60 dark:hover:bg-gray-800/30 transition-colors">
+                                            {evt.imageUrl && (
+                                                <img src={evt.imageUrl} alt={evt.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-purple-200/50 dark:border-purple-700/50 shadow-sm" />
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{evt.name}</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{formatDisplayDate(evt.date)} · {evt.startTime}</span>
+                                                    {evt.maxParticipants != null && (
+                                                        <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 flex items-center gap-0.5">
+                                                            <UsersIcon className="w-2.5 h-2.5" />
+                                                            {evt.maxParticipants} slots
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => onManageRegistrations(evt)}
+                                                className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded-xl shadow-md shadow-purple-500/20 transition-all active:scale-95 whitespace-nowrap"
+                                            >
+                                                Manage →
                                             </button>
                                         </div>
                                     ))}
                                 </div>
-                            ) : (
-                                <p className="text-xs text-gray-400 text-center py-3 mb-3">No recent searches</p>
-                            )}
-                            {eventSearchQuery.trim() && (
-                                <>
-                                    <h4 className="text-[12px] font-medium text-gray-500 mb-3">Suggested Events</h4>
-                                    <div className="space-y-2 max-h-52 overflow-y-auto">
-                                        {events.filter(e => (e.name || '').toLowerCase().includes(eventSearchQuery.toLowerCase())).slice(0, 5).map(ev => (
-                                            <div key={ev.id} className="flex items-center gap-3 p-2 hover:bg-blue-50 rounded-xl cursor-pointer transition" onClick={() => { setEventSearchQuery(ev.name); saveEventSearchHistory(ev.name); setEventSearchFocused(false); }}>
-                                                <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                                    {ev.imageUrl ? <img src={ev.imageUrl} alt={ev.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Search size={12} className="text-gray-400" /></div>}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-[13px] font-bold text-gray-800 truncate">{ev.name}</p>
-                                                    <p className="text-[10px] text-gray-400">{formatDisplayDate(ev.date)}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    )}
-                </div>
-                {/* Sort by label + select — matches reference exactly */}
-                <div className="flex items-center gap-2 whitespace-nowrap">
-                    <span className="text-[13px] text-gray-500 font-medium">Sort by:</span>
-                    <div className="relative">
-                        <select
-                            value={eventSortOrder}
-                            onChange={e => setEventSortOrder(e.target.value as any)}
-                            className="appearance-none bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 hover:border-blue-400 rounded-full pl-4 pr-8 py-1.5 text-[13px] font-semibold text-gray-700 dark:text-gray-200 outline-none focus:ring-2 transition-all cursor-pointer shadow-sm"
-                        >
-                            <option value="upcoming">Upcoming</option>
-                            <option value="past">Past Events</option>
-                            <option value="asc">A → Z</option>
-                            <option value="desc">Z → A</option>
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* My Private Events — Creator Management Panel */}
-            {eventVisibilityFilter === 'private' && currentUser && onManageRegistrations && (() => {
-                const myPrivateEvents = events.filter(e =>
-                    e.isPrivate && e.createdBy === currentUser.uid
-                );
-                if (myPrivateEvents.length === 0) return null;
-                return (
-                    <div className="animate-fade-in-up">
-                        <div className="bg-gradient-to-br from-purple-50 to-orange-50 dark:from-purple-900/20 dark:to-orange-900/20 rounded-2xl border border-purple-100 dark:border-purple-800/40 overflow-hidden shadow-sm">
-                            <div className="px-4 py-3 flex items-center gap-3 border-b border-purple-100/60 dark:border-purple-800/30">
-                                <div className="w-8 h-8 bg-purple-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-purple-500/30">
-                                    <Shield className="w-4 h-4" />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-black text-gray-900 dark:text-white">My Private Events</h3>
-                                    <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Manage registrations for your events</p>
-                                </div>
-                                <span className="ml-auto text-[10px] font-black text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40 px-2 py-1 rounded-full">
-                                    {myPrivateEvents.length} event{myPrivateEvents.length !== 1 ? 's' : ''}
-                                </span>
-                            </div>
-                            <div className="divide-y divide-purple-100/40 dark:divide-purple-800/20">
-                                {myPrivateEvents.map(evt => (
-                                    <div key={evt.id} className="px-4 py-3 flex items-center gap-3 hover:bg-white/60 dark:hover:bg-gray-800/30 transition-colors">
-                                        {evt.imageUrl && (
-                                            <img src={evt.imageUrl} alt={evt.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-purple-200/50 dark:border-purple-700/50 shadow-sm" />
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{evt.name}</p>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{formatDisplayDate(evt.date)} · {evt.startTime}</span>
-                                                {evt.maxParticipants != null && (
-                                                    <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 flex items-center gap-0.5">
-                                                        <UsersIcon className="w-2.5 h-2.5" />
-                                                        {evt.maxParticipants} slots
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => onManageRegistrations(evt)}
-                                            className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded-xl shadow-md shadow-purple-500/20 transition-all active:scale-95 whitespace-nowrap"
-                                        >
-                                            Manage →
-                                        </button>
-                                    </div>
-                                ))}
                             </div>
                         </div>
-                    </div>
-                );
-            })()}
-            {currentUser?.role === 'facilitator' && <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
-                {/* Section header — contextual to role */}
-                <div className="flex items-start justify-between mb-4 gap-3">
-                    <div>
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                            {currentUser?.role === 'facilitator' ? 'My Submitted Events' : 'Pending Approvals'}
-                        </h3>
-                        {currentUser?.role === 'facilitator' && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                Events awaiting admin review. You can edit or cancel a submission while it's pending.
-                            </p>
+                    );
+                })()}
+                {currentUser?.role === 'facilitator' && <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50">
+                    {/* Section header — contextual to role */}
+                    <div className="flex items-start justify-between mb-4 gap-3">
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                                {currentUser?.role === 'facilitator' ? 'My Submitted Events' : 'Pending Approvals'}
+                            </h3>
+                            {currentUser?.role === 'facilitator' && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Events awaiting admin review. You can edit or cancel a submission while it's pending.
+                                </p>
+                            )}
+                        </div>
+                        {currentUser?.role === 'facilitator' && visibilityFilteredPending.filter(e => e.status === 'pending').length > 0 && (
+                            <span className="shrink-0 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                                {visibilityFilteredPending.filter(e => e.status === 'pending').length} Awaiting Review
+                            </span>
                         )}
                     </div>
-                    {currentUser?.role === 'facilitator' && visibilityFilteredPending.filter(e => e.status === 'pending').length > 0 && (
-                        <span className="shrink-0 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-                            {visibilityFilteredPending.filter(e => e.status === 'pending').length} Awaiting Review
-                        </span>
+
+                    {/* Facilitator info banner */}
+                    {currentUser?.role === 'facilitator' && (
+                        <div className="mb-4 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <p className="text-xs text-blue-700 dark:text-blue-300 font-medium leading-relaxed">
+                                Only the Admin can approve and publish events. Your submitted events will appear here until reviewed.
+                            </p>
+                        </div>
                     )}
-                </div>
 
-                {/* Facilitator info banner */}
-                {currentUser?.role === 'facilitator' && (
-                    <div className="mb-4 flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-xl">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <p className="text-xs text-blue-700 dark:text-blue-300 font-medium leading-relaxed">
-                            Only the Admin can approve and publish events. Your submitted events will appear here until reviewed.
+                    {visibilityFilteredPending.length === 0 ? (
+                        <p className="text-gray-500 dark:text-gray-400">
+                            {currentUser?.role === 'facilitator' ? 'No submitted events awaiting review.' : 'No pending approvals.'}
                         </p>
-                    </div>
-                )}
-
-                {visibilityFilteredPending.length === 0 ? (
-                    <p className="text-gray-500 dark:text-gray-400">
-                        {currentUser?.role === 'facilitator' ? 'No submitted events awaiting review.' : 'No pending approvals.'}
-                    </p>
-                ) : (
-                    <div className="space-y-4">
-                        {visibilityFilteredPending.map(event => (
-                            <div key={event.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-gray-100 dark:border-gray-800/60 rounded-xl bg-gray-50/50 dark:bg-gray-800/30 gap-4">
-                                <div className="flex items-center gap-4 min-w-0">
-                                    {event.imageUrl ? (
-                                        <img src={event.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
-                                    ) : (
-                                        <div className="w-12 h-12 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-100/50 dark:border-blue-900/30 text-[#0052A3] dark:text-blue-400 font-bold flex items-center justify-center text-lg flex-shrink-0 select-none">
-                                            {event.name ? event.name.charAt(0).toUpperCase() : '?'}
-                                        </div>
-                                    )}
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <h4 className="font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-none">{event.name}</h4>
-                                            {event.priority === 'urgent' && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Urgent</span>}
-                                            {event.priority === 'average' && <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Average</span>}
-                                            {event.status === 'draft' && <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Draft</span>}
-                                            {event.status === 'pending' && <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Pending Approval</span>}
-                                            {event.status === 'rejected' && <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Rejected</span>}
-                                            {event.recurrenceGroupId && (() => {
-                                                const seriesCount = getRecurringSeriesCount(event);
-                                                if (seriesCount <= 1) return null;
-                                                const freqLabel = getRecurrenceFrequencyLabel(event);
-                                                return <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">{seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring</span>;
+                    ) : (
+                        <div className="space-y-4">
+                            {visibilityFilteredPending.map(event => (
+                                <div key={event.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-gray-100 dark:border-gray-800/60 rounded-xl bg-gray-50/50 dark:bg-gray-800/30 gap-4">
+                                    <div className="flex items-center gap-4 min-w-0">
+                                        {event.imageUrl ? (
+                                            <img src={event.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-100/50 dark:border-blue-900/30 text-[#0052A3] dark:text-blue-400 font-bold flex items-center justify-center text-lg flex-shrink-0 select-none">
+                                                {event.name ? event.name.charAt(0).toUpperCase() : '?'}
+                                            </div>
+                                        )}
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h4 className="font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-none">{event.name}</h4>
+                                                {event.priority === 'urgent' && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Urgent</span>}
+                                                {event.priority === 'average' && <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Average</span>}
+                                                {event.status === 'draft' && <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Draft</span>}
+                                                {event.status === 'pending' && <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Pending Approval</span>}
+                                                {event.status === 'rejected' && <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">Rejected</span>}
+                                                {event.recurrenceGroupId && (() => {
+                                                    const seriesCount = getRecurringSeriesCount(event);
+                                                    if (seriesCount <= 1) return null;
+                                                    const freqLabel = getRecurrenceFrequencyLabel(event);
+                                                    return <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-black uppercase rounded-lg flex-shrink-0">{seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring</span>;
+                                                })()}
+                                            </div>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{event.organizer || 'Unknown'} • {formatDisplayDate(event.date)}</p>
+                                            {/* Rule-based alert chips */}
+                                            {(() => {
+                                                const alerts = getEventAlerts(event, events);
+                                                if (alerts.length === 0) return null;
+                                                return (
+                                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                                        {alerts.map(a => <AlertChip key={a.id} alert={a} />)}
+                                                    </div>
+                                                );
                                             })()}
                                         </div>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{event.organizer || 'Unknown'} • {formatDisplayDate(event.date)}</p>
-                                        {/* Rule-based alert chips */}
-                                        {(() => {
-                                            const alerts = getEventAlerts(event, events);
-                                            if (alerts.length === 0) return null;
-                                            return (
-                                                <div className="flex flex-wrap gap-1 mt-1.5">
-                                                    {alerts.map(a => <AlertChip key={a.id} alert={a} />)}
-                                                </div>
-                                            );
-                                        })()}
+                                    </div>
+                                    <div className="flex gap-2 justify-end">
+                                        {/* Preview — shown to everyone */}
+                                        {onPreviewEvent && (
+                                            <button onClick={() => onPreviewEvent(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" title="Preview Event">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            </button>
+                                        )}
+
+                                        {currentUser?.role === 'facilitator' ? (
+                                            /* Facilitator: Edit + Cancel only — no approve/publish */
+                                            <>
+                                                <button
+                                                    onClick={() => onEditEvent(event)}
+                                                    className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-violet-200 dark:border-violet-900/50 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+                                                    title="Edit Submission"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => onDeleteEvent(event.id)}
+                                                    className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                                    title="Cancel Submission"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            </>
+                                        ) : (
+                                            /* Admin: Approve + Schedule + Reject */
+                                            <>
+                                                <button onClick={() => setPendingConfirm({ type: 'publish', event })} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-green-200 dark:border-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" title="Approve & Publish Now">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                </button>
+                                                <button onClick={() => onSchedule(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Schedule Publication">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                </button>
+                                                <button onClick={() => onReject(event.id)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Disapprove">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="flex gap-2 justify-end">
-                                    {/* Preview — shown to everyone */}
-                                    {onPreviewEvent && (
-                                        <button onClick={() => onPreviewEvent(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" title="Preview Event">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                        </button>
-                                    )}
+                            ))}
+                        </div>
+                    )}
+                </div>}
 
-                                    {currentUser?.role === 'facilitator' ? (
-                                        /* Facilitator: Edit + Cancel only — no approve/publish */
-                                        <>
-                                            <button
-                                                onClick={() => onEditEvent(event)}
-                                                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-violet-200 dark:border-violet-900/50 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
-                                                title="Edit Submission"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                            </button>
-                                            <button
-                                                onClick={() => onDeleteEvent(event.id)}
-                                                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                                title="Cancel Submission"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
-                                        </>
-                                    ) : (
-                                        /* Admin: Approve + Schedule + Reject */
-                                        <>
-                                            <button onClick={() => setPendingConfirm({ type: 'publish', event })} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-green-200 dark:border-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" title="Approve & Publish Now">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                            </button>
-                                            <button onClick={() => onSchedule(event)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Schedule Publication">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            </button>
-                                            <button onClick={() => onReject(event.id)} className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Disapprove">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>}
-
-            <div className="bg-white dark:bg-[#111827] overflow-visible min-h-[400px]">
-                <div className="hidden"><button>
+                <div className="bg-white dark:bg-[#111827] overflow-visible min-h-[400px]">
+                    <div className="hidden"><button>
 
                         {showSortMenu && (
                             <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#1f2937] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-[100] overflow-hidden">
@@ -1880,13 +1873,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                     {eventFilter === opt.id && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
                                                 </div>
                                                 <span className={`text-sm ${eventFilter === opt.id ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-700 dark:text-gray-300'}`}>{opt.label}</span>
-                                                <input 
-                                                    type="radio" 
-                                                    className="hidden" 
-                                                    checked={eventFilter === opt.id} 
+                                                <input
+                                                    type="radio"
+                                                    className="hidden"
+                                                    checked={eventFilter === opt.id}
                                                     onChange={() => {
                                                         setEventFilter(opt.id as any);
-                                                    }} 
+                                                    }}
                                                 />
                                             </label>
                                         ))}
@@ -1894,14 +1887,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 </div>
                                 <div className="border-t border-gray-100 dark:border-gray-800 p-2 space-y-1">
                                     <p className="px-3 pt-1 pb-0.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">By Name</p>
-                                    <button 
+                                    <button
                                         onClick={() => { setEventSortOrder('asc'); setShowSortMenu(false); }}
                                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'asc' ? 'border-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${eventSortOrder === 'asc' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg>
                                         Ascending (A-Z)
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => { setEventSortOrder('desc'); setShowSortMenu(false); }}
                                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${eventSortOrder === 'desc' ? 'border-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'border-2 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                                     >
@@ -1928,176 +1921,175 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </div>
                         )}
                     </button></div>
-                <div className="overflow-x-auto pb-16 md:pb-0 bg-white rounded-[10px] border border-gray-100 shadow-sm">
-                <table className="w-full min-w-[700px] text-left border-collapse">
-                    <thead>
-                        <tr className="bg-gray-50/50 border-b border-gray-100">
-                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize">Event</th>
-                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize">Date</th>
-                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize">Location</th>
-                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize text-center">Attendees</th>
-                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize text-center">Feedback</th>
-                            <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize text-center">Status & Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <div className="overflow-x-auto pb-16 md:pb-0 bg-white rounded-[10px] border border-gray-100 shadow-sm">
+                        <table className="w-full min-w-[700px] text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 border-b border-gray-100">
+                                    <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize">Event</th>
+                                    <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize">Date</th>
+                                    <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize">Location</th>
+                                    <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize text-center">Attendees</th>
+                                    <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize text-center">Feedback</th>
+                                    <th className="px-6 py-4 text-[14px] font-semibold text-gray-900 capitalize text-center">Status & Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
                                 {paginatedEvents.map(event => {
-                            const attendeeCount = safeNum(event.checkInCount);
-                            const attendeesStr = event.maxParticipants ? `${attendeeCount}/${event.maxParticipants}` : `${attendeeCount} (No Limit)`;
-                            return (
-                                <tr key={event.id} className="hover:bg-blue-50/30 transition-colors group">
-                                    {/* Event column — image + name + alerts */}
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 p-1">
-                                                {event.imageUrl
-                                                    ? <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover rounded-lg" />
-                                                    : <div className="w-full h-full flex items-center justify-center text-gray-300"><svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
-                                                }
-                                            </div>
-                                            <div className="min-w-0">
-                                                <span className="text-[14px] font-semibold text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer block leading-snug" onClick={() => onPreviewEvent && onPreviewEvent(event)}>
-                                                    {event.name}
-                                                </span>
-                                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                                    {event.recurrenceGroupId && (() => {
-                                                        const seriesCount = getRecurringSeriesCount(event);
-                                                        if (seriesCount <= 1) return null;
-                                                        const freqLabel = getRecurrenceFrequencyLabel(event);
-                                                        return <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[9px] font-black uppercase rounded-md flex-shrink-0">{seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring</span>;
-                                                    })()}
-                                                    {(() => {
-                                                        const alerts = getEventAlerts(event, events);
-                                                        if (!alerts.length) return null;
-                                                        return alerts.map(a => <AlertChip key={a.id} alert={a} />);
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    {/* Date */}
-                                    <td className="px-6 py-4 text-[13px] text-gray-600 font-medium whitespace-nowrap">{formatDisplayDate(event.date)}</td>
-                                    {/* Location */}
-                                    <td className="px-6 py-4 text-[13px] text-gray-600">
-                                        <div className="flex items-center gap-1.5">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                            <span className="truncate max-w-[160px]">{event.venue || event.city}</span>
-                                        </div>
-                                    </td>
-                                    {/* Attendees */}
-                                    <td className="px-6 py-4 text-center">
-                                        <button onClick={() => onViewParticipants(event)} className="inline-flex items-center gap-1.5 text-[13px] text-gray-600 hover:text-blue-600 transition-colors group/att" title="View Participants">
-                                            <span>{attendeesStr}</span>
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400 group-hover/att:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                                        </button>
-                                    </td>
-                                    {/* Feedback */}
-                                    <td className="px-6 py-4 text-center">
-                                        {(() => {
-                                            const fb = allFeedback.filter(f => f.eventId === event.id);
-                                            if (!fb.length) return <span className="text-[12px] text-gray-400 italic">No ratings</span>;
-                                            const avg = fb.reduce((s, f) => s + f.rating, 0) / fb.length;
-                                            return (
-                                                <button className="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-80" onClick={() => setViewingFeedbackEvent(event)}>
-                                                    <Star className="w-3.5 h-3.5 text-yellow-500 fill-current" />
-                                                    <span className="text-[13px] font-bold text-gray-800">{avg.toFixed(1)}</span>
-                                                    <span className="text-[11px] text-gray-400">({fb.length})</span>
-                                                </button>
-                                            );
-                                        })()}
-                                    </td>
-                                    {/* Status + Actions */}
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="flex items-center justify-center gap-3">
-                                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold border ${
-                                                event.status === 'draft' ? 'bg-gray-50 text-gray-500 border-gray-200' :
-                                                event.status === 'scheduled' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                event.status === 'pending' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                event.status === 'rejected' ? 'bg-red-50 text-red-500 border-red-100' :
-                                                event.status === 'cancelled' ? 'bg-gray-100 text-gray-400 border-gray-200 line-through' :
-                                                'bg-green-50 text-green-600 border-green-100'
-                                            }`}>
-                                                {event.status || 'published'}
-                                            </span>
-                                            <div className="relative action-menu-container">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setActiveActionMenu(activeActionMenu === event.id ? null : event.id); }}
-                                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all"
-                                                    title="Actions"
-                                                >
-                                                    <MoreVerticalIcon className="w-5 h-5" />
-                                                </button>
-
-                                                {activeActionMenu === event.id && (
-                                                    <div className="absolute right-0 mt-2 z-50 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-3 animate-in fade-in zoom-in-95 duration-150" style={{ width: '340px' }}>
-                                                        <style>{`.action-item { position: relative; } .action-item::after { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 1.5px; background: #0052A3; transition: width 0.25s ease; } .action-item:hover::after { width: 100%; } .action-item-danger::after { background: #ef4444; }`}</style>
-                                                        <p className="text-[13px] font-semibold text-gray-400 mb-3 px-1 text-left">Event Actions</p>
-                                                        <div className="grid grid-cols-3 gap-1">
-                                                            <button onClick={() => { setAnalyticsDrawerEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
-                                                                <span className="text-[12px] font-semibold">Analytics</span>
-                                                            </button>
-                                                            <button onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
-                                                                <span className="text-[12px] font-semibold">Feedback</span>
-                                                            </button>
-                                                            <button onClick={() => { onViewQRCode(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
-                                                                <span className="text-[12px] font-semibold">QR Code</span>
-                                                            </button>
-                                                            {onPreviewEvent && (
-                                                                <button onClick={() => { onPreviewEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
-                                                                    <span className="text-[12px] font-semibold">Preview</span>
-                                                                </button>
-                                                            )}
-                                                            <button onClick={() => { onEditEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
-                                                                <span className="text-[12px] font-semibold">Edit</span>
-                                                            </button>
-                                                            {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
-                                                                <button onClick={() => { setPendingConfirm({ type: 'notify', event }); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
-                                                                    <span className="text-[12px] font-semibold">Notify</span>
-                                                                </button>
-                                                            )}
-                                                            {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
-                                                                <button onClick={() => { setPendingConfirm({ type: 'cancel', event }); setActiveActionMenu(null); }} className="action-item action-item-danger px-2 py-2.5 rounded-xl text-gray-900 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-center">
-                                                                    <span className="text-[12px] font-semibold">Cancel</span>
-                                                                </button>
-                                                            )}
-                                                            <button onClick={() => { onDeleteEvent(event.id); setActiveActionMenu(null); }} className="action-item action-item-danger px-2 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-center">
-                                                                <span className="text-[12px] font-semibold text-red-500">Delete</span>
-                                                            </button>
+                                    const attendeeCount = safeNum(event.checkInCount);
+                                    const attendeesStr = event.maxParticipants ? `${attendeeCount}/${event.maxParticipants}` : `${attendeeCount} (No Limit)`;
+                                    return (
+                                        <tr key={event.id} className="hover:bg-blue-50/30 transition-colors group">
+                                            {/* Event column — image + name + alerts */}
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 p-1">
+                                                        {event.imageUrl
+                                                            ? <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover rounded-lg" />
+                                                            : <div className="w-full h-full flex items-center justify-center text-gray-300"><svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
+                                                        }
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <span className="text-[14px] font-semibold text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer block leading-snug" onClick={() => onPreviewEvent && onPreviewEvent(event)}>
+                                                            {event.name}
+                                                        </span>
+                                                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                                            {event.recurrenceGroupId && (() => {
+                                                                const seriesCount = getRecurringSeriesCount(event);
+                                                                if (seriesCount <= 1) return null;
+                                                                const freqLabel = getRecurrenceFrequencyLabel(event);
+                                                                return <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[9px] font-black uppercase rounded-md flex-shrink-0">{seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring</span>;
+                                                            })()}
+                                                            {(() => {
+                                                                const alerts = getEventAlerts(event, events);
+                                                                if (!alerts.length) return null;
+                                                                return alerts.map(a => <AlertChip key={a.id} alert={a} />);
+                                                            })()}
                                                         </div>
                                                     </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-                </div>
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Showing {(eventsPage - 1) * EVENTS_PER_PAGE + 1}–{Math.min(eventsPage * EVENTS_PER_PAGE, allFilteredSortedEvents.length)} of {allFilteredSortedEvents.length} events
-                        </p>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setEventsPage(p => Math.max(1, p - 1))}
-                                disabled={eventsPage === 1}
-                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                            >← Prev</button>
-                            <span className="text-xs text-gray-500 px-2">{eventsPage} / {totalPages}</span>
-                            <button
-                                onClick={() => setEventsPage(p => Math.min(totalPages, p + 1))}
-                                disabled={eventsPage === totalPages}
-                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                            >Next →</button>
-                        </div>
+                                                </div>
+                                            </td>
+                                            {/* Date */}
+                                            <td className="px-6 py-4 text-[13px] text-gray-600 font-medium whitespace-nowrap">{formatDisplayDate(event.date)}</td>
+                                            {/* Location */}
+                                            <td className="px-6 py-4 text-[13px] text-gray-600">
+                                                <div className="flex items-center gap-1.5">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                    <span className="truncate max-w-[160px]">{event.venue || event.city}</span>
+                                                </div>
+                                            </td>
+                                            {/* Attendees */}
+                                            <td className="px-6 py-4 text-center">
+                                                <button onClick={() => onViewParticipants(event)} className="inline-flex items-center gap-1.5 text-[13px] text-gray-600 hover:text-blue-600 transition-colors group/att" title="View Participants">
+                                                    <span>{attendeesStr}</span>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400 group-hover/att:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                                </button>
+                                            </td>
+                                            {/* Feedback */}
+                                            <td className="px-6 py-4 text-center">
+                                                {(() => {
+                                                    const fb = allFeedback.filter(f => f.eventId === event.id);
+                                                    if (!fb.length) return <span className="text-[12px] text-gray-400 italic">No ratings</span>;
+                                                    const avg = fb.reduce((s, f) => s + f.rating, 0) / fb.length;
+                                                    return (
+                                                        <button className="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-80" onClick={() => setViewingFeedbackEvent(event)}>
+                                                            <Star className="w-3.5 h-3.5 text-yellow-500 fill-current" />
+                                                            <span className="text-[13px] font-bold text-gray-800">{avg.toFixed(1)}</span>
+                                                            <span className="text-[11px] text-gray-400">({fb.length})</span>
+                                                        </button>
+                                                    );
+                                                })()}
+                                            </td>
+                                            {/* Status + Actions */}
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-3">
+                                                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold border ${event.status === 'draft' ? 'bg-gray-50 text-gray-500 border-gray-200' :
+                                                        event.status === 'scheduled' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                            event.status === 'pending' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                                event.status === 'rejected' ? 'bg-red-50 text-red-500 border-red-100' :
+                                                                    event.status === 'cancelled' ? 'bg-gray-100 text-gray-400 border-gray-200 line-through' :
+                                                                        'bg-green-50 text-green-600 border-green-100'
+                                                        }`}>
+                                                        {event.status || 'published'}
+                                                    </span>
+                                                    <div className="relative action-menu-container">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setActiveActionMenu(activeActionMenu === event.id ? null : event.id); }}
+                                                            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all"
+                                                            title="Actions"
+                                                        >
+                                                            <MoreVerticalIcon className="w-5 h-5" />
+                                                        </button>
+
+                                                        {activeActionMenu === event.id && (
+                                                            <div className="absolute right-0 mt-2 z-50 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-3 animate-in fade-in zoom-in-95 duration-150" style={{ width: '340px' }}>
+                                                                <style>{`.action-item { position: relative; } .action-item::after { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 1.5px; background: #0052A3; transition: width 0.25s ease; } .action-item:hover::after { width: 100%; } .action-item-danger::after { background: #ef4444; }`}</style>
+                                                                <p className="text-[13px] font-semibold text-gray-400 mb-3 px-1 text-left">Event Actions</p>
+                                                                <div className="grid grid-cols-3 gap-1">
+                                                                    <button onClick={() => { setAnalyticsDrawerEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                        <span className="text-[12px] font-semibold">Analytics</span>
+                                                                    </button>
+                                                                    <button onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                        <span className="text-[12px] font-semibold">Feedback</span>
+                                                                    </button>
+                                                                    <button onClick={() => { onViewQRCode(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                        <span className="text-[12px] font-semibold">QR Code</span>
+                                                                    </button>
+                                                                    {onPreviewEvent && (
+                                                                        <button onClick={() => { onPreviewEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                            <span className="text-[12px] font-semibold">Preview</span>
+                                                                        </button>
+                                                                    )}
+                                                                    <button onClick={() => { onEditEvent(event); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                        <span className="text-[12px] font-semibold">Edit</span>
+                                                                    </button>
+                                                                    {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
+                                                                        <button onClick={() => { setPendingConfirm({ type: 'notify', event }); setActiveActionMenu(null); }} className="action-item px-2 py-2.5 rounded-xl text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center">
+                                                                            <span className="text-[12px] font-semibold">Notify</span>
+                                                                        </button>
+                                                                    )}
+                                                                    {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
+                                                                        <button onClick={() => { setPendingConfirm({ type: 'cancel', event }); setActiveActionMenu(null); }} className="action-item action-item-danger px-2 py-2.5 rounded-xl text-gray-900 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-center">
+                                                                            <span className="text-[12px] font-semibold">Cancel</span>
+                                                                        </button>
+                                                                    )}
+                                                                    <button onClick={() => { onDeleteEvent(event.id); setActiveActionMenu(null); }} className="action-item action-item-danger px-2 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-center">
+                                                                        <span className="text-[12px] font-semibold text-red-500">Delete</span>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
-                )}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Showing {(eventsPage - 1) * EVENTS_PER_PAGE + 1}–{Math.min(eventsPage * EVENTS_PER_PAGE, allFilteredSortedEvents.length)} of {allFilteredSortedEvents.length} events
+                            </p>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setEventsPage(p => Math.max(1, p - 1))}
+                                    disabled={eventsPage === 1}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                >← Prev</button>
+                                <span className="text-xs text-gray-500 px-2">{eventsPage} / {totalPages}</span>
+                                <button
+                                    onClick={() => setEventsPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={eventsPage === totalPages}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                >Next →</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
-    );
+        );
     };
 
     const usersByRole = [
@@ -2158,263 +2150,261 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 )}
 
                 {canManageUsers && (
-                <div>
-                    {/* ── Toolbar (outside table) ── */}
-                    {/* Toolbar — matches Events tab design */}
-                    <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white whitespace-nowrap">
-                            All users{' '}
-                            <span className="text-gray-400 font-normal text-sm ml-2">({sortedUsers.length} Users)</span>
-                        </h2>
-                        {/* Pending Facilitator Requests button — always visible for admin */}
-                        {canManageUsers && (
-                            <button
-                                onClick={() => setPendingFacilitatorDrawerOpen(true)}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold text-white whitespace-nowrap transition-all hover:opacity-90 active:scale-95 shadow-sm"
-                                style={{ background: '#0052A3' }}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                Pending Requests
-                                <span className="bg-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center" style={{ color: '#0052A3' }}>{pendingFacilitators.length}</span>
-                            </button>
-                        )}
-                        {/* Search bar with filter button inside — same as Events tab */}
-                        <div className="relative w-full sm:flex-1 sm:min-w-0" ref={userSearchRef}>
-                            <div className="bg-white dark:bg-gray-800 rounded-full py-1 px-1.5 border border-gray-200 dark:border-gray-700 flex items-center gap-2">
-                                <div className="relative flex-1 flex items-center ml-2">
-                                    <Search size={13} className="text-gray-400 flex-shrink-0" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search users by name or email..."
-                                        value={userSearchQuery}
-                                        onFocus={() => setUserSearchFocused(true)}
-                                        onChange={e => { setUserSearchQuery(e.target.value); setUserPage(1); }}
-                                        className="w-full bg-transparent border-none pl-2.5 pr-2 py-1.5 text-[13px] text-gray-700 dark:text-gray-200 outline-none placeholder-gray-400"
-                                    />
-                                    {userSearchQuery && (
-                                        <button type="button" onClick={() => { setUserSearchQuery(''); setUserPage(1); }} className="flex-shrink-0 text-gray-400 hover:text-gray-600 pr-1">
-                                            <X size={13} />
-                                        </button>
-                                    )}
-                                </div>
-                                {/* Circular filter button inside search bar */}
-                                <div className="relative flex-shrink-0">
-                                    <button
-                                        onClick={e => { e.stopPropagation(); setShowUserFilterDropdown(v => !v); setUserSearchFocused(false); }}
-                                        className="h-8 w-8 rounded-full flex items-center justify-center text-white hover:opacity-90 transition-all active:scale-95"
-                                        style={{ background: (showPendingFacilitatorFilter || userFilter !== 'all') ? '#0052A3' : '#0052A3' }}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 10h12M9 15h6" /></svg>
-                                        {(showPendingFacilitatorFilter || userFilter !== 'all') && (
-                                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] font-black text-white flex items-center justify-center">1</span>
-                                        )}
-                                    </button>
-                                    {showUserFilterDropdown && (
-                                        <div className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 z-[300] w-56">
-                                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Filter by role</p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {['all', 'admins', 'facilitators', 'users'].map((filter) => (
-                                                    <button key={filter} onClick={() => { setShowPendingFacilitatorFilter(false); setUserFilter(filter as any); setUserPage(1); setShowUserFilterDropdown(false); }}
-                                                        className="px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
-                                                        style={!showPendingFacilitatorFilter && userFilter === filter ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
-                                                    >{filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}</button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        {/* Sort by — same as Events tab */}
-                        <div className="flex items-center gap-2 whitespace-nowrap">
-                            <span className="text-[13px] text-gray-500 font-medium">Sort by:</span>
-                            <div className="relative">
-                                <select
-                                    value={userSortOrder}
-                                    onChange={e => { setUserSortOrder(e.target.value as any); setUserPage(1); }}
-                                    className="appearance-none bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 hover:border-blue-400 rounded-full pl-4 pr-8 py-1.5 text-[13px] font-semibold text-gray-700 dark:text-gray-200 outline-none focus:ring-2 transition-all cursor-pointer shadow-sm"
+                    <div>
+                        {/* ── Toolbar (outside table) ── */}
+                        {/* Toolbar — matches Events tab design */}
+                        <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                                All users{' '}
+                                <span className="text-gray-400 font-normal text-sm ml-2">({sortedUsers.length} Users)</span>
+                            </h2>
+                            {/* Pending Facilitator Requests button — always visible for admin */}
+                            {canManageUsers && (
+                                <button
+                                    onClick={() => setPendingFacilitatorDrawerOpen(true)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold text-white whitespace-nowrap transition-all hover:opacity-90 active:scale-95 shadow-sm"
+                                    style={{ background: '#0052A3' }}
                                 >
-                                    <option value="newest">Newest</option>
-                                    <option value="oldest">Oldest</option>
-                                    <option value="asc">A → Z</option>
-                                    <option value="desc">Z → A</option>
-                                </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                    Pending Requests
+                                    <span className="bg-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center" style={{ color: '#0052A3' }}>{pendingFacilitators.length}</span>
+                                </button>
+                            )}
+                            {/* Search bar with filter button inside — same as Events tab */}
+                            <div className="relative w-full sm:flex-1 sm:min-w-0" ref={userSearchRef}>
+                                <div className="bg-white dark:bg-gray-800 rounded-full py-1 px-1.5 border border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                                    <div className="relative flex-1 flex items-center ml-2">
+                                        <Search size={13} className="text-gray-400 flex-shrink-0" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search users by name or email..."
+                                            value={userSearchQuery}
+                                            onFocus={() => setUserSearchFocused(true)}
+                                            onChange={e => { setUserSearchQuery(e.target.value); setUserPage(1); }}
+                                            className="w-full bg-transparent border-none pl-2.5 pr-2 py-1.5 text-[13px] text-gray-700 dark:text-gray-200 outline-none placeholder-gray-400"
+                                        />
+                                        {userSearchQuery && (
+                                            <button type="button" onClick={() => { setUserSearchQuery(''); setUserPage(1); }} className="flex-shrink-0 text-gray-400 hover:text-gray-600 pr-1">
+                                                <X size={13} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    {/* Circular filter button inside search bar */}
+                                    <div className="relative flex-shrink-0">
+                                        <button
+                                            onClick={e => { e.stopPropagation(); setShowUserFilterDropdown(v => !v); setUserSearchFocused(false); }}
+                                            className="h-8 w-8 rounded-full flex items-center justify-center text-white hover:opacity-90 transition-all active:scale-95"
+                                            style={{ background: (showPendingFacilitatorFilter || userFilter !== 'all') ? '#0052A3' : '#0052A3' }}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 10h12M9 15h6" /></svg>
+                                            {(showPendingFacilitatorFilter || userFilter !== 'all') && (
+                                                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] font-black text-white flex items-center justify-center">1</span>
+                                            )}
+                                        </button>
+                                        {showUserFilterDropdown && (
+                                            <div className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 z-[300] w-56">
+                                                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Filter by role</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['all', 'admins', 'facilitators', 'users'].map((filter) => (
+                                                        <button key={filter} onClick={() => { setShowPendingFacilitatorFilter(false); setUserFilter(filter as any); setUserPage(1); setShowUserFilterDropdown(false); }}
+                                                            className="px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
+                                                            style={!showPendingFacilitatorFilter && userFilter === filter ? { background: '#0052A3', color: '#fff', borderColor: '#0052A3' } : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }}
+                                                        >{filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}</button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Sort by — same as Events tab */}
+                            <div className="flex items-center gap-2 whitespace-nowrap">
+                                <span className="text-[13px] text-gray-500 font-medium">Sort by:</span>
+                                <div className="relative">
+                                    <select
+                                        value={userSortOrder}
+                                        onChange={e => { setUserSortOrder(e.target.value as any); setUserPage(1); }}
+                                        className="appearance-none bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700 hover:border-blue-400 rounded-full pl-4 pr-8 py-1.5 text-[13px] font-semibold text-gray-700 dark:text-gray-200 outline-none focus:ring-2 transition-all cursor-pointer shadow-sm"
+                                    >
+                                        <option value="newest">Newest</option>
+                                        <option value="oldest">Oldest</option>
+                                        <option value="asc">A → Z</option>
+                                        <option value="desc">Z → A</option>
+                                    </select>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* ── Table card ── */}
-                    <div className="bg-white dark:bg-[#111827] overflow-hidden">
-                        {isLoadingUsers ? (
-                            <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div></div>
-                        ) : userError ? (
-                            <div className="text-center text-red-500 py-10">{userError} <button onClick={fetchUsers} className="underline ml-2">Retry</button></div>
-                        ) : (
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-gray-50/50 border-b border-gray-100">
-                                        <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Name</th>
-                                        <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Address</th>
-                                        <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Age</th>
-                                        <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Sex</th>
-                                        <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Access</th>
-                                        <th className="w-12 px-6 py-4"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                                    {pagedUsers.map(user => {
-                                        const age = user.birthday ? Math.floor((Date.now() - new Date(user.birthday).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null;
-                                        const isKebabOpen = openKebabUserId === user.uid;
-                                        return (
-                                        <tr
-                                            key={user.uid}
-                                            id={`user-${user.uid}`}
-                                            className={`group transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40 ${
-                                                highlightUserId === user.uid ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                                            }`}
-                                        >
-                                            {/* Name */}
-                                            <td className="py-3 px-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 shrink-0 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden flex items-center justify-center text-gray-500">
-                                                        {user.avatarUrl ? (
-                                                            <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                                        ) : (
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                                        )}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="font-semibold text-gray-900 dark:text-white truncate text-sm">{user.name}</p>
-                                                        <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.email}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            {/* Address */}
-                                            <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300 max-w-[180px]">
-                                                <span className="truncate block">{user.address || <span className="text-gray-300 dark:text-gray-600">—</span>}</span>
-                                            </td>
-                                            {/* Age */}
-                                            <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
-                                                {age !== null ? age : <span className="text-gray-300 dark:text-gray-600">—</span>}
-                                            </td>
-                                            {/* Sex */}
-                                            <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
-                                                {user.sex || <span className="text-gray-300 dark:text-gray-600">—</span>}
-                                            </td>
-                                            {/* Access */}
-                                            <td className="py-3 px-4">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${
-                                                        user.role === 'admin'
-                                                            ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
-                                                            : user.role === 'facilitator'
-                                                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                                                            : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
-                                                    }`}>
-                                                        {(user.role || 'user').charAt(0).toUpperCase() + (user.role || 'user').slice(1)}
-                                                    </span>
-                                                    {user.facilitatorRequestStatus === 'pending' && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">Pending</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            {/* 3-dot menu */}
-                                            <td className="py-3 px-4">
-                                                <div className="relative flex justify-end">
-                                                    <button
-                                                        onClick={() => setOpenKebabUserId(isKebabOpen ? null : user.uid)}
-                                                        className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 transition-colors"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
-                                                    </button>
-                                                    {isKebabOpen && (
-                                                        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[400] overflow-hidden min-w-[160px]">
-                                                            <div className="p-1">
-                                                                {user.role !== 'admin' && user.email !== 'admincommove@gmail.com' && (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => { setPendingRoleChange({ user, newRole: 'user' }); setOpenKebabUserId(null); }}
-                                                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 ${user.role === 'user' || !user.role ? 'text-gray-400 cursor-default' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-                                                                            disabled={user.role === 'user' || !user.role}
-                                                                        >
-                                                                            <span className="w-2 h-2 rounded-full bg-gray-400 shrink-0"></span>
-                                                                            Set as User
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => { setPendingRoleChange({ user, newRole: 'facilitator' }); setOpenKebabUserId(null); }}
-                                                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 ${user.role === 'facilitator' ? 'text-gray-400 cursor-default' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-                                                                            disabled={user.role === 'facilitator'}
-                                                                        >
-                                                                            <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
-                                                                            Set as Facilitator
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                                {user.facilitatorRequestStatus === 'pending' && (
-                                                                    <>
-                                                                        <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-                                                                        <button onClick={() => { onApproveFacilitator(user.uid); setOpenKebabUserId(null); }} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center gap-2">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                                                            Approve Request
-                                                                        </button>
-                                                                        <button onClick={() => { onRejectFacilitator(user.uid); setOpenKebabUserId(null); }} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                                            Reject Request
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                                {((user as any).facilitatorIdUrl || user.idUrl) && (
-                                                                    <>
-                                                                        <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-                                                                        <button onClick={() => { setSelectedImageUrl((user as any).facilitatorIdUrl || user.idUrl || null); setOpenKebabUserId(null); }} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                                                            View ID
-                                                                        </button>
-                                                                    </>
+                        {/* ── Table card ── */}
+                        <div className="bg-white dark:bg-[#111827] overflow-hidden">
+                            {isLoadingUsers ? (
+                                <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div></div>
+                            ) : userError ? (
+                                <div className="text-center text-red-500 py-10">{userError} <button onClick={fetchUsers} className="underline ml-2">Retry</button></div>
+                            ) : (
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-gray-50/50 border-b border-gray-100">
+                                            <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Name</th>
+                                            <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Address</th>
+                                            <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Age</th>
+                                            <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Sex</th>
+                                            <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 capitalize">Access</th>
+                                            <th className="w-12 px-6 py-4"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                                        {pagedUsers.map(user => {
+                                            const age = user.birthday ? Math.floor((Date.now() - new Date(user.birthday).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null;
+                                            const isKebabOpen = openKebabUserId === user.uid;
+                                            return (
+                                                <tr
+                                                    key={user.uid}
+                                                    id={`user-${user.uid}`}
+                                                    className={`group transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40 ${highlightUserId === user.uid ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                                                        }`}
+                                                >
+                                                    {/* Name */}
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 shrink-0 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden flex items-center justify-center text-gray-500">
+                                                                {user.avatarUrl ? (
+                                                                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                                ) : (
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                                                 )}
                                                             </div>
+                                                            <div className="min-w-0">
+                                                                <p className="font-semibold text-gray-900 dark:text-white truncate text-sm">{user.name}</p>
+                                                                <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.email}</p>
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        );
-                                    })}
-                                    {sortedUsers.length === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="text-center text-gray-400 py-12 text-sm">No users found.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        )}
+                                                    </td>
+                                                    {/* Address */}
+                                                    <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300 max-w-[180px]">
+                                                        <span className="truncate block">{user.address || <span className="text-gray-300 dark:text-gray-600">—</span>}</span>
+                                                    </td>
+                                                    {/* Age */}
+                                                    <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
+                                                        {age !== null ? age : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                                                    </td>
+                                                    {/* Sex */}
+                                                    <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">
+                                                        {user.sex || <span className="text-gray-300 dark:text-gray-600">—</span>}
+                                                    </td>
+                                                    {/* Access */}
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${user.role === 'admin'
+                                                                ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                                                                : user.role === 'facilitator'
+                                                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                                                    : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+                                                                }`}>
+                                                                {(user.role || 'user').charAt(0).toUpperCase() + (user.role || 'user').slice(1)}
+                                                            </span>
+                                                            {user.facilitatorRequestStatus === 'pending' && (
+                                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">Pending</span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    {/* 3-dot menu */}
+                                                    <td className="py-3 px-4">
+                                                        <div className="relative flex justify-end">
+                                                            <button
+                                                                onClick={() => setOpenKebabUserId(isKebabOpen ? null : user.uid)}
+                                                                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 transition-colors"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+                                                            </button>
+                                                            {isKebabOpen && (
+                                                                <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[400] overflow-hidden min-w-[160px]">
+                                                                    <div className="p-1">
+                                                                        {user.role !== 'admin' && user.email !== 'admincommove@gmail.com' && (
+                                                                            <>
+                                                                                <button
+                                                                                    onClick={() => { setPendingRoleChange({ user, newRole: 'user' }); setOpenKebabUserId(null); }}
+                                                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 ${user.role === 'user' || !user.role ? 'text-gray-400 cursor-default' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                                                                    disabled={user.role === 'user' || !user.role}
+                                                                                >
+                                                                                    <span className="w-2 h-2 rounded-full bg-gray-400 shrink-0"></span>
+                                                                                    Set as User
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => { setPendingRoleChange({ user, newRole: 'facilitator' }); setOpenKebabUserId(null); }}
+                                                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 ${user.role === 'facilitator' ? 'text-gray-400 cursor-default' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                                                                    disabled={user.role === 'facilitator'}
+                                                                                >
+                                                                                    <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
+                                                                                    Set as Facilitator
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                        {user.facilitatorRequestStatus === 'pending' && (
+                                                                            <>
+                                                                                <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
+                                                                                <button onClick={() => { onApproveFacilitator(user.uid); setOpenKebabUserId(null); }} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center gap-2">
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                                                    Approve Request
+                                                                                </button>
+                                                                                <button onClick={() => { onRejectFacilitator(user.uid); setOpenKebabUserId(null); }} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2">
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                                    Reject Request
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                        {((user as any).facilitatorIdUrl || user.idUrl) && (
+                                                                            <>
+                                                                                <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
+                                                                                <button onClick={() => { setSelectedImageUrl((user as any).facilitatorIdUrl || user.idUrl || null); setOpenKebabUserId(null); }} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2">
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                                                    View ID
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {sortedUsers.length === 0 && (
+                                            <tr>
+                                                <td colSpan={6} className="text-center text-gray-400 py-12 text-sm">No users found.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
 
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    Showing {((safePage - 1) * USERS_PER_PAGE) + 1}–{Math.min(safePage * USERS_PER_PAGE, sortedUsers.length)} of {sortedUsers.length} users
-                                </p>
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => setUserPage(p => Math.max(1, p - 1))}
-                                        disabled={safePage === 1}
-                                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                    >← Prev</button>
-                                    <span className="text-xs text-gray-500 px-2">{safePage} / {totalPages}</span>
-                                    <button
-                                        onClick={() => setUserPage(p => Math.min(totalPages, p + 1))}
-                                        disabled={safePage === totalPages}
-                                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                    >Next →</button>
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Showing {((safePage - 1) * USERS_PER_PAGE) + 1}–{Math.min(safePage * USERS_PER_PAGE, sortedUsers.length)} of {sortedUsers.length} users
+                                    </p>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                                            disabled={safePage === 1}
+                                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                        >← Prev</button>
+                                        <span className="text-xs text-gray-500 px-2">{safePage} / {totalPages}</span>
+                                        <button
+                                            onClick={() => setUserPage(p => Math.min(totalPages, p + 1))}
+                                            disabled={safePage === totalPages}
+                                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                        >Next →</button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
                 )}
             </div>
         );
@@ -2429,7 +2419,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         const firstDayOfMonth = new Date(year, month, 1).getDay();
         // Get total days in month
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
+
         const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
         const blankDays = Array.from({ length: firstDayOfMonth }, (_, i) => i);
 
@@ -2452,7 +2442,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50">
                     <div className="flex justify-between items-center mb-6">
-                        <button 
+                        <button
                             onClick={() => changeMonth(-1)}
                             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
                         >
@@ -2461,7 +2451,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             </svg>
                         </button>
                         <h3 className="font-semibold text-gray-900 dark:text-white">{monthName} {year}</h3>
-                        <button 
+                        <button
                             onClick={() => changeMonth(1)}
                             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
                         >
@@ -2485,18 +2475,17 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 return date.getDate() === day && date.getMonth() === month && date.getFullYear() === year;
                             });
                             const isToday = new Date().getDate() === day && new Date().getMonth() === month && new Date().getFullYear() === year;
-                            
+
                             return (
                                 <div key={day} className="flex justify-center items-center relative">
                                     <button
                                         onClick={() => setSelectedDate(day)}
-                                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-                                            selectedDate === day
+                                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${selectedDate === day
                                             ? 'text-white font-semibold shadow-lg'
                                             : isToday
-                                            ? 'font-semibold ring-1 ring-blue-200 dark:ring-blue-700'
-                                            : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                                        }`}
+                                                ? 'font-semibold ring-1 ring-blue-200 dark:ring-blue-700'
+                                                : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                                            }`}
                                         style={selectedDate === day ? { background: '#0052A3' } : isToday ? { color: '#0052A3', background: '#EBF2FF' } : {}}
                                     >
                                         {day}
@@ -2516,7 +2505,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             {eventsOnSelectedDate.length} {eventsOnSelectedDate.length === 1 ? 'Event' : 'Events'}
                         </div>
                     </div>
-                    
+
                     {eventsOnSelectedDate.length === 0 ? (
                         <div className="flex-1 flex flex-col items-center justify-center py-12 text-center opacity-60">
                             <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
@@ -2538,7 +2527,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             ) : (
                                                 <div className="w-full h-full bg-blue-50 flex items-center justify-center" style={{ color: '#0052A3' }}>
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                     </svg>
                                                 </div>
                                             )}
@@ -2882,23 +2871,23 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     >
                         {(() => {
                             const ev = analyticsDrawerEvent;
-                            const v  = safeNum(ev.viewCount);
+                            const v = safeNum(ev.viewCount);
                             const sv = safeNum(ev.saveCount);
                             const it = safeNum(ev.interestedCount);
                             const ci = safeNum(ev.checkInCount);
                             const fb = safeNum(ev.feedbackCount);
                             const rt = safeNum(ev.averageRating);
 
-                            const engPct = v  > 0  ? Math.min(100, Math.round(((it + ci) / v)  * 100)) : null;
-                            const attPct = it > 0  ? Math.min(100, Math.round((ci / it) * 100))          : null;
-                            const fbPct  = ci > 0  ? Math.min(100, Math.round((fb / ci) * 100))           : null;
+                            const engPct = v > 0 ? Math.min(100, Math.round(((it + ci) / v) * 100)) : null;
+                            const attPct = it > 0 ? Math.min(100, Math.round((ci / it) * 100)) : null;
+                            const fbPct = ci > 0 ? Math.min(100, Math.round((fb / ci) * 100)) : null;
 
                             const insight = generateEventDecisionInsight(ev!);
                             const lvlCfg: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-                                'Excellent':         { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300', border: 'border-green-200 dark:border-green-800/40', dot: 'bg-green-500' },
-                                'Good':              { bg: 'bg-blue-50 dark:bg-blue-900/20',  text: 'text-blue-700 dark:text-blue-300',  border: 'border-blue-200 dark:border-blue-800/40',  dot: 'bg-blue-500' },
+                                'Excellent': { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300', border: 'border-green-200 dark:border-green-800/40', dot: 'bg-green-500' },
+                                'Good': { bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800/40', dot: 'bg-blue-500' },
                                 'Needs Improvement': { bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800/40', dot: 'bg-amber-500' },
-                                'Low Performing':    { bg: 'bg-red-50 dark:bg-red-900/20',   text: 'text-red-700 dark:text-red-300',   border: 'border-red-200 dark:border-red-800/40',   dot: 'bg-red-500' },
+                                'Low Performing': { bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800/40', dot: 'bg-red-500' },
                             };
                             const cfg = lvlCfg[insight.performanceLevel] ?? lvlCfg['Needs Improvement'];
 
@@ -3025,7 +3014,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 (() => {
                     const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
                     const facilId = currentUser?.uid ?? '';
-                    const facEvents   = isAdmin ? [] : events.filter(e => e.createdBy === facilId);
+                    const facEvents = isAdmin ? [] : events.filter(e => e.createdBy === facilId);
                     const facEventIds = new Set(facEvents.map(e => e.id));
                     const facFeedback = isAdmin ? [] : allFeedback.filter(f => facEventIds.has(f.eventId));
                     const dss: CrossDomainSummary = isAdmin
@@ -3038,22 +3027,22 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         engagement: 'Engagement', categories: 'Categories', platform: 'Platform',
                     };
                     const domainIcon: Record<InsightDomain, React.ReactNode> = {
-                        events:      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
-                        engagement:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />,
-                        users:       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />,
-                        demographics:<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
-                        categories:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />,
-                        platform:    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />,
+                        events: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
+                        engagement: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />,
+                        users: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />,
+                        demographics: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
+                        categories: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />,
+                        platform: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />,
                     };
                     const levelCfg: Record<InsightLevel, { bg: string; border: string; iconBg: string; iconText: string; badge: string }> = {
-                        success:  { bg: 'bg-green-50 dark:bg-green-900/10',   border: 'border-green-100 dark:border-green-800/30',   iconBg: 'bg-green-100 dark:bg-green-900/30',   iconText: 'text-green-600 dark:text-green-400',   badge: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' },
-                        info:     { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' },
-                        warning:  { bg: 'bg-amber-50 dark:bg-amber-900/10',   border: 'border-amber-100 dark:border-amber-800/30',   iconBg: 'bg-amber-100 dark:bg-amber-900/30',   iconText: 'text-amber-600 dark:text-amber-400',   badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' },
-                        critical: { bg: 'bg-red-50 dark:bg-red-900/10',       border: 'border-red-100 dark:border-red-800/30',       iconBg: 'bg-red-100 dark:bg-red-900/30',       iconText: 'text-red-600 dark:text-red-400',       badge: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' },
+                        success: { bg: 'bg-green-50 dark:bg-green-900/10', border: 'border-green-100 dark:border-green-800/30', iconBg: 'bg-green-100 dark:bg-green-900/30', iconText: 'text-green-600 dark:text-green-400', badge: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' },
+                        info: { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' },
+                        warning: { bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-100 dark:border-amber-800/30', iconBg: 'bg-amber-100 dark:bg-amber-900/30', iconText: 'text-amber-600 dark:text-amber-400', badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' },
+                        critical: { bg: 'bg-red-50 dark:bg-red-900/10', border: 'border-red-100 dark:border-red-800/30', iconBg: 'bg-red-100 dark:bg-red-900/30', iconText: 'text-red-600 dark:text-red-400', badge: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' },
                     };
                     const levelIconPath = (level: InsightLevel): React.ReactNode => {
-                        if (level === 'success')  return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />;
-                        if (level === 'warning')  return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />;
+                        if (level === 'success') return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />;
+                        if (level === 'warning') return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />;
                         if (level === 'critical') return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />;
                         return <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />;
                     };
@@ -3153,12 +3142,12 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
                                     {activeDomains.map(domain => {
                                         const domainInsights = grouped[domain] ?? [];
-                                        const domainRecs     = groupedRecs[domain] ?? [];
+                                        const domainRecs = groupedRecs[domain] ?? [];
                                         const hasCritical = domainInsights.some(i => i.level === 'critical');
-                                        const hasWarning  = domainInsights.some(i => i.level === 'warning');
+                                        const hasWarning = domainInsights.some(i => i.level === 'warning');
                                         const headerAccent = hasCritical ? 'border-red-200 dark:border-red-800/40 bg-red-50/50 dark:bg-red-900/10'
                                             : hasWarning ? 'border-amber-200 dark:border-amber-800/40 bg-amber-50/50 dark:bg-amber-900/10'
-                                            : 'border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30';
+                                                : 'border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30';
                                         const iconAccent = hasCritical ? 'text-red-500' : hasWarning ? 'text-amber-500' : 'text-indigo-500';
 
                                         return (
@@ -3260,18 +3249,18 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         className="bg-white dark:bg-[#0f172a] shadow-2xl"
                     >
                         {(() => {
-                            const tv  = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
-                            const ts  = events.reduce((s, e) => s + safeNum(e.saveCount), 0);
-                            const ti  = events.reduce((s, e) => s + safeNum(e.interestedCount), 0);
-                            const tc  = events.reduce((s, e) => s + safeNum(e.checkInCount), 0);
-                            const re  = events.filter(e => safeNum(e.feedbackCount) > 0);
-                            const ar  = re.length === 0 ? null : re.reduce((s, e) => s + safeNum(e.averageRating), 0) / re.length;
+                            const tv = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
+                            const ts = events.reduce((s, e) => s + safeNum(e.saveCount), 0);
+                            const ti = events.reduce((s, e) => s + safeNum(e.interestedCount), 0);
+                            const tc = events.reduce((s, e) => s + safeNum(e.checkInCount), 0);
+                            const re = events.filter(e => safeNum(e.feedbackCount) > 0);
+                            const ar = re.length === 0 ? null : re.reduce((s, e) => s + safeNum(e.averageRating), 0) / re.length;
 
                             const rows = [
-                                { no: 1, metric: 'Views',      val: tv.toLocaleString(), desc: 'Total event views',              status: tv >= 100 ? 'High' : tv >= 30 ? 'Moderate' : 'Low',         statusColor: tv >= 100 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : tv >= 30 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
-                                { no: 2, metric: 'Saves',      val: ts.toLocaleString(), desc: 'Events bookmarked',              status: ts >= 20 ? 'High' : ts >= 5 ? 'Moderate' : 'Low',           statusColor: ts >= 20 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : ts >= 5 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
-                                { no: 3, metric: 'Interested', val: ti.toLocaleString(), desc: 'Residents who marked interest',  status: ti >= 20 ? 'High' : ti >= 5 ? 'Moderate' : 'Low',           statusColor: ti >= 20 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : ti >= 5 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
-                                { no: 4, metric: 'Check-ins',  val: tc.toLocaleString(), desc: 'Confirmed via QR scan',          status: tc >= 10 ? 'High' : tc >= 3 ? 'Moderate' : 'Low',           statusColor: tc >= 10 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : tc >= 3 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
+                                { no: 1, metric: 'Views', val: tv.toLocaleString(), desc: 'Total event views', status: tv >= 100 ? 'High' : tv >= 30 ? 'Moderate' : 'Low', statusColor: tv >= 100 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : tv >= 30 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
+                                { no: 2, metric: 'Saves', val: ts.toLocaleString(), desc: 'Events bookmarked', status: ts >= 20 ? 'High' : ts >= 5 ? 'Moderate' : 'Low', statusColor: ts >= 20 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : ts >= 5 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
+                                { no: 3, metric: 'Interested', val: ti.toLocaleString(), desc: 'Residents who marked interest', status: ti >= 20 ? 'High' : ti >= 5 ? 'Moderate' : 'Low', statusColor: ti >= 20 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : ti >= 5 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
+                                { no: 4, metric: 'Check-ins', val: tc.toLocaleString(), desc: 'Confirmed via QR scan', status: tc >= 10 ? 'High' : tc >= 3 ? 'Moderate' : 'Low', statusColor: tc >= 10 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : tc >= 3 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
                                 { no: 5, metric: 'Avg rating', val: ar === null ? '—' : `${ar.toFixed(1)} / 5`, desc: `${re.length} rated event${re.length !== 1 ? 's' : ''}`, status: ar === null ? 'No data' : ar >= 4 ? 'Excellent' : ar >= 3 ? 'Good' : 'Poor', statusColor: ar === null ? 'text-gray-400 bg-gray-50 dark:bg-gray-800/40' : ar >= 4 ? 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400' : ar >= 3 ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' : 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
                             ];
 
@@ -3512,100 +3501,100 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         style={{ position: 'fixed', inset: 0, zIndex: 99997, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', paddingTop: '20px', paddingBottom: '20px', paddingRight: '20px', backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
                         onClick={() => closeCardDetailDrawer()}
                     >
-                    {/* Slide panel */}
-                    <div
-                        onClick={e => e.stopPropagation()}
-                        className={`card-detail-drawer ${cardDetailClosing ? 'leaving' : 'entering'} bg-white dark:bg-[#0f172a] shadow-2xl`}
-                        style={{ width: '100%', maxWidth: '480px', animation: `${cardDetailClosing ? 'cardDetailSlideOut 0.3s cubic-bezier(0.55,0,1,0.45) forwards' : 'cardDetailSlideIn 0.3s cubic-bezier(0.25,0.46,0.45,0.94) forwards'}`, display: 'flex', flexDirection: 'column', borderRadius: '15px', overflow: 'hidden' }}
-                    >
-                        {/* Header */}
-                        <div className="flex-shrink-0 px-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3" style={{ paddingTop: 'max(env(safe-area-inset-top,16px),16px)' }}>
-                            <div className="min-w-0">
-                                <p className="text-base font-black text-gray-900 dark:text-white">Decision Support</p>
-                                <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 leading-tight truncate">{cardDetailDrawer.title}</p>
+                        {/* Slide panel */}
+                        <div
+                            onClick={e => e.stopPropagation()}
+                            className={`card-detail-drawer ${cardDetailClosing ? 'leaving' : 'entering'} bg-white dark:bg-[#0f172a] shadow-2xl`}
+                            style={{ width: '100%', maxWidth: '480px', animation: `${cardDetailClosing ? 'cardDetailSlideOut 0.3s cubic-bezier(0.55,0,1,0.45) forwards' : 'cardDetailSlideIn 0.3s cubic-bezier(0.25,0.46,0.45,0.94) forwards'}`, display: 'flex', flexDirection: 'column', borderRadius: '15px', overflow: 'hidden' }}
+                        >
+                            {/* Header */}
+                            <div className="flex-shrink-0 px-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3" style={{ paddingTop: 'max(env(safe-area-inset-top,16px),16px)' }}>
+                                <div className="min-w-0">
+                                    <p className="text-base font-black text-gray-900 dark:text-white">Decision Support</p>
+                                    <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 leading-tight truncate">{cardDetailDrawer.title}</p>
+                                </div>
+                                <button
+                                    onClick={() => closeCardDetailDrawer()}
+                                    className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
                             </div>
-                            <button
-                                onClick={() => closeCardDetailDrawer()}
-                                className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
 
-                        {/* Insights list — merged from history + current live insights */}
-                        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
-                            {(() => {
-                                // Load persisted history for this card
-                                type CardEntry = { level: InsightLevel; text: string; rec?: string; seenAt: string };
-                                let cardHistory: CardEntry[] = [];
-                                try {
-                                    const slug = cardDetailDrawer.title.replace(/\s+/g, '_').toLowerCase();
-                                    const raw  = localStorage.getItem(`cmt_ch_${slug}_${currentUser?.uid ?? ''}`);
-                                    if (raw) cardHistory = JSON.parse(raw);
-                                } catch {}
-                                // Deduplicate history by text
-                                const seenTexts = new Set<string>();
-                                const deduped = cardHistory.filter(h => {
-                                    if (seenTexts.has(h.text)) return false;
-                                    seenTexts.add(h.text); return true;
-                                });
-                                // New insights (not yet in history) stack at top; history stays at bottom
-                                const liveOnly = cardDetailDrawer.insights.filter(ins => !seenTexts.has(ins.text));
-                                const merged: Array<{ level: InsightLevel; text: string; rec?: string }> = [
-                                    ...liveOnly,
-                                    ...deduped,
-                                ];
-                                return merged;
-                            })().map((insight, i) => {
-                                const cfgMap: Record<InsightLevel, { bg: string; border: string; iconBg: string; iconText: string; badge: string }> = {
-                                    success:  { bg: 'bg-green-50 dark:bg-green-900/10',   border: 'border-green-100 dark:border-green-800/30',   iconBg: 'bg-green-100 dark:bg-green-900/30',   iconText: 'text-green-600 dark:text-green-400',   badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
-                                    info:     { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
-                                    warning:  { bg: 'bg-amber-50 dark:bg-amber-900/10',   border: 'border-amber-100 dark:border-amber-800/30',   iconBg: 'bg-amber-100 dark:bg-amber-900/30',   iconText: 'text-amber-600 dark:text-amber-400',   badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
-                                    critical: { bg: 'bg-red-50 dark:bg-red-900/10',       border: 'border-red-100 dark:border-red-800/30',       iconBg: 'bg-red-100 dark:bg-red-900/30',       iconText: 'text-red-600 dark:text-red-400',       badge: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
-                                };
-                                const iconPathsMap: Record<InsightLevel, React.ReactNode> = {
-                                    success:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />,
-                                    info:     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
-                                    warning:  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />,
-                                    critical: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />,
-                                };
-                                const cfg = cfgMap[insight.level];
-                                return (
-                                    <div key={i} className={`rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}>
-                                        {i === 0 && (
-                                            <span className={`inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-2 ${cfg.badge}`}>Primary Insight</span>
-                                        )}
-                                        <div className="flex gap-2.5 items-start">
-                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.iconBg} ${cfg.iconText}`}>
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">{iconPathsMap[insight.level]}</svg>
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed font-medium">{insight.text}</p>
-                                                {insight.rec && <p className="text-[11px] text-purple-600 dark:text-purple-400 leading-relaxed mt-1.5 font-medium">→ {insight.rec}</p>}
-                                                {(() => {
-                                                    const ts = getInsightFirstSeenAt(cardDetailDrawer.title + '|' + insight.text.slice(0, 40));
-                                                    return (
-                                                        <p className="text-[9px] text-gray-300 dark:text-gray-600 mt-1 leading-none">
-                                                            {ts.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                            {' · '}
-                                                            {ts.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                                                        </p>
-                                                    );
-                                                })()}
+                            {/* Insights list — merged from history + current live insights */}
+                            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+                                {(() => {
+                                    // Load persisted history for this card
+                                    type CardEntry = { level: InsightLevel; text: string; rec?: string; seenAt: string };
+                                    let cardHistory: CardEntry[] = [];
+                                    try {
+                                        const slug = cardDetailDrawer.title.replace(/\s+/g, '_').toLowerCase();
+                                        const raw = localStorage.getItem(`cmt_ch_${slug}_${currentUser?.uid ?? ''}`);
+                                        if (raw) cardHistory = JSON.parse(raw);
+                                    } catch { }
+                                    // Deduplicate history by text
+                                    const seenTexts = new Set<string>();
+                                    const deduped = cardHistory.filter(h => {
+                                        if (seenTexts.has(h.text)) return false;
+                                        seenTexts.add(h.text); return true;
+                                    });
+                                    // New insights (not yet in history) stack at top; history stays at bottom
+                                    const liveOnly = cardDetailDrawer.insights.filter(ins => !seenTexts.has(ins.text));
+                                    const merged: Array<{ level: InsightLevel; text: string; rec?: string }> = [
+                                        ...liveOnly,
+                                        ...deduped,
+                                    ];
+                                    return merged;
+                                })().map((insight, i) => {
+                                    const cfgMap: Record<InsightLevel, { bg: string; border: string; iconBg: string; iconText: string; badge: string }> = {
+                                        success: { bg: 'bg-green-50 dark:bg-green-900/10', border: 'border-green-100 dark:border-green-800/30', iconBg: 'bg-green-100 dark:bg-green-900/30', iconText: 'text-green-600 dark:text-green-400', badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+                                        info: { bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/30', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30', iconText: 'text-indigo-600 dark:text-indigo-400', badge: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
+                                        warning: { bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-100 dark:border-amber-800/30', iconBg: 'bg-amber-100 dark:bg-amber-900/30', iconText: 'text-amber-600 dark:text-amber-400', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+                                        critical: { bg: 'bg-red-50 dark:bg-red-900/10', border: 'border-red-100 dark:border-red-800/30', iconBg: 'bg-red-100 dark:bg-red-900/30', iconText: 'text-red-600 dark:text-red-400', badge: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
+                                    };
+                                    const iconPathsMap: Record<InsightLevel, React.ReactNode> = {
+                                        success: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />,
+                                        info: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
+                                        warning: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />,
+                                        critical: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />,
+                                    };
+                                    const cfg = cfgMap[insight.level];
+                                    return (
+                                        <div key={i} className={`rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}>
+                                            {i === 0 && (
+                                                <span className={`inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-2 ${cfg.badge}`}>Primary Insight</span>
+                                            )}
+                                            <div className="flex gap-2.5 items-start">
+                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.iconBg} ${cfg.iconText}`}>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">{iconPathsMap[insight.level]}</svg>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed font-medium">{insight.text}</p>
+                                                    {insight.rec && <p className="text-[11px] text-purple-600 dark:text-purple-400 leading-relaxed mt-1.5 font-medium">→ {insight.rec}</p>}
+                                                    {(() => {
+                                                        const ts = getInsightFirstSeenAt(cardDetailDrawer.title + '|' + insight.text.slice(0, 40));
+                                                        return (
+                                                            <p className="text-[9px] text-gray-300 dark:text-gray-600 mt-1 leading-none">
+                                                                {ts.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                                {' · '}
+                                                                {ts.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                            </p>
+                                                        );
+                                                    })()}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
 
-                        {/* Footer */}
+                            {/* Footer */}
 
-                        <div className="flex-shrink-0 px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500">{cardDetailDrawer.insights.length} insight{cardDetailDrawer.insights.length !== 1 ? 's' : ''} · {cardDetailDrawer.title}</p>
-                            <button onClick={() => closeCardDetailDrawer()} className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors">Close</button>
+                            <div className="flex-shrink-0 px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                                <p className="text-[10px] text-gray-400 dark:text-gray-500">{cardDetailDrawer.insights.length} insight{cardDetailDrawer.insights.length !== 1 ? 's' : ''} · {cardDetailDrawer.title}</p>
+                                <button onClick={() => closeCardDetailDrawer()} className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors">Close</button>
+                            </div>
                         </div>
-                    </div>
                     </div>
                 </>,
                 document.body

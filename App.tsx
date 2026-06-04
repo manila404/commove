@@ -2781,7 +2781,7 @@ const App: React.FC = () => {
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 50, scale: 0.95 }}
                                 transition={{ duration: 0.2 }}
-                                className="fixed inset-0 w-full h-full md:inset-auto md:bottom-24 md:right-6 z-[5500] md:w-96 md:h-[600px] md:max-h-[70vh] bg-white dark:bg-gray-950 md:rounded-3xl md:border md:border-gray-100 md:dark:border-gray-800 md:shadow-2xl overflow-hidden flex flex-col"
+                                className="fixed inset-0 w-full h-full md:inset-auto md:bottom-24 md:right-6 z-[5500] md:w-[440px] md:h-[640px] md:max-h-[80vh] bg-white dark:bg-gray-950 md:rounded-3xl md:border md:border-gray-100 md:dark:border-gray-800 md:shadow-2xl overflow-hidden flex flex-col"
                             >
                                 <ChatBot
                                     events={events}
