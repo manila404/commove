@@ -70,7 +70,7 @@ service cloud.firestore {
         (
           isAuthenticated() &&
           request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['viewCount', 'saveCount', 'interestedCount', 'checkInCount', 'feedbackCount', 'averageRating'])
+            .hasOnly(['viewCount', 'saveCount', 'likeCount', 'interestedCount', 'checkInCount', 'feedbackCount', 'averageRating'])
         );
       allow delete: if isStaff();
     }

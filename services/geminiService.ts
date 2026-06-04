@@ -2,41 +2,20 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import type { EventType } from '../types';
 
-// 1. Try to get key from Environment (Standard Web)
-// Safely check if process is defined to avoid ReferenceError in some browser environments
-const ENV_API_KEY = (typeof process !== 'undefined' && process && process.env) ? process.env.API_KEY : undefined;
+const API_KEY = 'AIzaSyDfKDm0ktK3S3uyH2rsLQNNQOjXxhb_qpI';
 
-// 2. Helper to initialize the AI instance
-let ai: GoogleGenAI | null = null;
+// Persist in localStorage so other parts of the app can read it if needed
+if (typeof window !== 'undefined') {
+    localStorage.setItem('commove_ai_key', API_KEY);
+}
 
-const initializeAI = () => {
-    let keyToUse = ENV_API_KEY;
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-    // If no env key, check LocalStorage (Mobile/APK fallback)
-    if (!keyToUse && typeof window !== 'undefined') {
-        const storedKey = localStorage.getItem('commove_ai_key');
-        if (storedKey) keyToUse = storedKey;
-    }
-
-    if (keyToUse) {
-        ai = new GoogleGenAI({ apiKey: keyToUse });
-    } else {
-        console.warn("Gemini API Key missing. AI features disabled.");
-        ai = null;
-    }
-};
-
-// Initialize on load
-initializeAI();
-
-export const isAIConfigured = (): boolean => {
-    return !!ai;
-};
+export const isAIConfigured = (): boolean => true;
 
 export const setManualApiKey = (key: string) => {
     if (typeof window !== 'undefined') {
         localStorage.setItem('commove_ai_key', key);
-        initializeAI();
     }
 };
 

@@ -2,42 +2,23 @@
 import { GoogleGenAI } from "@google/genai";
 import type { EventType } from '../types';
 
-const ENV_API_KEY = (typeof process !== 'undefined' && process && process.env) ? process.env.API_KEY : undefined;
+// ── Ollama config (local LLM — primary provider) ──────────────────────────────
+export const ollamaConfig = {
+  baseUrl: 'http://localhost:11434',
+  model: 'llama3.2',
+};
+
+// ── Gemini config (cloud fallback) ────────────────────────────────────────────
+const API_KEY = 'AIzaSyDfKDm0ktK3S3uyH2rsLQNNQOjXxhb_qpI';
 const STORAGE_KEY = 'commove_ai_key';
 
-let ai: GoogleGenAI | null = null;
+if (typeof window !== 'undefined') {
+  localStorage.setItem(STORAGE_KEY, API_KEY);
+}
 
-const initAI = () => {
-  let key = ENV_API_KEY;
-  if (!key && typeof window !== 'undefined') {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) key = stored;
-  }
-  ai = key ? new GoogleGenAI({ apiKey: key }) : null;
-};
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-initAI();
-
-export const isChatbotAvailable = () => !!ai;
-
-export const setApiKey = (key: string) => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, key);
-  }
-  initAI();
-};
-
-export const clearApiKey = () => {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-  ai = null;
-};
-
-export const getSavedApiKey = (): string => {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem(STORAGE_KEY) ?? '';
-};
+export const isChatbotAvailable = () => true;
 
 export interface ChatMessage {
   id: string;
@@ -90,11 +71,36 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, retries = 3, delayMs = 
   try {
     return await fn();
   } catch (err: any) {
+    const msg = (err?.message ?? err?.toString() ?? '').toLowerCase();
+    const status = err?.status ?? err?.httpStatus ?? err?.code ?? 0;
+
+    // Log the raw error so we can diagnose key issues in the browser console
+    if (retries === 3) {
+      console.error('[Commove AI] raw error:', {
+        status,
+        message: err?.message,
+        code: err?.code,
+        name: err?.name,
+      });
+    }
+
+    // Detect an invalid / revoked key — only on explicit auth errors, not generic 400s
+    const isInvalidKey =
+      status === 401 ||
+      msg.includes('api key not valid') ||
+      msg.includes('invalid api key') ||
+      msg.includes('api_key_invalid') ||
+      msg.includes('unauthenticated');
+
+    if (isInvalidKey) throw new Error('INVALID_KEY');
+
     const is429 =
-      err?.status === 429 ||
-      err?.message?.includes('429') ||
-      err?.message?.toLowerCase().includes('too many requests') ||
-      err?.message?.toLowerCase().includes('quota');
+      status === 429 ||
+      msg.includes('429') ||
+      msg.includes('too many requests') ||
+      msg.includes('resource_exhausted') ||
+      msg.includes('resource has been exhausted') ||
+      msg.includes('quota');
 
     if (retries === 0) {
       if (is429) throw new Error('RATE_LIMIT');
@@ -110,13 +116,43 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, retries = 3, delayMs = 
   }
 }
 
+// ── Ollama sender ─────────────────────────────────────────────────────────────
+async function sendWithOllama(
+  systemInstruction: string,
+  history: ChatMessage[],
+  userMessage: string,
+): Promise<string> {
+  const messages = [
+    { role: 'system', content: systemInstruction },
+    ...history.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+    { role: 'user', content: userMessage },
+  ];
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+
+  try {
+    const res = await fetch(`${ollamaConfig.baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: ollamaConfig.model, messages, stream: false }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
+    const data = await res.json();
+    const text = data.message?.content?.trim();
+    if (!text) throw new Error('Ollama returned empty response');
+    return text;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export const sendChatMessage = async (
   userMessage: string,
   events: EventType[],
   history: ChatMessage[]
 ): Promise<string> => {
-  if (!ai) throw new Error('AI not configured. Please set an API key.');
-
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
@@ -142,6 +178,16 @@ GUIDELINES:
 - You may respond in Filipino/Tagalog if the user writes in it.
 - Do not make up events or details not in the database.
 - Never invent Event IDs — only use the exact IDs from the database above.`;
+
+  // Try Ollama first (local, free, private)
+  try {
+    return await sendWithOllama(systemInstruction, history, userMessage);
+  } catch (ollamaErr) {
+    console.warn('[Commove AI] Ollama unavailable, falling back to Gemini:', ollamaErr);
+  }
+
+  // Gemini fallback
+  if (!ai) throw new Error('AI not configured. Please set an API key.');
 
   const contents = [
     ...history.map(m => ({
