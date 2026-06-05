@@ -1349,14 +1349,19 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         const uid = currentUser?.uid;
         if (!uid) return;
         const now = new Date().toISOString();
+        const isAdminView = currentUser?.role === 'admin';
         const cardSets = [
             { title: 'Monthly Trends', insights: [monthlyTrendsInsight, ...monthlyTrendsMoreInsights] },
             { title: 'Events by Category', insights: [categoryInsight, ...categoryMoreInsights] },
-            { title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights] },
-            { title: 'Gender Distribution', insights: [genderInsight, ...genderMoreInsights] },
-            { title: 'Age Groups', insights: [ageGroupInsight, ...ageGroupMoreInsights] },
             { title: 'Top Events by Attendance', insights: [topEventsInsight, ...topEventsMoreInsights] },
         ];
+        if (isAdminView) {
+            cardSets.push(
+                { title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights] },
+                { title: 'Gender Distribution', insights: [genderInsight, ...genderMoreInsights] },
+                { title: 'Age Groups', insights: [ageGroupInsight, ...ageGroupMoreInsights] }
+            );
+        }
         cardSets.forEach(({ title, insights }) => {
             const slug = title.replace(/\s+/g, '_').toLowerCase();
             const key = `cmt_ch_${slug}_${uid}`;
@@ -1375,6 +1380,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     }, [events, users, currentUser?.uid]);
 
     const renderAnalytics = () => {
+        const isAdminView = currentUser?.role === 'admin';
         const totalViews = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
         const totalSaves = events.reduce((s, e) => s + safeNum(e.saveCount), 0);
         const totalInterested = events.reduce((s, e) => s + safeNum(e.interestedCount), 0);
@@ -1443,73 +1449,77 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                    <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">New Users per Month</h3>
-                    {/* Mobile: horizontally scrollable so all 12 months are visible */}
-                    <div className="overflow-x-auto md:overflow-visible" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        <div className="h-64 min-h-[260px] relative" style={{ minWidth: isMobile ? '640px' : '100%', width: isMobile ? '640px' : '100%' }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={newUsersData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }} barCategoryGap="40%">
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} dy={5} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} width={36} />
-                                    <RechartsTooltip />
-                                    <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={28} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                    {isMobile && (
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 text-center">← Swipe to see all months →</p>
-                    )}
-                    <CardInsight {...newUsersInsight} moreInsights={newUsersMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights] })} />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Gender Distribution */}
+                {isAdminView && (
                     <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Gender Distribution</h3>
-                        <div className="h-64 min-h-[260px] flex items-center justify-center relative">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={realGenderData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {realGenderData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <RechartsTooltip />
-                                    <Legend verticalAlign="bottom" height={36} />
-                                </PieChart>
-                            </ResponsiveContainer>
+                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">New Users per Month</h3>
+                        {/* Mobile: horizontally scrollable so all 12 months are visible */}
+                        <div className="overflow-x-auto md:overflow-visible" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                            <div className="h-64 min-h-[260px] relative" style={{ minWidth: isMobile ? '640px' : '100%', width: isMobile ? '640px' : '100%' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={newUsersData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }} barCategoryGap="40%">
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} dy={5} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} width={36} />
+                                        <RechartsTooltip />
+                                        <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={28} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
-                        <CardInsight {...genderInsight} moreInsights={genderMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Gender Distribution', insights: [genderInsight, ...genderMoreInsights] })} />
+                        {isMobile && (
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 text-center">← Swipe to see all months →</p>
+                        )}
+                        <CardInsight {...newUsersInsight} moreInsights={newUsersMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'New Users per Month', insights: [newUsersInsight, ...newUsersMoreInsights] })} />
                     </div>
+                )}
 
-                    {/* Age Distribution */}
-                    <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Age Groups</h3>
-                        <div className="h-64 min-h-[260px] relative">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={realAgeData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} width={30} />
-                                    <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                    <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                {isAdminView && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Gender Distribution */}
+                        <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
+                            <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Gender Distribution</h3>
+                            <div className="h-64 min-h-[260px] flex items-center justify-center relative">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={realGenderData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {realGenderData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <RechartsTooltip />
+                                        <Legend verticalAlign="bottom" height={36} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <CardInsight {...genderInsight} moreInsights={genderMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Gender Distribution', insights: [genderInsight, ...genderMoreInsights] })} />
                         </div>
-                        <CardInsight {...ageGroupInsight} moreInsights={ageGroupMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Age Groups', insights: [ageGroupInsight, ...ageGroupMoreInsights] })} />
+
+                        {/* Age Distribution */}
+                        <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
+                            <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Age Groups</h3>
+                            <div className="h-64 min-h-[260px] relative">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={realAgeData} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} width={30} />
+                                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                        <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <CardInsight {...ageGroupInsight} moreInsights={ageGroupMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Age Groups', insights: [ageGroupInsight, ...ageGroupMoreInsights] })} />
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Top Events */}
                 <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
@@ -1528,36 +1538,38 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     <CardInsight {...topEventsInsight} moreInsights={topEventsMoreInsights} onMoreDetails={() => setCardDetailDrawer({ title: 'Top Events by Attendance', insights: [topEventsInsight, ...topEventsMoreInsights] })} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
-                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Users by Role</h3>
-                        <div className="h-64">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={usersByRole} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} />
-                                    <RechartsTooltip />
-                                    <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                {isAdminView && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/50 min-w-0">
+                            <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Users by Role</h3>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={usersByRole} margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 32 : 40} />
+                                        <RechartsTooltip />
+                                        <Bar dataKey="users" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 min-w-0">
+                            <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Resident Engagement (Events Attended)</h3>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={engagementData} layout="vertical" margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 70 : 80} />
+                                        <RechartsTooltip />
+                                        <Bar dataKey="users" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={20} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
                     </div>
-                    <div className="bg-white dark:bg-[#111827] p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 min-w-0">
-                        <h3 className="text-sm font-bold mb-4 text-gray-900 dark:text-white">Resident Engagement (Events Attended)</h3>
-                        <div className="h-64">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={engagementData} layout="vertical" margin={{ left: 0, bottom: isMobile ? 5 : 0, top: 10, right: 10 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} dy={isMobile ? 5 : 0} />
-                                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 70 : 80} />
-                                    <RechartsTooltip />
-                                    <Bar dataKey="users" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={20} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                </div>
+                )}
             </div>
         );
     };
@@ -3187,7 +3199,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             {/* ── Decision Support Drawer (multi-domain, slide from right) ──────── */}
             {dsDrawerOpen && typeof document !== 'undefined' && createPortal(
                 (() => {
-                    const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
+                    const isAdmin = currentUser?.role === 'admin';
                     const facilId = currentUser?.uid ?? '';
                     const facEvents = isAdmin ? [] : events.filter(e => e.createdBy === facilId);
                     const facEventIds = new Set(facEvents.map(e => e.id));

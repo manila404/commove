@@ -215,5 +215,5 @@ GUIDELINES:
     })
   );
 
-  return response.text?.trim() || "Sorry, I couldn't generate a response. Please try again.";
+  return (response as any).text?.trim() || "Sorry, I couldn't generate a response. Please try again.";
 };

@@ -109,12 +109,12 @@ export function calculateSearchScore(event: EventType, query: string): number {
   const categories = Array.isArray(event.category) ? event.category : [event.category];
   categories.forEach(cat => checkField(cat, 8));
 
-  checkField(event.subtitle, 6);
-  checkField(event.tags?.join(' '), 5);
-  checkField(event.eventType, 4);
+  checkField((event as any).subtitle, 6);
+  checkField((event as any).tags?.join(' '), 5);
+  checkField((event as any).eventType, 4);
   checkField(event.description, 3);
   checkField(event.venue, 2);
-  checkField(event.leadOffice, 2);
+  checkField((event as any).leadOffice, 2);
   checkField(event.status, 2);
   
   const accessType = event.isPrivate ? 'private' : 'public';
