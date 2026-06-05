@@ -8,8 +8,12 @@ export const ollamaConfig = {
   model: 'llama3.2',
 };
 // ── Gemini config (cloud fallback) ────────────────────────────────────────────
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AQ.Ab8RN6JJ...';
+// ── Gemini config (cloud fallback) ────────────────────────────────────────────
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 const STORAGE_KEY = 'commove_ai_key';
+
+// ADD THIS TEMPORARY LINE HERE:
+console.log("DEBUG - AI Key loaded:", API_KEY ? "FOUND (Starts with " + API_KEY.slice(0, 5) + ")" : "NOT FOUND / UNDEFINED");
 
 if (typeof window !== 'undefined') {
   localStorage.setItem(STORAGE_KEY, API_KEY);
