@@ -102,11 +102,13 @@ const validateForm = (formData: typeof initialFormData): FormErrors => {
     // Only check time sequence if it's the same day. 
     // If eDate > sDate, any time is valid.
     if (sDate === eDate) {
-        if (e[0] * 60 + e[1] <= s[0] * 60 + s[1]) {
-            errors.time = 'End time must be after start time.';
+        const startMins = s[0] * 60 + s[1];
+        const endMins = e[0] * 60 + e[1];
+        if (endMins < startMins + 60) {
+            errors.endTime = 'End time must be at least 1 hour after the start time.';
         }
     } else if (eDate < sDate) {
-        errors.date = 'End date cannot be before start date.';
+        errors.endDate = 'End date cannot be before start date.';
     }
   }
   if (!formData.venue) errors.venue = 'A venue is required.';
@@ -642,7 +644,44 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                   label="Start"
                   date={formData.date} time={formData.startTime}
                   onDateChange={d => { setField('date', d); touch('date'); }}
-                  onTimeChange={t => { setField('startTime', t); touch('startTime'); }}
+                  onTimeChange={t => { 
+                      const newFormData = { ...formData, startTime: t };
+                      if (t) {
+                          const s = t.split(':').map(Number);
+                          const startMins = s[0] * 60 + s[1];
+                          const eDate = formData.endDate || formData.date;
+                          
+                          if (formData.date === eDate) {
+                              let needsAdjustment = false;
+                              if (!formData.endTime) {
+                                  needsAdjustment = true;
+                              } else {
+                                  const e = formData.endTime.split(':').map(Number);
+                                  const endMins = e[0] * 60 + e[1];
+                                  if (endMins < startMins + 60) needsAdjustment = true;
+                              }
+                              
+                              if (needsAdjustment) {
+                                  const newEndMins = startMins + 60;
+                                  if (newEndMins < 24 * 60) {
+                                      const h = Math.floor(newEndMins / 60).toString().padStart(2, '0');
+                                      const m = (newEndMins % 60).toString().padStart(2, '0');
+                                      newFormData.endTime = `${h}:${m}`;
+                                  } else {
+                                      const h = Math.floor((newEndMins - 24 * 60) / 60).toString().padStart(2, '0');
+                                      const m = ((newEndMins - 24 * 60) % 60).toString().padStart(2, '0');
+                                      const nextDay = new Date(formData.date);
+                                      nextDay.setDate(nextDay.getDate() + 1);
+                                      newFormData.endTime = `${h}:${m}`;
+                                      newFormData.endDate = nextDay.toISOString().split('T')[0];
+                                  }
+                              }
+                          }
+                      }
+                      setFormData(newFormData);
+                      touch('startTime');
+                      touch('endTime');
+                  }}
                   error={formErrors.date || formErrors.startTime}
                   indicator="filled"
                 />
