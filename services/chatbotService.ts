@@ -7,9 +7,8 @@ export const ollamaConfig = {
   baseUrl: 'http://localhost:11434',
   model: 'llama3.2',
 };
-
 // ── Gemini config (cloud fallback) ────────────────────────────────────────────
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AQ.Ab8RN6JJ0BDb-HaTm06SRaXE94qk9DbbOjLm8WqLiKIgP9_ewg';
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AQ.Ab8RN6JJ...';
 const STORAGE_KEY = 'commove_ai_key';
 
 if (typeof window !== 'undefined') {
