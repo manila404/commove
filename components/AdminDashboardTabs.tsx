@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { EventType, User } from '../types';
-import { XMarkIcon, formatDisplayDate, MoreVerticalIcon } from '../constants';
+import { formatTime, formatDisplayDate, XMarkIcon, MoreVerticalIcon } from '../constants';
+import { smartSearchEvents } from '../utils/searchUtils';
 import { getEventAlerts } from '../utils/eventAlerts';
 import type { EventAlert } from '../utils/eventAlerts';
 import { Star, MessageSquare, ChevronLeft, ChevronRight, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon, Search, X, Clock, Trash2 } from 'lucide-react';
@@ -10,7 +11,7 @@ import AdminReports from './AdminReports';
 import CalendarView from './CalendarView';
 import { getHighlights, setHighlights } from '../services/eventService';
 import { subscribeToAllFeedback } from '../services/feedbackService';
-import { createNotification } from '../services/notificationService';
+
 import { generateEventDecisionInsight, generateMonthlyDecisionSummary, generateAdminDecisionSummary, generateFacilitatorDecisionSummary } from '../services/analyticsInsightService';
 import type { CrossDomainSummary, DomainInsight, InsightDomain, InsightLevel } from '../services/analyticsInsightService';
 import type { EventFeedback } from '../types';
@@ -56,16 +57,6 @@ interface AdminDashboardTabsProps {
     onNotifyUpdate?: (event: EventType) => void;
 }
 
-// Returns a stable first-seen timestamp for an insight, persisted in localStorage.
-// ─── Insight notification dedup helpers ──────────────────────────────────────
-
-const getNotifiedInsightKeys = (uid: string): Set<string> => {
-    try { const r = localStorage.getItem(`cmt_ds_notified_${uid}`); return r ? new Set(JSON.parse(r) as string[]) : new Set<string>(); }
-    catch { return new Set<string>(); }
-};
-const saveNotifiedInsightKeys = (uid: string, keys: Set<string>): void => {
-    try { localStorage.setItem(`cmt_ds_notified_${uid}`, JSON.stringify([...keys])); } catch { }
-};
 
 // ─── Insight first-seen timestamp ────────────────────────────────────────────
 // Key is based on the stable identifier only (domain/card title + insight title),
@@ -322,65 +313,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         } catch { }
     }, [currentUser?.uid]);
 
-    // ── Decision Support → Notification + History bridge ─────────────────────
-    // Runs whenever data changes. Detects NEW insights, appends them to the
-    // persistent history, and fires a Firestore notification for critical/warning.
-    const dsNotifyingRef = useRef<Set<string>>(new Set());
-
-    useEffect(() => {
-        const uid = currentUser?.uid;
-        if (!uid || events.length === 0) return;
-
-        const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdmin;
-        const insights: DomainInsight[] = isAdmin
-            ? generateAdminDecisionSummary(events, users, allFeedback).insights
-            : (() => {
-                const myEvts = events.filter(e => e.createdBy === uid);
-                const myIds = new Set(myEvts.map(e => e.id));
-                const myFb = allFeedback.filter(f => myIds.has(f.eventId));
-                return generateFacilitatorDecisionSummary(myEvts, myFb, uid).insights;
-            })();
-
-        const currentKeys = new Set(insights.map(ins => `${ins.domain}|${ins.title}`));
-        const prevKeys = getNotifiedInsightKeys(uid);
-
-        // Persist current key set (drops resolved insights so they re-fire if they return)
-        saveNotifiedInsightKeys(uid, currentKeys);
-
-        // New = in current set, not in prev localStorage set, not already in-flight this session
-        const newInsights = insights.filter(ins => {
-            const k = `${ins.domain}|${ins.title}`;
-            return !prevKeys.has(k) && !dsNotifyingRef.current.has(k);
-        });
-        if (newInsights.length === 0) return;
-
-        // Mark in-flight synchronously to prevent duplicate queuing on rapid re-renders
-        newInsights.forEach(ins => dsNotifyingRef.current.add(`${ins.domain}|${ins.title}`));
-
-        // Append new insights to persistent history — skip any domain|title already stored
-        const now = new Date().toISOString();
-        const newEntries: StoredInsight[] = newInsights.map(ins => ({
-            domain: ins.domain, level: ins.level, title: ins.title, body: ins.body, seenAt: now,
-        }));
-        setInsightHistory(prev => {
-            const existingKeys = new Set(prev.map(h => `${h.domain}|${h.title}`));
-            const trulyNew = newEntries.filter(e => !existingKeys.has(`${e.domain}|${e.title}`));
-            if (trulyNew.length === 0) return prev;
-            const updated = [...prev, ...trulyNew].slice(-300);
-            try { localStorage.setItem(`cmt_ih_${uid}`, JSON.stringify(updated)); } catch { }
-            return updated;
-        });
-
-        // Fire Firestore notifications for critical and warning only
-        (async () => {
-            for (const ins of newInsights.filter(i => i.level === 'critical' || i.level === 'warning')) {
-                const prefix = ins.level === 'critical' ? 'Critical Alert' : 'Decision Support Warning';
-                try { await createNotification(uid, 'system', `${prefix}: ${ins.title}`, ins.body); }
-                catch { /* non-fatal */ }
-            }
-        })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [events, users, allFeedback, currentUser?.uid]);
 
     // Confirmation dialog state
     type ConfirmAction = { type: 'publish' | 'cancel' | 'notify'; event: EventType } | null;
@@ -1638,24 +1570,18 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             : eventVisibilityFilter === 'public' ? events.filter(e => !e.isPrivate)
                 : events.filter(e => !!e.isPrivate);
 
-        const eventSearchLower = eventSearchQuery.trim().toLowerCase();
-        const allFilteredSortedEvents = visibilityFilteredEvents
+        let allFilteredSortedEvents = visibilityFilteredEvents
             .filter(event => eventFilter === 'all' ? true : event.status === eventFilter)
             .filter(event => {
                 if (eventSortOrder === 'past') return isEventPast(event);
                 if (eventSortOrder === 'upcoming') return !isEventPast(event);
                 return true;
-            })
-            .filter(event => {
-                if (!eventSearchLower) return true;
-                const cats = Array.isArray(event.category) ? event.category : [event.category];
-                return (event.name || '').toLowerCase().includes(eventSearchLower) ||
-                    cats.some(c => (c || '').toLowerCase().includes(eventSearchLower)) ||
-                    (event.venue || '').toLowerCase().includes(eventSearchLower) ||
-                    (event.city || '').toLowerCase().includes(eventSearchLower) ||
-                    (event.description || '').toLowerCase().includes(eventSearchLower);
-            })
-            .sort((a, b) => {
+            });
+
+        if (eventSearchQuery.trim()) {
+            allFilteredSortedEvents = smartSearchEvents(allFilteredSortedEvents, eventSearchQuery);
+        } else {
+            allFilteredSortedEvents.sort((a, b) => {
                 if (eventSortOrder === 'past') {
                     return new Date(b.date).getTime() - new Date(a.date).getTime();
                 }
@@ -1667,6 +1593,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 if (eventSortOrder === 'asc') return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
                 return nameA > nameB ? -1 : nameA < nameB ? 1 : 0;
             });
+        }
+
         const totalPages = Math.ceil(allFilteredSortedEvents.length / EVENTS_PER_PAGE);
         const paginatedEvents = allFilteredSortedEvents.slice((eventsPage - 1) * EVENTS_PER_PAGE, eventsPage * EVENTS_PER_PAGE);
         const visibilityFilteredPending = eventVisibilityFilter === 'all' ? pendingRequests
@@ -2413,7 +2341,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </div>
 
                         {/* ── Table card ── */}
-                        <div className="bg-white dark:bg-[#111827] overflow-hidden">
+                        <div className="bg-white dark:bg-[#111827] overflow-visible min-h-[400px]">
                             {isLoadingUsers ? (
                                 <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div></div>
                             ) : userError ? (

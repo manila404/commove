@@ -10,6 +10,7 @@ import { getKNNRankedEvents } from './services/recommendationService'; // Import
 import { incrementEventCounter } from './services/analyticsService';
 import { CATEGORIES, formatDisplayDate } from './constants';
 import { Tag } from 'lucide-react';
+import { smartSearchEvents } from './utils/searchUtils';
 import type { User, EventType, DisplayEventType, Reminder, AppNotification } from './types';
 import { createNotification, subscribeToNotifications, hasNotification } from './services/notificationService';
 import { useAlert } from './contexts/AlertContext';
@@ -1802,16 +1803,7 @@ const App: React.FC = () => {
 
         // 2. Search Filter
         if (searchQuery) {
-            const lowercasedQuery = searchQuery.toLowerCase();
-            baseEvents = baseEvents.filter(event => {
-                const categories = Array.isArray(event.category) ? event.category : [event.category];
-                return (event.name || '').toLowerCase().includes(lowercasedQuery) ||
-                    categories.some(cat => (cat || '').toLowerCase().includes(lowercasedQuery)) ||
-                    (event.street || '').toLowerCase().includes(lowercasedQuery) ||
-                    (event.venue || '').toLowerCase().includes(lowercasedQuery) ||
-                    (event.city || '').toLowerCase().includes(lowercasedQuery) ||
-                    (event.description || '').toLowerCase().includes(lowercasedQuery);
-            });
+            baseEvents = smartSearchEvents(baseEvents, searchQuery);
         }
 
 
@@ -2426,15 +2418,18 @@ const App: React.FC = () => {
                             {activeTab === 'calendar' && (
                                 <div key="calendar" className="px-4 md:px-8 pt-8 md:pt-10 pb-28 md:pb-12 animate-fade-in">
                                     <CalendarView
-                                        events={events.filter(e => {
-                                            if (isStaff) {
-                                                if (currentUser?.role === 'admin') return true;
-                                                if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
-                                            }
-                                            const isPublished = e.status === 'published';
-                                            const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
-                                            return isPublished || isScheduled;
-                                        })}
+                                        events={(() => {
+                                            const visible = events.filter(e => {
+                                                if (isStaff) {
+                                                    if (currentUser?.role === 'admin') return true;
+                                                    if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
+                                                }
+                                                const isPublished = e.status === 'published';
+                                                const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
+                                                return isPublished || isScheduled;
+                                            });
+                                            return searchQuery ? smartSearchEvents(visible, searchQuery) : visible;
+                                        })()}
                                         currentMonth={currentMonth}
                                         setCurrentMonth={setCurrentMonth}
                                         onDateSelect={handleDateSelect}
@@ -2452,7 +2447,7 @@ const App: React.FC = () => {
                                         const clickedMs = calendarPopupDate.getTime();
 
                                         // Visibility filter (same logic as calendar)
-                                        const visible = events.filter(e => {
+                                        let visible = events.filter(e => {
                                             if (isStaff) {
                                                 if (currentUser?.role === 'admin') return true;
                                                 if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
@@ -2461,6 +2456,10 @@ const App: React.FC = () => {
                                             const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
                                             return isPublished || isScheduled;
                                         });
+                                        
+                                        if (searchQuery) {
+                                            visible = smartSearchEvents(visible, searchQuery);
+                                        }
 
                                         // Check whether an event covers the clicked date
                                         const coversDate = (e: typeof events[0]) => {
@@ -2550,7 +2549,7 @@ const App: React.FC = () => {
                                 <NearbyView
                                     userLocation={userLocation}
                                     isLocationLive={isLocationLive}
-                                    events={events}
+                                    events={searchQuery ? smartSearchEvents(events, searchQuery) : events}
                                     onEventSelect={handleOpenEvent}
                                     onToggleSave={handleToggleSaveEvent}
                                     savedEventIds={currentUser?.savedEventIds || []}
@@ -2723,10 +2722,13 @@ const App: React.FC = () => {
 
             {/* Permission Manager */}
             {showPermissionManager && (
-                <PermissionManager onComplete={() => {
-                    try { localStorage.setItem('hasSeenPermissionManager', 'true'); } catch (e) { }
-                    setShowPermissionManager(false);
-                }} />
+                <PermissionManager 
+                    userRole={currentUser?.role}
+                    onComplete={() => {
+                        try { localStorage.setItem('hasSeenPermissionManager', 'true'); } catch (e) { }
+                        setShowPermissionManager(false);
+                    }} 
+                />
             )}
 
             {/* Logout Confirmation Modal */}

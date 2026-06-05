@@ -19,6 +19,17 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanSuccess 
         }
     }, [permissions.camera]);
 
+    useEffect(() => {
+        const autoRequest = async () => {
+            if (permissions.camera === 'prompt') {
+                setIsRequesting(true);
+                await requestCamera();
+                setIsRequesting(false);
+            }
+        };
+        autoRequest();
+    }, [permissions.camera, requestCamera]);
+
     const handleScan = (result: any) => {
         if (result && result.length > 0) {
             const text = result[0].rawValue;

@@ -12,6 +12,7 @@ import { createNotification, notifyEventUpdated, notifyEventCancelled } from '..
 import Spinner from './Spinner';
 import { useAlert } from '../contexts/AlertContext';
 import { QRCodeSVG } from 'qrcode.react';
+import { smartSearchEvents } from '../utils/searchUtils';
 
 // Local Icons
 const EditIcon = ({ className }: { className?: string }) => (
@@ -298,12 +299,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     }
 
     // Filter Requests based on Department and Search
-    const filteredRequests = baseRequests.filter(event => {
-        const matchesSearch = (event.name || '').toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
-            (event.organizer || '').toLowerCase().includes(eventSearchQuery.toLowerCase());
-        const matchesDepartment = requestDepartmentFilter === 'All' || event.department === requestDepartmentFilter;
-        return matchesSearch && matchesDepartment;
+    let filteredRequests = baseRequests.filter(event => {
+        return requestDepartmentFilter === 'All' || event.department === requestDepartmentFilter;
     });
+
+    if (eventSearchQuery.trim()) {
+        filteredRequests = smartSearchEvents(filteredRequests, eventSearchQuery);
+    }
 
     const pendingCount = baseRequests.length;
     const [stats, setStats] = useState({ events: 0, users: 0, pending: 0 });
@@ -754,10 +756,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
     };
 
-    const filteredEvents = publishedEvents.filter(event => {
-        const categories = Array.isArray(event.category) ? event.category.join(' ') : (event.category || '');
-        return ((event.name || '') + (event.venue || '') + categories).toLowerCase().includes(eventSearchQuery.toLowerCase());
-    });
+    const filteredEvents = eventSearchQuery.trim()
+        ? smartSearchEvents(publishedEvents, eventSearchQuery)
+        : publishedEvents;
 
     const filteredUsers = users.filter(user => {
         const userName = user.name || '';

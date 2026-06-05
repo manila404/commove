@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { DisplayEventType } from '../types';
 import { formatTime } from '../constants';
+import { smartSearchEvents } from '../utils/searchUtils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -135,12 +136,7 @@ const ViewAllPopularEvents: React.FC<ViewAllPopularEventsProps> = ({
     let filtered = [...popular].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (search.trim()) {
-      const q = search.toLowerCase();
-      filtered = filtered.filter(
-        (e) =>
-          e.name.toLowerCase().includes(q) ||
-          e.venue?.toLowerCase().includes(q)
-      );
+      filtered = smartSearchEvents(filtered, search);
     }
 
     const groups: Record<string, DisplayEventType[]> = {};
