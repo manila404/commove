@@ -19,7 +19,14 @@ if (typeof window !== 'undefined') {
   localStorage.setItem(STORAGE_KEY, API_KEY);
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+let ai: any = null;
+try {
+  if (API_KEY) {
+    ai = new GoogleGenAI({ apiKey: API_KEY });
+  }
+} catch (e) {
+  console.warn("Failed to initialize GoogleGenAI:", e);
+}
 
 export const isChatbotAvailable = () => true;
 

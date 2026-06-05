@@ -17,7 +17,6 @@ import type { CrossDomainSummary, DomainInsight, InsightDomain, InsightLevel } f
 import type { EventFeedback } from '../types';
 import ConfirmationDialog from './ConfirmationDialog';
 import { getCategoryStyle } from '../utils/categoryStyles';
-<script src='https://www.noupe.com/embed/019e921db952770688ea3bb5d6c82381ed65.js'></script>
 interface AdminDashboardTabsProps {
     events: EventType[];
     allEvents: EventType[]; // Full non-deduplicated list for recurring count badges
