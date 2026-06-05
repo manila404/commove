@@ -48,9 +48,9 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
                 {navBtn('feed', <HomeIcon className="w-6 h-6 pointer-events-none" />, 'Feed', () => onTabChange('feed'))}
                 {navBtn('calendar', <CalendarIcon className="w-6 h-6 pointer-events-none" />, 'Calendar', () => onTabChange('calendar'))}
 
-                {/* Center QR Scanner button */}
-                <div className="flex items-center justify-center flex-1">
-                    {!isStaff ? (
+                {/* Center QR Scanner button — hidden for staff, replaced with 4-item layout */}
+                {!isStaff && (
+                    <div className="flex items-center justify-center flex-1">
                         <button
                             onClick={onOpenScanner}
                             className="relative flex items-center justify-center w-14 h-14 rounded-full shadow-lg appearance-none focus:outline-none focus:ring-0 touch-manipulation active:scale-95 transition-transform overflow-hidden"
@@ -60,10 +60,8 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
                             {/* Highlight */}
                             <div className="absolute top-2 left-2.5 w-5 h-3 rounded-full bg-white opacity-25 pointer-events-none" style={{ filter: 'blur(4px)' }} />
                         </button>
-                    ) : (
-                        <div className="w-14 h-14" />
-                    )}
-                </div>
+                    </div>
+                )}
 
                 <div className="relative flex-1">
                     {navBtn('notifications', <BellIcon className="w-6 h-6 pointer-events-none" />, 'Notif', onNotificationClick)}

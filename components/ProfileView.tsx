@@ -540,15 +540,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                         )}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <h2 className="text-base font-bold text-white truncate leading-tight">{isGuest ? 'Welcome, Guest' : (user?.name || auth.currentUser?.displayName || 'User')}</h2>
+                        <h2 className="text-base font-semibold text-white truncate leading-tight">{isGuest ? 'Welcome, Guest' : (user?.name || auth.currentUser?.displayName || 'User')}</h2>
                         <p className="text-white/80 text-xs truncate mb-1.5 leading-tight mt-0.5">{isGuest ? 'Sign in to save events and more' : (user?.email || auth.currentUser?.email || 'No email')}</p>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}`}>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${badgeColor}`}>
                                 {isStaff && <ShieldCheckIcon className="w-2.5 h-2.5 mr-1" />}
                                 {roleLabel}
                             </span>
                             {isPendingFacilitator && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-400 text-yellow-900">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-400 text-yellow-900">
                                     Pending Facilitator Approval
                                 </span>
                             )}
@@ -604,7 +604,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                                 <UserIcon className="w-5 h-5" />
                             </div>
                             <div>
-                                <h3 className="text-white font-bold text-sm">Sign In / Create Account</h3>
+                                <h3 className="text-white font-semibold text-sm">Sign In / Create Account</h3>
                                 <p className="text-gray-400 text-xs text-left">Unlock all features</p>
                             </div>
                         </div>

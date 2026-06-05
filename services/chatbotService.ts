@@ -9,7 +9,7 @@ export const ollamaConfig = {
 };
 
 // ── Gemini config (cloud fallback) ────────────────────────────────────────────
-const API_KEY = 'AIzaSyDfKDm0ktK3S3uyH2rsLQNNQOjXxhb_qpI';
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AQ.Ab8RN6JJ0BDb-HaTm06SRaXE94qk9DbbOjLm8WqLiKIgP9_ewg';
 const STORAGE_KEY = 'commove_ai_key';
 
 if (typeof window !== 'undefined') {
@@ -199,7 +199,7 @@ GUIDELINES:
 
   const response = await retryWithBackoff(() =>
     ai!.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents,
       config: { systemInstruction },
     })

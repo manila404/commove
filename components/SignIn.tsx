@@ -175,7 +175,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                     >
                         <ChevronLeftIcon className="w-5 h-5" />
                     </button>
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">Reset Password</h1>
+                    <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Reset Password</h1>
                 </div>
                 
                  <p className="text-gray-600 dark:text-gray-400 mb-6 text-left text-sm">
@@ -204,7 +204,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                                     type="button"
                                     onClick={handleResend}
                                     disabled={isLoading}
-                                    className="font-bold text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
+                                    className="font-semibold text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
                                 >
                                     {isLoading ? 'Sending...' : 'Resend email'}
                                 </button>
@@ -217,7 +217,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full bg-primary-600 text-white font-bold py-3 px-4 rounded-full hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/20 disabled:bg-gray-400 text-base active:scale-95"
+                                className="w-full bg-primary-600 text-white font-semibold py-3 px-4 rounded-full hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/20 disabled:bg-gray-400 text-base active:scale-95"
                             >
                                 {isLoading ? 'Sending...' : 'Send Reset Link'}
                             </button>
@@ -231,7 +231,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
     return (
         <div className="w-full">
             <div className="text-left mb-6">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Sign in</h1>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Sign in</h1>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -269,7 +269,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                     <button 
                         type="button"
                         onClick={() => setIsResettingPassword(true)} 
-                        className="text-xs font-bold text-gray-900 dark:text-white hover:underline"
+                        className="text-xs font-semibold text-gray-900 dark:text-white hover:underline"
                     >
                         Forget Password ?
                     </button>
@@ -279,7 +279,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                     <button 
                         type="submit" 
                         disabled={isLoading} 
-                        className="w-full bg-primary-600 dark:bg-[#7c3aed] text-white font-bold py-3 px-4 rounded-full hover:bg-primary-700 dark:hover:bg-[#6d28d9] transition-all shadow-lg shadow-primary-500/20 disabled:bg-gray-400 text-base active:scale-95"
+                        className="w-full bg-primary-600 dark:bg-[#7c3aed] text-white font-semibold py-3 px-4 rounded-full hover:bg-primary-700 dark:hover:bg-[#6d28d9] transition-all shadow-lg shadow-primary-500/20 disabled:bg-gray-400 text-base active:scale-95"
                     >
                         {isLoading ? 'Signing In...' : 'Sign In'}
                     </button>
@@ -289,7 +289,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
             <div className="text-center mt-6 space-y-4">
                 {!hideSignUp && (
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                        Don't have account ? <button onClick={onSwitchToSignUp} className="font-bold text-gray-900 dark:text-white hover:underline">Sign Up</button>
+                        Don't have account ? <button onClick={onSwitchToSignUp} className="font-semibold text-gray-900 dark:text-white hover:underline">Sign Up</button>
                     </p>
                 )}
                 
@@ -297,7 +297,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                     <div>
                         <button 
                             onClick={onGuestAccess}
-                            className="text-primary-600 dark:text-[#a78bfa] font-bold hover:underline text-base"
+                            className="text-primary-600 dark:text-[#a78bfa] font-semibold hover:underline text-base"
                         >
                             Browse as Guest
                         </button>

@@ -107,12 +107,12 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: "100%", opacity: 0 }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="absolute bottom-0 left-0 right-0 md:bottom-6 md:top-6 md:left-6 md:right-auto md:w-[420px] z-20 bg-white dark:bg-gray-900 rounded-t-[32px] md:rounded-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.15)] md:shadow-2xl flex flex-col h-[60vh] md:h-auto md:max-h-[calc(100vh-80px)] border-t md:border border-gray-100 dark:border-gray-800"
+                    className="absolute bottom-0 left-0 right-0 md:bottom-6 md:top-6 md:left-6 md:right-auto md:w-[420px] z-20 bg-white dark:bg-gray-900 rounded-t-[32px] md:rounded-[15px] shadow-[0_-8px_40px_rgba(0,0,0,0.15)] md:shadow-2xl flex flex-col h-[60vh] md:h-auto md:max-h-[calc(100vh-80px)] border-t md:border border-gray-100 dark:border-gray-800"
                     >
-                    <div className="p-5 pb-3 border-b border-gray-50 dark:border-gray-800 flex justify-between items-center sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-t-[32px] md:rounded-t-3xl z-10">
+                    <div className="p-5 pb-3 border-b border-gray-50 dark:border-gray-800 flex justify-between items-center sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-t-[32px] md:rounded-t-[15px] z-10">
                         <div>
-                            <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-none mb-1">Nearby Events</h3>
-                            <p className="text-[11px] text-gray-500 dark:text-gray-400 font-extrabold tracking-tight italic">
+                            <h3 className="font-semibold text-lg text-gray-900 dark:text-white tracking-tight leading-none mb-1">Nearby Events</h3>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 font-semibold tracking-tight italic">
                                 {listEvents.length} live events found around you
                             </p>
                         </div>
@@ -148,7 +148,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                                     {/* Content */}
                                     <div className="flex-1 min-w-0 pr-6">
                                         <div className="flex justify-between items-start">
-                                            <h4 className="font-extrabold text-sm text-gray-900 dark:text-white leading-tight truncate group-hover:text-primary-600 transition-colors">
+                                            <h4 className="font-semibold text-sm text-gray-900 dark:text-white leading-tight truncate group-hover:text-primary-600 transition-colors">
                                                 {event.name}
                                             </h4>
                                             <button 
@@ -162,17 +162,17 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                                             </button>
                                         </div>
                                         
-                                        <p className="text-[10px] text-gray-400 font-bold mt-0.5 truncate uppercase">
+                                        <p className="text-[10px] text-gray-400 font-semibold mt-0.5 truncate uppercase">
                                             {event.venue}
                                         </p>
                                         
                                         <div className="flex flex-wrap gap-1 mt-2">
                                             {Array.isArray(event.category) ? event.category.slice(0, 2).map((cat, idx) => (
-                                                <span key={idx} className="px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-[9px] font-black rounded-full border border-primary-100 dark:border-primary-800/50">
+                                                <span key={idx} className="px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-[9px] font-semibold rounded-full border border-primary-100 dark:border-primary-800/50">
                                                     {cat}
                                                 </span>
                                             )) : (
-                                                <span className="px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-[9px] font-black rounded-full border border-primary-100 dark:border-primary-800/50">
+                                                <span className="px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-[9px] font-semibold rounded-full border border-primary-100 dark:border-primary-800/50">
                                                     {event.category}
                                                 </span>
                                             )}
@@ -180,7 +180,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
 
                                         <button 
                                             onClick={() => onEventSelect(event as any)}
-                                            className="mt-3 w-full py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-[10px] font-black rounded-full shadow-lg shadow-primary-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                                            className="mt-3 w-full py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-[10px] font-semibold rounded-full shadow-lg shadow-primary-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-1.5"
                                         >
                                             View Event
                                         </button>
@@ -190,7 +190,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                                 <MapPin size={40} className="opacity-10 mb-2" />
-                                <p className="text-xs font-bold italic tracking-tight">Watching the horizon... no events yet.</p>
+                                <p className="text-xs font-semibold italic tracking-tight">Watching the horizon... no events yet.</p>
                             </div>
                         )}
                     </div>

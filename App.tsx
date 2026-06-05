@@ -132,7 +132,7 @@ const App: React.FC = () => {
     };
 
     const isInitialAuthRef = useRef(true);
-    const backHandlerRef = useRef<() => void>(() => {});
+    const backHandlerRef = useRef<() => void>(() => { });
     // Auth & User State
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [pendingDeletionUser, setPendingDeletionUser] = useState<User | null>(null);
@@ -203,7 +203,7 @@ const App: React.FC = () => {
                     return view as any;
                 }
             }
-        } catch (e) {}
+        } catch (e) { }
         return 'feed';
     });
     const [searchQuery, setSearchQuery] = useState('');
@@ -476,7 +476,7 @@ const App: React.FC = () => {
                         if (elapsed >= THIRTY_DAYS_MS) {
                             // 30 days passed — complete deletion immediately
                             try { await firebaseUser.delete(); } catch { /* already gone */ }
-                            await signOut(auth).catch(() => {});
+                            await signOut(auth).catch(() => { });
                             setAuthLoading(false);
                             isInitialAuthRef.current = false;
                             return;
@@ -682,7 +682,7 @@ const App: React.FC = () => {
             } else if (window.history.state) {
                 const state = window.history.state;
                 const view = state.view;
-                
+
                 if (view === 'event-details' && state.eventId && !selectedEvent) {
                     const event = events.find(e => e.id === state.eventId);
                     if (event) setSelectedEvent(event);
@@ -692,7 +692,7 @@ const App: React.FC = () => {
                 }
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [events.length]);
 
     // Keep the ranking snapshot up-to-date whenever the USER IDENTITY or PREFERENCES
@@ -985,7 +985,7 @@ const App: React.FC = () => {
                         try {
                             const existing = await fetchUserFeedbackForEvent(currentUser.uid, event.id);
                             if (existing) return; // Already rated — do nothing
-                            
+
                             const alreadyNotified = await hasNotification(currentUser.uid, 'event_feedback', event.id);
                             if (alreadyNotified) return;
                         } catch { /* network error — fall through and allow notification */ }
@@ -1078,13 +1078,13 @@ const App: React.FC = () => {
     useEffect(() => {
         backHandlerRef.current = () => {
             // Close non-history-backed overlays first (innermost / most modal-like wins)
-            if (showLogoutConfirm)       { setShowLogoutConfirm(false); return; }
-            if (showFeedbackModal)       { setShowFeedbackModal(null); return; }
-            if (showFacilitatorAuth)     { setShowFacilitatorAuth(false); setFacilitatorAuthInitialStep('question'); return; }
-            if (showEditProfileModal)    { setShowEditProfileModal(false); return; }
+            if (showLogoutConfirm) { setShowLogoutConfirm(false); return; }
+            if (showFeedbackModal) { setShowFeedbackModal(null); return; }
+            if (showFacilitatorAuth) { setShowFacilitatorAuth(false); setFacilitatorAuthInitialStep('question'); return; }
+            if (showEditProfileModal) { setShowEditProfileModal(false); return; }
             if (showCalendarEventsPopup) { setShowCalendarEventsPopup(false); setCalendarPopupDate(null); return; }
-            if (showViewAllUpcoming)     { setShowViewAllUpcoming(false); return; }
-            if (showProfilePanel)        { setShowProfilePanel(false); return; }
+            if (showViewAllUpcoming) { setShowViewAllUpcoming(false); return; }
+            if (showProfilePanel) { setShowProfilePanel(false); return; }
 
             // At the root feed with nothing open — tell native to handle exit
             const state = window.history.state;
@@ -1486,7 +1486,7 @@ const App: React.FC = () => {
             setCurrentUser(prev => prev ? { ...prev, preferences: categories } : null);
         }
         setShowPreferences(false);
-        try { window.history.back(); } catch (e) {}
+        try { window.history.back(); } catch (e) { }
     };
 
     const handleToggleSaveEvent = async (eventId: string) => {
@@ -1991,7 +1991,7 @@ const App: React.FC = () => {
                     showHelpSupport ? 'Help & Support' :
                         showTermsAndConditions ? 'Terms & Conditions' :
                             showViewAllPopular ? 'Popular Events' :
-                            showViewAllUpcoming ? 'Upcoming Events' : null;
+                                showViewAllUpcoming ? 'Upcoming Events' : null;
 
     // ── Account Recovery Modal ────────────────────────────────────────────────
     const handleRecoverAccount = async () => {
@@ -2007,7 +2007,7 @@ const App: React.FC = () => {
     // "No" — sign out and let the 30-day countdown continue
     const handleKeepDeletion = async () => {
         setPendingDeletionUser(null);
-        await signOut(auth).catch(() => {});
+        await signOut(auth).catch(() => { });
     };
 
     return (
@@ -2266,6 +2266,11 @@ const App: React.FC = () => {
                                             </button>
                                         </div>
 
+                                        {/* Get Involved Section */}
+                                        {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && highlightedDisplayEvents.length > 0 && (
+                                            <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
+                                        )}
+
                                         {/* 3. Popular Events Section */}
                                         {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && (
                                             <PopularEvents
@@ -2359,11 +2364,6 @@ const App: React.FC = () => {
                                         {/* Sentinel — category pills show in sticky bar only after this exits view */}
                                         <div ref={categoriesSentinelRef} className="h-px" />
 
-                                        {/* Highlights — directly under Categories */}
-                                        {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && highlightedDisplayEvents.length > 0 && (
-                                            <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
-                                        )}
-
                                         {/* Upcoming Next Week — under Highlights */}
                                         {!searchQuery && selectedCategory === 'All' && !selectedDateFilter && (
                                             <UpcomingNextWeek
@@ -2377,7 +2377,7 @@ const App: React.FC = () => {
                                         <div className="space-y-4">
                                             <h2 id="recommended-section" className="text-base md:text-lg font-semibold text-gray-900 dark:text-white pt-1">
                                                 {selectedDateFilter ? `Events on ${formatDisplayDate(selectedDateFilter)}` :
-                                                    selectedCategory === 'All' ? 'Recommended for You' : selectedCategory}
+                                                    selectedCategory === 'All' ? 'Events for You' : selectedCategory}
                                             </h2>
 
                                             {areEventsLoading ? (
