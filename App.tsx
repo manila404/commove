@@ -2813,7 +2813,7 @@ const App: React.FC = () => {
                     {/* Floating Toggle Button */}
                     <button
                         onClick={() => setIsChatOpen(prev => !prev)}
-                        className="fixed bottom-24 right-6 md:bottom-6 md:right-6 z-[4900] flex items-center justify-center w-14 h-14 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-transform overflow-hidden cursor-pointer bg-gradient-to-br from-[#0067c8] to-[#0052A3] hover:from-[#005bb2] hover:to-[#004482] text-white"
+                        className="fixed bottom-[8.5rem] right-5 md:bottom-6 md:right-6 z-[4900] flex items-center justify-center w-14 h-14 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-transform overflow-hidden cursor-pointer bg-gradient-to-br from-[#0067c8] to-[#0052A3] hover:from-[#005bb2] hover:to-[#004482] text-white"
                         title="AI Assistant"
                     >
                         {isChatOpen ? (

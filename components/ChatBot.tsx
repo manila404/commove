@@ -132,7 +132,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
 
   useEffect(() => { saveMessages(messages); }, [messages]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading]);
-  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, []);
 
   const handleSend = useCallback(async (text?: string) => {
     const message = (text ?? input).trim();
@@ -161,7 +160,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
 
   // ── Shared input bar ──────────────────────────────────────────────────────
   const InputBar = (
-    <div className="flex-shrink-0 bg-white dark:bg-gray-950 px-4 pt-3 pb-4 border-t border-gray-100 dark:border-gray-800">
+    <div className="flex-shrink-0 bg-white dark:bg-gray-950 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,20px)+3rem)] md:pb-4 border-t border-gray-100 dark:border-gray-800">
       <div className="flex items-center gap-2">
         <input
           ref={inputRef}
