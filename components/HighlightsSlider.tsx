@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { DisplayEventType } from '../types';
-import { formatDisplayDate } from '../constants';
+import { formatDisplayDate, EventImage } from '../constants';
 import { getCategoryStyle } from '../utils/categoryStyles';
 
 interface HighlightsSliderProps {
@@ -81,7 +81,7 @@ const EventCard: React.FC<{
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'rgba(255,255,255,0.5)' }} />
           </div>
           <div className="relative flex-1 overflow-hidden">
-            <img src={event.imageUrl || undefined} alt={event.name} className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105" referrerPolicy="no-referrer" />
+            <EventImage src={event.imageUrl} alt={event.name} className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105" referrerPolicy="no-referrer" />
             <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{ background: `linear-gradient(to top, ${style.fadeColor}, transparent)` }} />
           </div>
         </div>
@@ -98,7 +98,7 @@ const HighlightsSlider: React.FC<HighlightsSliderProps> = ({ events, onEventSele
   const wheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [page, setPage] = useState(0);
 
-  const highlights = events.filter(e => e.imageUrl);
+  const highlights = events;
   const totalPages = Math.ceil(highlights.length / PER_PAGE);
 
   // Reset page if highlights change

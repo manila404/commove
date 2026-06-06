@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import RichText from './RichText';
 import type { EventType, DisplayEventType } from '../types';
-import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon } from '../constants';
+import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, EventImage } from '../constants';
 
 interface TikTokEventFeedProps {
     events: DisplayEventType[];
@@ -57,8 +57,8 @@ const TikTokEventFeed: React.FC<TikTokEventFeedProps> = ({ events, onEventSelect
                 >
                     {/* Background Image */}
                     <div className="absolute inset-0 z-0">
-                        <img 
-                            src={event.imageUrl || undefined} 
+                        <EventImage 
+                            src={event.imageUrl} 
                             alt={event.name} 
                             className="w-full h-full object-cover opacity-60"
                         />

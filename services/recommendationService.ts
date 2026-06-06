@@ -171,6 +171,31 @@ const getTimeScore = (dateStr: string, startTime: string, isLive: boolean): numb
     return score;
 };
 
+const getUserInteractionCategoryScores = (user: User, allEvents: EventType[]): Record<string, number> => {
+    const scores: Record<string, number> = {};
+    CATEGORIES.forEach(cat => scores[cat] = 0);
+
+    const incrementCategory = (eventId: string) => {
+        const event = allEvents.find(e => e.id === eventId);
+        if (event && event.category) {
+            const categories = Array.isArray(event.category) ? event.category : [event.category];
+            categories.forEach(cat => {
+                if (scores[cat] !== undefined) {
+                    scores[cat] += 1;
+                } else {
+                    scores[cat] = 1;
+                }
+            });
+        }
+    };
+
+    user.likedEventIds?.forEach(id => incrementCategory(id));
+    user.checkedInEventIds?.forEach(id => incrementCategory(id));
+    user.interestedEventIds?.forEach(id => incrementCategory(id));
+
+    return scores;
+};
+
 /**
  * MAIN ALGORITHM: K-Nearest Neighbors (Conceptually)
  * 
@@ -180,17 +205,23 @@ const getTimeScore = (dateStr: string, startTime: string, isLive: boolean): numb
 export const getKNNRankedEvents = (
     user: User, 
     events: DisplayEventType[],
-    userLocation: { lat: number; lng: number }
+    userLocation: { lat: number; lng: number },
+    allEvents?: EventType[]
 ): DisplayEventType[] => {
     
     // Step 1: Build User Profile Vector
-    const categoryAffinity = getUserCategoryAffinities(user, events);
+    const lookupEvents = allEvents || events;
+    const categoryAffinity = getUserCategoryAffinities(user, lookupEvents);
+    const interactionCategoryScores = getUserInteractionCategoryScores(user, lookupEvents);
 
     const scoredEvents = events.map(event => {
         // --- COMPONENT 1: INTEREST (Collaborative/Content Filtering) ---
         const categories = Array.isArray(event.category) ? event.category : [event.category];
         // Take the maximum affinity score among all categories the event belongs to
         const interestScore = Math.max(...categories.map(cat => categoryAffinity[cat] || 0), 0);
+        
+        // Take the maximum interaction score among all categories the event belongs to
+        const interactionScore = Math.max(...categories.map(cat => interactionCategoryScores[cat] || 0), 0);
 
         // --- COMPONENT 2: GEOSPATIAL (Context Awareness) ---
         // Distance is usually pre-calculated in App.tsx, but we safeguard here.
@@ -221,10 +252,18 @@ export const getKNNRankedEvents = (
 
         return {
             ...event,
-            relevanceScore: finalScore
+            relevanceScore: finalScore,
+            interactionScore
         };
     });
 
-    // Sort by Score Descending (Highest relevance first)
-    return scoredEvents.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+    // Sort by Interaction Score Descending, then by relevance score descending
+    return scoredEvents.sort((a, b) => {
+        const scoreA = a.interactionScore || 0;
+        const scoreB = b.interactionScore || 0;
+        if (scoreA !== scoreB) {
+            return scoreB - scoreA;
+        }
+        return (b.relevanceScore || 0) - (a.relevanceScore || 0);
+    });
 };

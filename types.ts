@@ -79,6 +79,7 @@ export interface DisplayEventType extends EventType {
   isLive: boolean;
   distance?: number;
   relevanceScore?: number; // Added for KNN Ranking
+  interactionScore?: number; // Count of user interactions for sorting
 }
 
 export interface User {

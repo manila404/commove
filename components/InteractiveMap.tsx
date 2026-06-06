@@ -380,7 +380,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
         }
     });
 
-  }, [events, isMapReady]);
+  }, [events, isMapReady, filterPastEvents]);
 
   // 4. Handle "Fly To" Center Logic
   useEffect(() => {

@@ -1014,3 +1014,26 @@ export const LockIcon: React.FC<{ className?: string }> = ({ className }) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
     </svg>
 );
+
+export const EVENT_FALLBACK_IMAGE = '/no-image-event.png';
+
+interface EventImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+  src?: string;
+}
+
+export const EventImage: React.FC<EventImageProps> = ({ src, alt, className, ...props }) => {
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = EVENT_FALLBACK_IMAGE;
+  };
+
+  return (
+    <img
+      src={src || EVENT_FALLBACK_IMAGE}
+      alt={alt || 'Event'}
+      onError={handleImageError}
+      className={className}
+      {...props}
+    />
+  );
+};
+

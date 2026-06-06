@@ -17,6 +17,13 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
     // Onboarding: show only ONCE ever (first install), on any screen size
     const [showOnboarding, setShowOnboarding] = useState(() => {
         if (typeof window !== 'undefined') {
+            const isComputer = !(/Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent));
+            const isChrome = /Chrome|CriOS/i.test(navigator.userAgent) && !/Edg|OPR|Opera/i.test(navigator.userAgent);
+            
+            if (isComputer || isChrome) {
+                localStorage.setItem('commove_onboarding_done', 'true');
+                return false;
+            }
             return !localStorage.getItem('commove_onboarding_done');
         }
         return false;

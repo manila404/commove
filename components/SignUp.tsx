@@ -11,8 +11,7 @@ import Spinner from './Spinner';
 import Captcha, { CaptchaRef } from './Captcha';
 import KYCVerification from './KYCVerification';
 import OTPVerification from './OTPVerification';
-import { generateOTP, storeOTP, markOTPVerified, setSignupInProgress, clearSignupInProgress } from '../services/otpService';
-import { sendOTPEmail } from '../services/emailService';
+import { storeOTP, markOTPVerified, setSignupInProgress, clearSignupInProgress } from '../services/otpService';
 
 interface SignUpProps {
     onSwitchToSignIn: () => void;
@@ -117,6 +116,12 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
     const [idImage, setIdImage] = useState<string | null>(null);
     const [faceImage, setFaceImage] = useState<string | null>(null);
 
+    const hasMinLength = password.length >= 8 && password.length <= 64;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSymbol = /[^A-Za-z0-9]/.test(password);
+    const passwordsMatch = password.length > 0 && password === confirmPassword;
+
     const handleNextStep = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isSubmittingRef.current) return;
@@ -124,103 +129,106 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
         setError('');
         setIsLoading(true);
 
-        if (!username.trim()) {
-            setError("Please choose a username.");
+        const triggerError = (msg: string) => {
+            setError(msg);
             setIsLoading(false);
+            isSubmittingRef.current = false;
+        };
+
+        if (!username.trim()) {
+            triggerError("Please choose a username.");
             return;
         }
 
         const cleanUsername = username.trim().startsWith('@') ? username.trim() : `@${username.trim()}`;
         const isUnique = await isUsernameUnique(cleanUsername);
         if (!isUnique) {
-            setError("This username is already taken. Please choose another.");
-            setIsLoading(false);
+            triggerError("This username is already taken. Please choose another.");
             return;
         }
 
         if (!/^[A-Z]/.test(firstName.trim())) {
-            setError("First name must start with a capital letter.");
+            triggerError("First name must start with a capital letter.");
             return;
         }
 
         if (!/^[A-Z]/.test(lastName.trim())) {
-            setError("Last name must start with a capital letter.");
+            triggerError("Last name must start with a capital letter.");
             return;
         }
 
         if (!email.includes('@')) {
-            setError("Please enter a valid email address.");
+            triggerError("Please enter a valid email address.");
             return;
         }
 
         if (!email.trim().toLowerCase().endsWith('@gmail.com') && email.trim().toLowerCase() !== 'admincommove@gmail.com') {
-            setError("Email must be a @gmail.com address.");
+            triggerError("Email must be a @gmail.com address.");
             return;
         }
 
         if (!streetQuery.trim()) {
-            setError("Please enter your street address.");
+            triggerError("Please enter your street address.");
             return;
         }
 
         if (blockHouse.trim() && !/\d/.test(blockHouse)) {
-            setError("Block/House/Room number must follow the format: Blk [#] Lot [#], Room [#], etc.");
+            triggerError("Block/House/Room number must follow the format: Blk [#] Lot [#], Room [#], etc.");
             return;
         }
 
         if (!birthMonth || !birthDay || !birthYear) {
-            setError("Please complete your birthday.");
+            triggerError("Please complete your birthday.");
             return;
         }
 
         if (!sex) {
-            setError("Please select your gender.");
+            triggerError("Please select your gender.");
             return;
         }
 
         if (sex === 'Others' && !customSex.trim()) {
-            setError("Please specify your gender.");
+            triggerError("Please specify your gender.");
             return;
         }
 
         if (password.length < 8 || password.length > 64) {
-            setError("Password must be between 8 and 64 characters long.");
+            triggerError("Password must be between 8 and 64 characters long.");
             return;
         }
 
         if (!/[A-Z]/.test(password)) {
-            setError("Password must contain at least one uppercase letter.");
+            triggerError("Password must contain at least one uppercase letter.");
             return;
         }
 
         if (!/[0-9]/.test(password)) {
-            setError("Password must contain at least one number.");
+            triggerError("Password must contain at least one number.");
             return;
         }
 
         if (!/[^A-Za-z0-9]/.test(password)) {
-            setError("Password must contain at least one symbol.");
+            triggerError("Password must contain at least one symbol.");
             return;
         }
 
         if (password !== confirmPassword) {
-            setError("Passwords do not match.");
+            triggerError("Passwords do not match.");
             return;
         }
 
         // Send OTP before proceeding — step 2 is always OTP verification
         try {
-            const otp  = generateOTP();
-            await storeOTP(email, otp);
-            const sent = await sendOTPEmail(email, otp, `${firstName} ${lastName}`.trim());
+            const sent = await storeOTP(email, `${firstName} ${lastName}`.trim());
             if (!sent) {
                 setError('Failed to send verification code. Please check your email and try again.');
                 setIsLoading(false);
                 return;
             }
             setStep(2); // OTP step
-        } catch {
-            setError('Something went wrong while sending the verification code. Please try again.');
+        } catch (err: any) {
+            console.error("OTP send error:", err);
+            setError(err.message || 'Something went wrong while sending the verification code. Please try again.');
         } finally {
             setIsLoading(false);
             isSubmittingRef.current = false;
@@ -327,8 +335,16 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             submitForm(); // create account immediately
                         }
                     }}
-                    onBack={() => setStep(1)}
+                    onBack={() => {
+                        setError('');
+                        setStep(1);
+                    }}
                 />
+                {error && (
+                    <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-2.5 rounded-xl mt-4">
+                        <p className="text-red-600 dark:text-red-300 text-xs text-center font-bold">{error}</p>
+                    </div>
+                )}
                 {/* Captcha must stay mounted so captchaRef.current is not null when submitForm runs */}
                 <div className="hidden pointer-events-none opacity-0 h-0 overflow-hidden">
                     <Captcha ref={captchaRef} />
@@ -350,6 +366,32 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
 
             {step === 1 && (
                 <div className="flex-1 pr-2 -mr-2 overflow-y-auto scrollbar-hide">
+                    {/* Role Tabs Selector */}
+                    <div className="flex bg-gray-100 dark:bg-gray-800/80 p-1 rounded-full mb-4 max-w-xs mx-auto border border-gray-200/50 dark:border-gray-700/50">
+                        <button
+                            type="button"
+                            onClick={() => setIsFacilitator(false)}
+                            className={`flex-1 py-1.5 rounded-full text-xs font-bold transition-all ${
+                                !isFacilitator
+                                    ? 'bg-primary-600 text-white shadow-sm'
+                                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                            }`}
+                        >
+                            User Account
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsFacilitator(true)}
+                            className={`flex-1 py-1.5 rounded-full text-xs font-bold transition-all ${
+                                isFacilitator
+                                    ? 'bg-primary-600 text-white shadow-sm'
+                                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                            }`}
+                        >
+                            Facilitator Account
+                        </button>
+                    </div>
+
                     <form onSubmit={handleNextStep} className="space-y-2 md:space-y-3 pb-12 px-2">
 
                     {/* Avatar picker */}
@@ -543,47 +585,64 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             </div>
                         )}
 
-                        {/* Row 6: Password | Confirm Password */}
-                        <div className="relative">
-                            <input
-                                type={passwordVisible ? 'text' : 'password'}
-                                placeholder="Password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
-                            />
-                            <button type="button" onClick={() => setPasswordVisible(!passwordVisible)} className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 dark:text-gray-500">
-                                {passwordVisible ? <EyeSlashIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
-                            </button>
-                        </div>
-                        <div className="relative">
-                            <input
-                                type={confirmPasswordVisible ? 'text' : 'password'}
-                                placeholder="Confirm Password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                required
-                                className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
-                            />
-                            <button type="button" onClick={() => setConfirmPasswordVisible(!confirmPasswordVisible)} className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 dark:text-gray-500">
-                               {confirmPasswordVisible ? <EyeSlashIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
-                            </button>
+                        {/* Password / Confirm Password fields row wrapper to guarantee alignment */}
+                        <div className="md:col-span-2 md:grid md:grid-cols-2 md:gap-x-4 space-y-2 md:space-y-0">
+                            <div className="relative">
+                                <input
+                                    type={passwordVisible ? 'text' : 'password'}
+                                    placeholder="Password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
+                                />
+                                <button type="button" onClick={() => setPasswordVisible(!passwordVisible)} className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 dark:text-gray-500">
+                                    {passwordVisible ? <EyeSlashIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    type={confirmPasswordVisible ? 'text' : 'password'}
+                                    placeholder="Confirm Password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    required
+                                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
+                                />
+                                <button type="button" onClick={() => setConfirmPasswordVisible(!confirmPasswordVisible)} className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 dark:text-gray-500">
+                                   {confirmPasswordVisible ? <EyeSlashIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Facilitator checkbox – full width */}
-                        <div className="md:col-span-2 flex items-center gap-2 px-2 py-1">
-                            <input 
-                                type="checkbox" 
-                                id="isFacilitator" 
-                                checked={isFacilitator}
-                                onChange={(e) => setIsFacilitator(e.target.checked)}
-                                className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                            />
-                            <label htmlFor="isFacilitator" className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                                Sign up as Facilitator (Requires Admin Approval)
-                            </label>
-                        </div>
+                        {/* Password Requirements Guide */}
+                        {password.length > 0 && (
+                            <div className="md:col-span-2 px-4 py-3 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs space-y-1.5 animate-in fade-in duration-200">
+                                <p className="font-bold text-gray-450 dark:text-gray-400 uppercase tracking-wider text-[10px]">Password Requirements</p>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                    <div className={`flex items-center gap-2 font-semibold ${hasMinLength ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                                        <span className="text-sm">{hasMinLength ? '✓' : '•'}</span>
+                                        <span>8-64 characters</span>
+                                    </div>
+                                    <div className={`flex items-center gap-2 font-semibold ${hasUppercase ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                                        <span className="text-sm">{hasUppercase ? '✓' : '•'}</span>
+                                        <span>At least 1 uppercase</span>
+                                    </div>
+                                    <div className={`flex items-center gap-2 font-semibold ${hasNumber ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                                        <span className="text-sm">{hasNumber ? '✓' : '•'}</span>
+                                        <span>At least 1 number</span>
+                                    </div>
+                                    <div className={`flex items-center gap-2 font-semibold ${hasSymbol ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                                        <span className="text-sm">{hasSymbol ? '✓' : '•'}</span>
+                                        <span>At least 1 symbol</span>
+                                    </div>
+                                    <div className={`flex items-center gap-2 font-semibold ${passwordsMatch ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                                        <span className="text-sm">{passwordsMatch ? '✓' : '•'}</span>
+                                        <span>Passwords match</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Error – full width */}
                         {error && (

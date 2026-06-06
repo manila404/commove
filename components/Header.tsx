@@ -13,6 +13,7 @@ interface HeaderProps {
     title?: string;
     theme?: string;
     toggleTheme?: () => void;
+    isProfileOpen?: boolean;
 }
 
 const LiveClock = () => {
@@ -41,7 +42,7 @@ const LiveClock = () => {
 
 const Header: React.FC<HeaderProps> = ({ 
     currentUser, reminders, events, onBack, onProfileClick, renderProfileDropdown, 
-    title, theme, toggleTheme 
+    title, theme, toggleTheme, isProfileOpen = false
 }) => {
   return (
     <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700 pt-safe">
@@ -95,9 +96,16 @@ const Header: React.FC<HeaderProps> = ({
                 {toggleTheme && (
                     <button 
                         onClick={toggleTheme}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                        disabled={isProfileOpen}
+                        className={`flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-all duration-300 overflow-hidden ${
+                            isProfileOpen 
+                                ? 'opacity-0 scale-75 pointer-events-none w-0 h-0 p-0' 
+                                : 'opacity-100 scale-100 w-10 h-10 p-2'
+                        }`}
                     >
-                        {theme === 'dark' ? <MoonIcon className="w-6 h-6 text-gray-100" /> : <SunIcon className="w-6 h-6 text-gray-800" />}
+                        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center">
+                            {theme === 'dark' ? <MoonIcon className="w-6 h-6 text-gray-100" /> : <SunIcon className="w-6 h-6 text-gray-800" />}
+                        </div>
                     </button>
                 )}
                 {renderProfileDropdown ? (

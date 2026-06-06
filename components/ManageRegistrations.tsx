@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeftIcon, UserIcon, formatDisplayDate } from '../constants';
+import { ChevronLeftIcon, UserIcon, formatDisplayDate, EventImage } from '../constants';
 import { Mail, Phone, CheckCircle, XCircle, Clock, Users, Lock, Calendar, RefreshCw } from 'lucide-react';
 import type { EventType, Registration } from '../types';
 import { fetchRegistrationsForEvent, updateRegistrationStatus, syncEventApprovedCount } from '../services/eventService';
@@ -134,9 +134,7 @@ const ManageRegistrations: React.FC<ManageRegistrationsProps> = ({ event, onBack
         {/* Event Summary Card */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
           <div className="flex items-center gap-4 p-4">
-            {event.imageUrl && (
-              <img src={event.imageUrl} alt={event.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100 dark:border-gray-700" />
-            )}
+            <EventImage src={event.imageUrl} alt={event.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100 dark:border-gray-700" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <Lock className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />

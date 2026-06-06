@@ -1,6 +1,6 @@
 import React from 'react';
 import type { DisplayEventType } from '../types';
-import { LocationIcon, CalendarIcon, ClockIcon, StarIcon, BookmarkIcon, formatDisplayDate, formatTime } from '../constants';
+import { LocationIcon, CalendarIcon, ClockIcon, StarIcon, BookmarkIcon, formatDisplayDate, formatTime, EventImage } from '../constants';
 import { getCategoryStyle } from '../utils/categoryStyles';
 
 interface EventCardProps {
@@ -66,7 +66,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onSelect, onToggleSave }) 
       </button>
 
       <div className="overflow-hidden h-48 flex-shrink-0 relative">
-        <img src={event.imageUrl || undefined} alt={event.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        <EventImage src={event.imageUrl} alt={event.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60" />
       </div>
       

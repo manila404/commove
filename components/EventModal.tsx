@@ -3,7 +3,7 @@ import RichText from './RichText';
 import { Image as ImageIcon, ArrowLeft, Share2, Heart, Phone, MessageCircle, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { EventType, Reminder, User } from '../types';
 import { getCategoryStyle } from '../utils/categoryStyles';
-import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, BellIcon, StarIcon, ShieldCheckIcon, formatDisplayDate, formatTime, CommoveLogo } from '../constants';
+import { LocationIcon, CalendarIcon, ClockIcon, BookmarkIcon, BellIcon, StarIcon, ShieldCheckIcon, formatDisplayDate, formatTime, CommoveLogo, EVENT_FALLBACK_IMAGE } from '../constants';
 import InteractiveMap from './InteractiveMap';
 import { useAlert } from '../contexts/AlertContext';
 import { usePermissions } from '../contexts/PermissionContext';
@@ -268,15 +268,16 @@ const EventModal: React.FC<EventModalProps> = ({
         <div className={`relative rounded-[15px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 w-[300px] h-[300px] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
           {/* Blurred background fill — same image scaled+blurred so no white gaps */}
           <img
-            src={allPhotos[activePhotoIndex] || undefined}
+            src={allPhotos[activePhotoIndex] || EVENT_FALLBACK_IMAGE}
             aria-hidden="true"
             className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60"
             referrerPolicy="no-referrer"
+            onError={e => { e.currentTarget.src = EVENT_FALLBACK_IMAGE; }}
           />
           <AnimatePresence mode="wait">
             <motion.img
               key={activePhotoIndex}
-              src={allPhotos[activePhotoIndex] || undefined}
+              src={allPhotos[activePhotoIndex] || EVENT_FALLBACK_IMAGE}
               alt={`${event.name} - ${activePhotoIndex + 1}`}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -284,6 +285,7 @@ const EventModal: React.FC<EventModalProps> = ({
               className="relative z-[1] w-full h-full object-contain cursor-zoom-in"
               referrerPolicy="no-referrer"
               onClick={() => openLightbox(activePhotoIndex)}
+              onError={e => { e.currentTarget.src = EVENT_FALLBACK_IMAGE; }}
             />
           </AnimatePresence>
 
@@ -1240,15 +1242,16 @@ const EventModal: React.FC<EventModalProps> = ({
           <div className="flex justify-center">
             <div className={`relative rounded-[15px] overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 w-[260px] h-[260px] flex-shrink-0 group ${isEnded ? 'grayscale' : ''}`}>
               <img
-                src={allPhotos[activePhotoIndex] || undefined}
+                src={allPhotos[activePhotoIndex] || EVENT_FALLBACK_IMAGE}
                 aria-hidden="true"
                 className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60"
                 referrerPolicy="no-referrer"
+                onError={e => { e.currentTarget.src = EVENT_FALLBACK_IMAGE; }}
               />
               <AnimatePresence mode="wait">
                 <motion.img
                   key={activePhotoIndex}
-                  src={allPhotos[activePhotoIndex] || undefined}
+                  src={allPhotos[activePhotoIndex] || EVENT_FALLBACK_IMAGE}
                   alt={`${event.name} - ${activePhotoIndex + 1}`}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1256,6 +1259,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   className="relative z-[1] w-full h-full object-contain cursor-zoom-in"
                   referrerPolicy="no-referrer"
                   onClick={() => openLightbox(activePhotoIndex)}
+                  onError={e => { e.currentTarget.src = EVENT_FALLBACK_IMAGE; }}
                 />
               </AnimatePresence>
 

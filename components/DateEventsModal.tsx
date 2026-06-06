@@ -2,6 +2,7 @@ import React from 'react';
 import type { EventType } from '../types';
 import { X, Bookmark, Image as ImageIcon, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { EventImage } from '../constants';
 
 interface DateEventsModalProps {
   date: Date;
@@ -68,20 +69,13 @@ const DateEventsModal: React.FC<DateEventsModalProps> = ({
                   }}
                   className="w-full text-left bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-[18px] p-3 md:p-4 flex gap-3 md:gap-4 shadow-sm hover:shadow-md transition-all active:scale-[0.99] group relative overflow-hidden"
                 >
-                  {/* Image */}
                   <div className="w-[82px] h-[82px] md:w-24 md:h-24 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-100 dark:bg-gray-700">
-                    {event.imageUrl ? (
-                      <img 
-                        src={event.imageUrl || undefined} 
-                        alt={event.name} 
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        <ImageIcon className="w-6 h-6 md:w-8 md:h-8" />
-                      </div>
-                    )}
+                    <EventImage 
+                      src={event.imageUrl} 
+                      alt={event.name} 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
                   </div>
 
                   {/* Content */}

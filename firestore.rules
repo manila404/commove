@@ -30,11 +30,10 @@ service cloud.firestore {
     }
 
     // ─── OTP Verification Codes ───────────────────────────────────────────────
-    // Written by the client before authentication exists.
-    // Security is enforced in app logic: 10-min expiry + 5-attempt limit.
+    // Offloaded to Serverless Backend: direct client access is locked down.
 
     match /otpCodes/{emailKey} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
 
     // ─── Users ────────────────────────────────────────────────────────────────

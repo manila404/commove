@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import InteractiveMap from './InteractiveMap';
 import EventList from './EventList';
 import type { EventType, DisplayEventType } from '../types';
-import { Navigation, Layers, List, X, MapPin, Bookmark } from 'lucide-react';
+import { Navigation, Layers, List, X, MapPin, Bookmark, SlidersHorizontal, Heart, Calendar, History, Sparkles, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { EventImage } from '../constants';
 
 interface NearbyViewProps {
     userLocation: { lat: number; lng: number; accuracy?: number };
@@ -13,6 +14,8 @@ interface NearbyViewProps {
     onEventSelect: (event: EventType) => void;
     onToggleSave: (eventId: string) => void;
     savedEventIds: string[];
+    likedEventIds?: string[];
+    interestedEventIds?: string[];
     focusLocation?: { lat: number; lng: number } | null;
     onFocusConsumed?: () => void;
 }
@@ -28,8 +31,49 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
     return R * c;
 };
 
-const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocationLive, onEventSelect, onToggleSave, onOpenScanner, savedEventIds, focusLocation, onFocusConsumed }) => {
+const formatDateString = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
+const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const startDayOfWeek = firstDay.getDay();
+
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < startDayOfWeek; i++) {
+        days.push(null);
+    }
+    for (let day = 1; day <= totalDays; day++) {
+        days.push(new Date(year, month, day));
+    }
+    return days;
+};
+
+const NearbyView: React.FC<NearbyViewProps> = ({ 
+    userLocation, 
+    events, 
+    isLocationLive, 
+    onEventSelect, 
+    onToggleSave, 
+    onOpenScanner, 
+    savedEventIds, 
+    likedEventIds = [], 
+    interestedEventIds = [], 
+    focusLocation, 
+    onFocusConsumed 
+}) => {
     const [showEventList, setShowEventList] = useState(false);
+    const [mapFilter, setMapFilter] = useState<'all' | 'today' | 'tomorrow' | 'date' | 'liked' | 'interested' | 'ended'>('all');
+    const [filterDate, setFilterDate] = useState<string>('');
+    const [currentMonth, setCurrentMonth] = useState<Date>(() => new Date());
+    const [isPickingDate, setIsPickingDate] = useState(false);
+    const [showFilterMenu, setShowFilterMenu] = useState(false);
 
     React.useEffect(() => {
         if (focusLocation && onFocusConsumed) {
@@ -38,17 +82,54 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
         }
     }, [focusLocation, onFocusConsumed]);
 
-    // 1. Prepare ALL valid events for the Map
+    // 1. Prepare FILTERED events for the Map
     const now = new Date();
     const allMapEvents: DisplayEventType[] = events
         .filter(e => {
+            // A. Base publish validation
             const isPublished = e.status === 'published' || !e.status;
             const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
             if (!isPublished && !isScheduled) return false;
+
+            // B. Check if ended
             const endDateStr = e.endDate || e.date;
             const endTimeStr = e.endTime || '23:59';
             const eventEnd = new Date(`${endDateStr}T${endTimeStr}`);
-            return eventEnd >= now;
+            const hasEnded = eventEnd < now;
+
+            // Apply 'ended' vs active events filter
+            if (mapFilter === 'ended') {
+                if (!hasEnded) return false;
+            } else {
+                if (hasEnded) return false;
+            }
+
+            // C. Apply specific filter criteria
+            if (mapFilter === 'today') {
+                const todayStr = formatDateString(now);
+                return e.date === todayStr;
+            }
+
+            if (mapFilter === 'tomorrow') {
+                const tomorrow = new Date(now);
+                tomorrow.setDate(now.getDate() + 1);
+                const tomorrowStr = formatDateString(tomorrow);
+                return e.date === tomorrowStr;
+            }
+
+            if (mapFilter === 'date' && filterDate) {
+                return e.date === filterDate;
+            }
+
+            if (mapFilter === 'liked') {
+                return likedEventIds.includes(e.id);
+            }
+
+            if (mapFilter === 'interested') {
+                return interestedEventIds.includes(e.id);
+            }
+
+            return true;
         })
         .map(e => ({
             ...e,
@@ -77,7 +158,7 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                     events={allMapEvents}
                     isLocationLive={isLocationLive}
                     className="w-full h-full"
-                    filterPastEvents={true}
+                    filterPastEvents={mapFilter !== 'ended'}
                     onEventSelect={onEventSelect}
                     centerOnEvent={focusLocation ?? undefined}
                 />
@@ -97,6 +178,186 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                         </span>
                     )}
                 </button>
+
+                {/* Event Filters Dropdown */}
+                <div className="relative">
+                    <button 
+                        onClick={() => {
+                            if (!showFilterMenu) {
+                                setIsPickingDate(mapFilter === 'date');
+                            }
+                            setShowFilterMenu(!showFilterMenu);
+                        }}
+                        className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 border relative ${
+                            mapFilter !== 'all' 
+                                ? 'bg-primary-600 text-white border-primary-500' 
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700'
+                        }`}
+                        title="Filter Map Events"
+                    >
+                        <SlidersHorizontal className="w-5 h-5" />
+                        {mapFilter !== 'all' && (
+                            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-800" />
+                        )}
+                    </button>
+
+                    <AnimatePresence>
+                        {showFilterMenu && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                                className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-900 border border-gray-200/60 dark:border-gray-800 rounded-2xl shadow-xl p-4 z-50 space-y-3"
+                            >
+                                {!isPickingDate ? (
+                                    <>
+                                        <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+                                            <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Filter Events</span>
+                                            {mapFilter !== 'all' && (
+                                                <button 
+                                                    onClick={() => {
+                                                        setMapFilter('all');
+                                                        setFilterDate('');
+                                                        setShowFilterMenu(false);
+                                                    }}
+                                                    className="text-[10px] font-black text-red-500 hover:text-red-600 uppercase"
+                                                >
+                                                    Reset
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            {[
+                                                { id: 'all', label: 'All Upcoming Events', icon: <Sparkles className="w-4 h-4 text-amber-500 shrink-0" /> },
+                                                { id: 'today', label: 'Today\'s Events', icon: <Calendar className="w-4 h-4 text-indigo-500 shrink-0" /> },
+                                                { id: 'tomorrow', label: 'Tomorrow\'s Events', icon: <Calendar className="w-4 h-4 text-blue-500 shrink-0" /> },
+                                                { id: 'date', label: 'Pick Specific Date', icon: <Clock className="w-4 h-4 text-purple-500 shrink-0" /> },
+                                                { id: 'liked', label: 'Liked Events', icon: <Heart className="w-4 h-4 text-red-500 fill-current shrink-0" /> },
+                                                { id: 'interested', label: 'Interested Events', icon: <Bookmark className="w-4 h-4 text-green-500 fill-current shrink-0" /> },
+                                                { id: 'ended', label: 'Ended (Past) Events', icon: <History className="w-4 h-4 text-gray-500 shrink-0" /> }
+                                            ].map(opt => (
+                                                <button
+                                                    key={opt.id}
+                                                    onClick={() => {
+                                                        if (opt.id !== 'date') {
+                                                            setMapFilter(opt.id as any);
+                                                            setFilterDate('');
+                                                            setShowFilterMenu(false);
+                                                        } else {
+                                                            setIsPickingDate(true);
+                                                        }
+                                                    }}
+                                                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between ${
+                                                        mapFilter === opt.id 
+                                                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' 
+                                                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        {opt.icon}
+                                                        <span>{opt.label}</span>
+                                                    </div>
+                                                    {mapFilter === opt.id && <span className="w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="animate-in fade-in duration-200 space-y-3">
+                                        <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsPickingDate(false);
+                                                }}
+                                                className="text-[10px] font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1 uppercase tracking-wider"
+                                            >
+                                                <ChevronLeft className="w-3.5 h-3.5" /> Back
+                                            </button>
+                                            <span className="text-[10px] font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                                                Select Date
+                                            </span>
+                                        </div>
+
+                                        {/* Custom calendar component inline */}
+                                        <div className="bg-gray-50 dark:bg-gray-800 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                                            {/* Header */}
+                                            <div className="flex items-center justify-between mb-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+                                                    }}
+                                                    className="p-1 hover:bg-gray-250 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition-colors"
+                                                >
+                                                    <ChevronLeft className="w-4 h-4" />
+                                                </button>
+                                                <span className="text-[11px] font-bold text-gray-705 dark:text-gray-200">
+                                                    {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+                                                    }}
+                                                    className="p-1 hover:bg-gray-250 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition-colors"
+                                                >
+                                                    <ChevronRight className="w-4 h-4" />
+                                                </button>
+                                            </div>
+
+                                            {/* Day initials */}
+                                            <div className="grid grid-cols-7 gap-1 text-center mb-1">
+                                                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                                                    <span key={d} className="text-[9px] font-bold text-gray-400">
+                                                        {d}
+                                                    </span>
+                                                ))}
+                                            </div>
+
+                                            {/* Days grid */}
+                                            <div className="grid grid-cols-7 gap-1">
+                                                {getDaysInMonth(currentMonth).map((day, idx) => {
+                                                    if (!day) {
+                                                        return <div key={`empty-${idx}`} />;
+                                                    }
+                                                    const dateStr = formatDateString(day);
+                                                    const isSelected = filterDate === dateStr;
+                                                    const isToday = formatDateString(new Date()) === dateStr;
+
+                                                    return (
+                                                        <button
+                                                            key={dateStr}
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setFilterDate(dateStr);
+                                                                setMapFilter('date');
+                                                                setShowFilterMenu(false);
+                                                            }}
+                                                            className={`w-7 h-7 text-[10px] font-semibold flex items-center justify-center rounded-lg transition-all ${
+                                                                isSelected
+                                                                    ? 'bg-primary-600 text-white font-bold shadow-sm'
+                                                                    : isToday
+                                                                    ? 'bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 border border-primary-300 dark:border-primary-800'
+                                                                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                                            }`}
+                                                        >
+                                                            {day.getDate()}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
 
             {/* Event List Overlay */}
@@ -134,15 +395,8 @@ const NearbyView: React.FC<NearbyViewProps> = ({ userLocation, events, isLocatio
                                     {/* Left Accent Bar */}
                                     <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-600 rounded-r-full" />
                                     
-                                    {/* Event Image */}
                                     <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600">
-                                        {event.imageUrl ? (
-                                            <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                                <MapPin size={24} />
-                                            </div>
-                                        )}
+                                        <EventImage src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" />
                                     </div>
 
                                     {/* Content */}

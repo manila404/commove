@@ -33,6 +33,78 @@ const parseSegments = (text: string): Segment[] => {
   return segs;
 };
 
+const renderInlineMarkdown = (text: string): React.ReactNode => {
+  const parts: React.ReactNode[] = [];
+  const regex = /(\*\*|__)(.*?)\1|(\*|_)(.*?)\3/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    if (match[1]) {
+      parts.push(
+        <strong key={match.index} className="font-extrabold text-gray-900 dark:text-white">
+          {match[2]}
+        </strong>
+      );
+    } else if (match[3]) {
+      parts.push(
+        <em key={match.index} className="italic">
+          {match[4]}
+        </em>
+      );
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? <>{parts}</> : text;
+};
+
+const renderMarkdownText = (text: string): React.ReactNode[] => {
+  const lines = text.split('\n');
+  return lines.map((line, lineIdx) => {
+    // Bullet list match
+    const bulletMatch = line.match(/^(\s*)([-*•])\s+(.*)$/);
+    if (bulletMatch) {
+      const content = bulletMatch[3];
+      return (
+        <div key={lineIdx} className="flex items-start gap-1.5 ml-4 my-1">
+          <span className="text-gray-400 select-none">•</span>
+          <span className="flex-1">{renderInlineMarkdown(content)}</span>
+        </div>
+      );
+    }
+
+    // Numbered list match
+    const numberMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
+    if (numberMatch) {
+      const num = numberMatch[2];
+      const content = numberMatch[3];
+      return (
+        <div key={lineIdx} className="flex items-start gap-1.5 ml-4 my-1">
+          <span className="font-bold text-gray-500 select-none">{num}.</span>
+          <span className="flex-1">{renderInlineMarkdown(content)}</span>
+        </div>
+      );
+    }
+
+    // Plain line
+    return (
+      <div key={lineIdx} className={line.trim() === '' ? 'h-2' : ''}>
+        {renderInlineMarkdown(line)}
+      </div>
+    );
+  });
+};
+
 // ── localStorage helpers ──────────────────────────────────────────────────────
 const CHAT_KEY = 'commove_chat_history';
 const WELCOME_ID = '__welcome__';
@@ -261,10 +333,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
                     <Bot size={11} className="text-white" />
                   </div>
                 )}
-                <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap break-words ${
+                <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed break-words ${
                   msg.role === 'user'
-                    ? 'bg-[#0052A3] text-white rounded-br-sm'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-sm'
+                    ? 'bg-[#0052A3] text-white rounded-br-sm whitespace-pre-wrap'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-sm whitespace-normal'
                 }`}>
                   {msg.role === 'user'
                     ? msg.content
@@ -275,7 +347,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
                             className="inline-flex items-center gap-1 px-2 py-0.5 mx-0.5 rounded-lg bg-[#0052A3] hover:bg-[#004482] text-white text-xs font-medium transition-colors active:scale-95">
                             {seg.content} ↗
                           </button>
-                        ) : <span key={i}>{seg.content}</span>
+                        ) : <React.Fragment key={i}>{renderMarkdownText(seg.content)}</React.Fragment>
                       )
                   }
                 </div>

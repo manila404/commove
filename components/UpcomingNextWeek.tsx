@@ -3,6 +3,7 @@ import React, { useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
 
 import type { DisplayEventType } from '../types';
+import { EventImage } from '../constants';
 
 interface UpcomingNextWeekProps {
   events: DisplayEventType[];
@@ -100,18 +101,12 @@ const UpcomingNextWeek: React.FC<UpcomingNextWeekProps> = ({ events, onEventSele
             >
               {/* Square image */}
               <div className={`w-full h-[148px] md:h-[168px] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-2 shadow-sm ${event.isLive ? 'border-2 border-red-500/50 ring-2 ring-red-500/20' : ''}`}>
-                {event.imageUrl ? (
-                  <img
-                    src={event.imageUrl}
-                    alt={event.name}
-                    className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
-                    <ImageIcon size={36} />
-                  </div>
-                )}
+                <EventImage
+                  src={event.imageUrl}
+                  alt={event.name}
+                  className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               {/* Title */}
               <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1 leading-tight group-hover/card:text-primary-600 dark:group-hover/card:text-primary-400 transition-colors">

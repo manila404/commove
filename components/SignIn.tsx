@@ -5,8 +5,7 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'fir
 import { EyeIcon, EyeSlashIcon, ChevronLeftIcon, CommoveLogo } from '../constants';
 import Captcha, { CaptchaRef } from './Captcha';
 import OTPVerification from './OTPVerification';
-import { generateOTP, storeOTP, markOTPVerified, setLoginInProgress, clearLoginInProgress } from '../services/otpService';
-import { sendOTPEmail } from '../services/emailService';
+import { storeOTP, markOTPVerified, setLoginInProgress, clearLoginInProgress } from '../services/otpService';
 
 interface SignInProps {
     onSwitchToSignUp: () => void;
@@ -77,9 +76,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
             }
 
             // Send OTP — user stays Firebase-authenticated but app access is gated
-            const otp = generateOTP();
-            await storeOTP(email, otp, credential.user.uid);
-            const sent = await sendOTPEmail(email, otp, credential.user.displayName ?? email.split('@')[0]);
+            const sent = await storeOTP(email, credential.user.displayName ?? email.split('@')[0], credential.user.uid);
             if (!sent) {
                 clearLoginInProgress();
                 await signOut(auth);

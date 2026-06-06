@@ -20,6 +20,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "@yudiel/react-qr-scanner": "^2.5.1",
     "firebase": "^12.6.0",
+    "firebase-admin": "^13.10.0",
     "framer-motion": "^12.35.2",
     "lucide-react": "^0.577.0",
     "motion": "^12.38.0",

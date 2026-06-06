@@ -318,3 +318,29 @@ export const deleteAllNotifications = async (userId: string): Promise<void> => {
         throw error;
     }
 };
+
+/**
+ * Delete all notifications for a specific user and event.
+ */
+export const deleteEventNotifications = async (
+    userId: string,
+    eventId: string
+): Promise<void> => {
+    try {
+        const q = query(
+            notificationsRef,
+            where('userId', '==', userId),
+            where('eventId', '==', eventId)
+        );
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) return;
+
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+    } catch (error) {
+        console.error('Error deleting event notifications:', error);
+        throw error;
+    }
+};
+

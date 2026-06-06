@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Image as ImageIcon, CalendarDays } from 'lucide-react';
 import type { DisplayEventType } from '../types';
 import { smartSearchEvents } from '../utils/searchUtils';
+import { EventImage } from '../constants';
 
 interface ViewAllUpcomingEventsProps {
   events: DisplayEventType[];
@@ -118,18 +119,12 @@ const ViewAllUpcomingEvents: React.FC<ViewAllUpcomingEventsProps> = ({
               >
                 {/* Square image — identical to strip */}
                 <div className={`w-full h-0 pb-[100%] relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-2 shadow-sm ${event.isLive ? 'border-2 border-red-500/50 ring-2 ring-red-500/20' : ''}`}>
-                  {event.imageUrl ? (
-                    <img
-                      src={event.imageUrl}
-                      alt={event.name}
-                      className="absolute inset-0 w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-300 dark:text-gray-600">
-                      <ImageIcon size={36} />
-                    </div>
-                  )}
+                  <EventImage
+                    src={event.imageUrl}
+                    alt={event.name}
+                    className="absolute inset-0 w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300"
+                    referrerPolicy="no-referrer"
+                  />
                 </div>
                 {/* Title */}
                 <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 leading-tight group-hover/card:text-primary-600 dark:group-hover/card:text-primary-400 transition-colors">

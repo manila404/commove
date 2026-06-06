@@ -26,6 +26,7 @@ interface SidebarProps {
     pendingFacilitatorCount?: number;
     unreadNotificationCount?: number;
     isStaff?: boolean;
+    isGuest?: boolean;
     adminActiveTab?: AdminTab;
     onAdminTabChange?: (tab: AdminTab) => void;
     canManageUsers?: boolean;
@@ -51,13 +52,14 @@ const NAV_ITEMS = [
 const Sidebar: React.FC<SidebarProps> = ({
     activeTab, onTabChange, onOpenScanner,
     pendingFacilitatorCount, unreadNotificationCount = 0, isStaff = false,
+    isGuest = false,
     adminActiveTab, onAdminTabChange, canManageUsers = false,
     expanded: controlledExpanded,
     onExpandedChange,
 }) => {
     const [internalExpanded, setInternalExpanded] = useState(false);
     const expanded = controlledExpanded ?? internalExpanded;
-    const navItems = NAV_ITEMS;
+    const navItems = isGuest ? NAV_ITEMS.filter(item => item.tab !== 'notifications') : NAV_ITEMS;
     const toggleExpanded = () => {
         const nextExpanded = !expanded;
         if (controlledExpanded === undefined) setInternalExpanded(nextExpanded);

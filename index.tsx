@@ -32,7 +32,7 @@ const ToasterWrapper = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  return <Toaster position={isMobile ? "top-center" : "top-right"} duration={3000} />;
+  return <Toaster position="bottom-right" duration={3000} />;
 };
 
 const root = ReactDOM.createRoot(rootElement);

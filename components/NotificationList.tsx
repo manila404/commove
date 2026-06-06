@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { AppNotification, EventType } from '../types';
-import { ShieldCheckIcon, formatDisplayDate } from '../constants';
+import { ShieldCheckIcon, formatDisplayDate, EventImage } from '../constants';
 import { BellIcon, CalendarIcon, MoreVerticalIcon, SlidersHorizontal, CheckCheck, Trash2, ChevronDown, ChevronUp, ExternalLink, Eye, CheckCircle, XCircle, Clock, Star, Zap } from 'lucide-react';
 import {
     subscribeToNotifications,
@@ -136,9 +136,7 @@ const NotificationActionPanel: React.FC<{
             {/* Event summary card */}
             {event && (
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
-                    {event.imageUrl && (
-                        <img src={event.imageUrl} alt={event.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
-                    )}
+                    <EventImage src={event.imageUrl} alt={event.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{event.name}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{formatDisplayDate(event.date)} · {event.startTime}</p>
@@ -581,9 +579,9 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
     };
 
     // Check if any events are currently ongoing so we can show them even with zero notifications
-    const userEventIds = new Set([...savedEventIds, ...interestedEventIds]);
+    const userEventIds = new Set(interestedEventIds);
     const hasOngoingEvents = events.some(e => {
-        if (!userEventIds.has(e.id)) return false; // only events user saved or is interested in
+        if (!userEventIds.has(e.id)) return false; // only events user is interested in
         if (e.status !== 'published' && e.status !== 'scheduled') return false;
         try {
             const now = Date.now();
@@ -663,21 +661,24 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                 )}
             </div>
 
-            {/* ── Ongoing Events ───────────────────────────────────────────── */}
+            {/* ── Priority List (Ongoing & Upcoming Interested Events) ─────────── */}
             {(() => {
                 const now = Date.now();
-                const ongoingEvents = events.filter(e => {
+                const priorityEvents = events.filter(e => {
                     // Only show events this user saved or marked as interested
                     if (!userEventIds.has(e.id)) return false;
                     if (e.status !== 'published' && e.status !== 'scheduled') return false;
                     try {
-                        const start = new Date(`${e.date}T${e.startTime}`).getTime();
                         const end   = new Date(`${e.endDate || e.date}T${e.endTime || '23:59'}`).getTime();
-                        return start <= now && now <= end;
+                        return now <= end;
                     } catch { return false; }
+                }).sort((a, b) => {
+                    const timeA = new Date(`${a.date}T${a.startTime}`).getTime();
+                    const timeB = new Date(`${b.date}T${b.startTime}`).getTime();
+                    return timeA - timeB;
                 });
 
-                if (ongoingEvents.length === 0) return null;
+                if (priorityEvents.length === 0) return null;
 
                 const fmt12 = (t: string) => {
                     try {
@@ -690,63 +691,106 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
                     <div className="space-y-3">
                         {/* Section Header */}
                         <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                            <span className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400">
                                 <span className="relative flex h-2.5 w-2.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary-500" style={{ backgroundColor: '#0052A3' }} />
                                 </span>
-                                Ongoing
+                                Priority List
                             </span>
-                            <div className="h-[2px] flex-1 bg-emerald-100 dark:bg-emerald-900/40 rounded-full" />
+                            <div className="h-[2px] flex-1 bg-primary-100 dark:bg-primary-900/40 rounded-full" />
                         </h3>
 
-                        {ongoingEvents.map(event => (
-                            <div
-                                key={event.id}
-                                className="relative rounded-2xl overflow-hidden border border-emerald-200 dark:border-emerald-800/50 shadow-sm"
-                            >
-                                {/* Live gradient background */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40" />
+                        <div className="space-y-3">
+                            {priorityEvents.map(event => {
+                                let isLive = false;
+                                try {
+                                    const start = new Date(`${event.date}T${event.startTime}`).getTime();
+                                    const end   = new Date(`${event.endDate || event.date}T${event.endTime || '23:59'}`).getTime();
+                                    isLive = start <= now && now <= end;
+                                } catch { /* noop */ }
 
-                                <div className="relative flex items-center gap-4 p-4">
-                                    {/* Cover image or icon */}
-                                    {event.imageUrl ? (
-                                        <img src={event.imageUrl} alt={event.name}
-                                            className="w-14 h-14 rounded-xl object-cover shrink-0 border-2 border-emerald-200 dark:border-emerald-700 shadow-sm" />
-                                    ) : (
-                                        <div className="w-14 h-14 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 border-2 border-emerald-200 dark:border-emerald-700">
-                                            <Zap className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-                                        </div>
-                                    )}
+                                const notifId = `priority-${event.id}`;
+                                const isExpanded = expandedId === notifId;
+                                const createdDate = new Date(`${event.date}T${event.startTime}`);
+                                const timeLabel = createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                const dateLabel = createdDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
 
-                                    {/* Info */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-0.5">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
-                                                LIVE NOW
-                                            </span>
+                                const mockNotif: AppNotification = {
+                                    id: notifId,
+                                    userId,
+                                    type: isLive ? 'reminder' : 'event_upcoming',
+                                    title: isLive ? `Event Ongoing: ${event.name}` : `Upcoming Event: ${event.name}`,
+                                    body: isLive
+                                        ? `"${event.name}" is now ongoing at ${event.venue || 'venue'}.`
+                                        : `Your marked event starts on ${formatDisplayDate(event.date)} at ${fmt12(event.startTime)} at ${event.venue || 'venue'}.`,
+                                    eventId: event.id,
+                                    isRead: true, // Mark true to avoid drawing blue dots/unread styling
+                                    createdAt: createdDate.getTime()
+                                };
+
+                                return (
+                                    <div
+                                        key={mockNotif.id}
+                                        className={`group relative rounded-2xl p-4 shadow-sm border transition-all ${
+                                            isExpanded
+                                                ? 'border-primary-200 dark:border-primary-800 bg-white dark:bg-gray-900 ring-2 ring-primary-500/10'
+                                                : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800'
+                                        }`}
+                                    >
+                                        <div
+                                            className="flex gap-4 cursor-pointer"
+                                            onClick={() => handleClick(mockNotif)}
+                                        >
+                                            <TypeIcon type={mockNotif.type} isRead={true} />
+
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-semibold text-sm text-gray-900 dark:text-white">
+                                                    {mockNotif.title}
+                                                </h4>
+                                                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 line-clamp-2 font-medium">
+                                                    {mockNotif.body}
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                                                    <span>{dateLabel}</span>
+                                                    <span className="opacity-30">•</span>
+                                                    <span>{timeLabel}</span>
+                                                    <span className="opacity-30">•</span>
+                                                    <span className="text-primary-500">{isExpanded ? 'Click to close' : 'Click to see actions'}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-start gap-1 shrink-0">
+                                                <span className="p-1.5 text-gray-300 hover:text-primary-500 transition-colors">
+                                                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{event.name}</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
-                                            <Clock className="w-3 h-3" />
-                                            {fmt12(event.startTime)} – {fmt12(event.endTime || '23:59')}
-                                        </p>
-                                        {event.venue && (
-                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">📍 {event.venue}</p>
+
+                                        {isExpanded && (
+                                            <NotificationActionPanel
+                                                notif={mockNotif}
+                                                event={event}
+                                                isStaff={isStaff}
+                                                isAdmin={isAdmin}
+                                                isReviewedInSession={reviewedEventIds.includes(event.id)}
+                                                onViewEvent={() => {
+                                                    setExpandedId(null);
+                                                    onEventSelect(event, mockNotif.type);
+                                                }}
+                                                onGoToAdmin={(tab, targetId) => {
+                                                    setExpandedId(null);
+                                                    if (onNavigateToAdmin) onNavigateToAdmin(event, tab, targetId);
+                                                }}
+                                                onInlineApprove={handleInlineApprove}
+                                                onClose={() => setExpandedId(null)}
+                                                onManageRegistrations={onManageRegistrations}
+                                            />
                                         )}
                                     </div>
-
-                                    {/* View button */}
-                                    <button
-                                        onClick={() => onEventSelect(event, 'reminder')}
-                                        className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-500/20 transition-all"
-                                    >
-                                        <Eye className="w-3.5 h-3.5" />
-                                        View
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                                );
+                            })}
+                        </div>
                     </div>
                 );
             })()}

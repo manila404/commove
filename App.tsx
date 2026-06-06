@@ -12,7 +12,7 @@ import { CATEGORIES, formatDisplayDate } from './constants';
 import { Tag } from 'lucide-react';
 import { smartSearchEvents } from './utils/searchUtils';
 import type { User, EventType, DisplayEventType, Reminder, AppNotification } from './types';
-import { createNotification, subscribeToNotifications, hasNotification } from './services/notificationService';
+import { createNotification, subscribeToNotifications, hasNotification, deleteEventNotifications } from './services/notificationService';
 import { useAlert } from './contexts/AlertContext';
 import { usePermissions, isInWebView, postToNative } from './contexts/PermissionContext';
 import { useNetworkStatus } from './contexts/NetworkStatusContext';
@@ -107,6 +107,116 @@ type MainTab = 'feed' | 'calendar' | 'nearby' | 'notifications';
 
 const MAIN_TAB_ORDER: MainTab[] = ['feed', 'calendar', 'notifications', 'nearby'];
 
+// Helper to map view states to URL pathnames
+const getUrlForView = (view: string, eventId?: string, adminTab?: string): string => {
+    switch (view) {
+        case 'feed': 
+            if (adminTab) return `/${adminTab}`;
+            return '/';
+        case 'calendar': return '/calendar';
+        case 'nearby': return '/nearby';
+        case 'notifications': return '/notifications';
+        case 'permit': return '/permit';
+        case 'my-events': return '/my-events';
+        case 'notification-settings': return '/notification-settings';
+        case 'help': return '/help';
+        case 'terms': return '/terms';
+        case 'scanner': return '/scanner';
+        case 'preferences': return '/preferences';
+        case 'popular-events': return '/popular-events';
+        case 'analytics': return '/analytics';
+        case 'events': return '/events';
+        case 'users': return '/users';
+        case 'reports': return '/reports';
+        case 'highlights': return '/highlights';
+        case 'event-details': return eventId ? `/event/${eventId}` : '/';
+        case 'manageRegistrations': return eventId ? `/manage-registrations/${eventId}` : '/';
+        default: return '/';
+    }
+};
+
+const getInitialStateFromURL = () => {
+    if (typeof window === 'undefined') return { view: 'feed' };
+    try {
+        const path = window.location.pathname;
+        
+        // Handle events details /event/:id
+        if (path.startsWith('/event/')) {
+            const eventId = path.split('/event/')[1];
+            if (eventId) {
+                return { view: 'event-details', eventId };
+            }
+        }
+        
+        // Handle manage registrations /manage-registrations/:id
+        if (path.startsWith('/manage-registrations/')) {
+            const eventId = path.split('/manage-registrations/')[1];
+            if (eventId) {
+                return { view: 'manageRegistrations', eventId };
+            }
+        }
+        
+        // Handle normal paths
+        switch (path) {
+            case '/calendar':
+                return { view: 'calendar' };
+            case '/nearby':
+                return { view: 'nearby' };
+            case '/notifications':
+                return { view: 'notifications' };
+            case '/permit':
+                return { view: 'permit' };
+            case '/my-events':
+                return { view: 'my-events' };
+            case '/notification-settings':
+                return { view: 'notification-settings' };
+            case '/help':
+                return { view: 'help' };
+            case '/terms':
+                return { view: 'terms' };
+            case '/scanner':
+                return { view: 'scanner' };
+            case '/preferences':
+                return { view: 'preferences' };
+            case '/popular-events':
+                return { view: 'popular-events' };
+            case '/analytics':
+                return { view: 'feed', adminTab: 'analytics' };
+            case '/events':
+                return { view: 'feed', adminTab: 'events' };
+            case '/users':
+                return { view: 'feed', adminTab: 'users' };
+            case '/reports':
+                return { view: 'feed', adminTab: 'reports' };
+            case '/highlights':
+                return { view: 'feed', adminTab: 'highlights' };
+            case '/feed':
+            case '/':
+            default:
+                // Still allow reading query parameters for fallback/safety
+                const params = new URLSearchParams(window.location.search);
+                const queryEventId = params.get('event');
+                if (queryEventId) return { view: 'event-details', eventId: queryEventId };
+                const queryView = params.get('view');
+                if (queryView) {
+                    if (queryView === 'manageRegistrations') {
+                        return { view: queryView, eventId: params.get('eventId') || undefined };
+                    }
+                    return { view: queryView };
+                }
+                const queryTab = params.get('tab');
+                if (queryTab && MAIN_TAB_ORDER.includes(queryTab as MainTab)) {
+                    return { view: queryTab };
+                }
+                if (window.history.state?.view) {
+                    return window.history.state;
+                }
+                return { view: 'feed' };
+        }
+    } catch (e) { }
+    return { view: 'feed' };
+};
+
 const App: React.FC = () => {
     // Theme State
     const [theme, setTheme] = useState(() => {
@@ -154,7 +264,9 @@ const App: React.FC = () => {
         }
         return 'auth';
     });
-    const [showPreferences, setShowPreferences] = useState(false);
+    const [showPreferences, setShowPreferences] = useState(() => {
+        try { return getInitialStateFromURL().view === 'preferences'; } catch { return false; }
+    });
 
     const [events, setEvents] = useState<EventType[]>([]);
     const [areEventsLoading, setAreEventsLoading] = useState(false);
@@ -202,11 +314,9 @@ const App: React.FC = () => {
     // UI State - Managed via History
     const [activeTab, setActiveTab] = useState<MainTab>(() => {
         try {
-            if (typeof window !== 'undefined' && window.history.state?.view) {
-                const view = window.history.state.view;
-                if (MAIN_TAB_ORDER.includes(view)) {
-                    return view;
-                }
+            const initialState = getInitialStateFromURL();
+            if (MAIN_TAB_ORDER.includes(initialState.view as MainTab)) {
+                return initialState.view as MainTab;
             }
         } catch (e) { }
         return 'feed';
@@ -247,35 +357,41 @@ const App: React.FC = () => {
 
     // Overlay Views initialized from history
     const [showPermitDashboard, setShowPermitDashboard] = useState(() => {
-        try { return window.history.state?.view === 'permit'; } catch { return false; }
+        try { return getInitialStateFromURL().view === 'permit'; } catch { return false; }
     });
     const [pinnedEventIds, setPinnedEventIds] = useState<string[]>([]);
 
     const [showProfilePanel, setShowProfilePanel] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
-    const [adminActiveTab, setAdminActiveTab] = useState<'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights'>('analytics');
+    const [adminActiveTab, setAdminActiveTab] = useState<'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights'>(() => {
+        try {
+            return (getInitialStateFromURL().adminTab as any) || 'analytics';
+        } catch {
+            return 'analytics';
+        }
+    });
     const [showEditProfileModal, setShowEditProfileModal] = useState(false);
     const [showCalendarEventsPopup, setShowCalendarEventsPopup] = useState(false);
     const [calendarPopupDate, setCalendarPopupDate] = useState<Date | null>(null);
 
     // New Profile Views initialized from history
     const [showMyEvents, setShowMyEvents] = useState(() => {
-        try { return window.history.state?.view === 'my-events'; } catch { return false; }
+        try { return getInitialStateFromURL().view === 'my-events'; } catch { return false; }
     });
     const [showNotificationSettings, setShowNotificationSettings] = useState(() => {
-        try { return window.history.state?.view === 'notification-settings'; } catch { return false; }
+        try { return getInitialStateFromURL().view === 'notification-settings'; } catch { return false; }
     });
     const [showHelpSupport, setShowHelpSupport] = useState(() => {
-        try { return window.history.state?.view === 'help'; } catch { return false; }
+        try { return getInitialStateFromURL().view === 'help'; } catch { return false; }
     });
     const [showTermsAndConditions, setShowTermsAndConditions] = useState(() => {
-        try { return window.history.state?.view === 'terms'; } catch { return false; }
+        try { return getInitialStateFromURL().view === 'terms'; } catch { return false; }
     });
     const [showFacilitatorAuth, setShowFacilitatorAuth] = useState(false);
     const [facilitatorAuthInitialStep, setFacilitatorAuthInitialStep] = useState<'question' | 'request'>('question');
     const [managingEventRegistrations, setManagingEventRegistrations] = useState<EventType | null>(null);
     const [showQRScanner, setShowQRScanner] = useState(() => {
-        try { return window.history.state?.view === 'scanner'; } catch { return false; }
+        try { return getInitialStateFromURL().view === 'scanner'; } catch { return false; }
     });
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [isSearchSticky, setIsSearchSticky] = useState(false);
@@ -297,7 +413,7 @@ const App: React.FC = () => {
         return null;
     });
     const [showViewAllPopular, setShowViewAllPopular] = useState(() => {
-        try { return window.history.state?.view === 'popular-events'; } catch { return false; }
+        try { return getInitialStateFromURL().view === 'popular-events'; } catch { return false; }
     });
     const [showViewAllUpcoming, setShowViewAllUpcoming] = useState(false);
 
@@ -699,28 +815,23 @@ const App: React.FC = () => {
     // Restore event-dependent state after events load
     useEffect(() => {
         if (events.length > 0 && typeof window !== 'undefined') {
-            const params = new URLSearchParams(window.location.search);
-            const urlEventId = params.get('event');
-
-            if (urlEventId) {
-                const event = events.find(e => e.id === urlEventId);
+            const initialState = getInitialStateFromURL();
+            if (initialState.view === 'event-details' && initialState.eventId) {
+                const event = events.find(e => e.id === initialState.eventId);
                 if (event) {
                     setSelectedEvent(event);
                     // Sync history state
-                    if (!window.history.state || window.history.state.eventId !== urlEventId) {
-                        window.history.replaceState({ ...window.history.state, view: 'event-details', eventId: urlEventId }, '');
+                    if (!window.history.state || window.history.state.eventId !== initialState.eventId) {
+                        window.history.replaceState(initialState, '', getUrlForView(initialState.view, initialState.eventId));
                     }
                 }
-            } else if (window.history.state) {
-                const state = window.history.state;
-                const view = state.view;
-
-                if (view === 'event-details' && state.eventId && !selectedEvent) {
-                    const event = events.find(e => e.id === state.eventId);
-                    if (event) setSelectedEvent(event);
-                } else if (view === 'manageRegistrations' && state.eventId && !managingEventRegistrations) {
-                    const event = events.find(e => e.id === state.eventId);
-                    if (event) setManagingEventRegistrations(event);
+            } else if (initialState.view === 'manageRegistrations' && initialState.eventId) {
+                const event = events.find(e => e.id === initialState.eventId);
+                if (event) {
+                    setManagingEventRegistrations(event);
+                    if (!window.history.state || window.history.state.eventId !== initialState.eventId) {
+                        window.history.replaceState(initialState, '', getUrlForView(initialState.view, initialState.eventId));
+                    }
                 }
             }
         }
@@ -1052,7 +1163,8 @@ const App: React.FC = () => {
         try {
             // Initial state - only push if not already managed by browser
             if (!window.history.state || !window.history.state.view) {
-                window.history.replaceState({ view: 'feed' }, '');
+                const initialState = getInitialStateFromURL();
+                window.history.replaceState(initialState, '', getUrlForView(initialState.view, initialState.eventId));
             }
         } catch (e) { console.warn("History replaceState failed", e); }
 
@@ -1068,6 +1180,7 @@ const App: React.FC = () => {
                 setShowViewAllPopular(false);
                 setManagingEventRegistrations(null);
                 setShowQRScanner(false);
+                setShowPreferences(false);
                 setActiveTabWithDirection('feed');
                 return;
             }
@@ -1087,6 +1200,7 @@ const App: React.FC = () => {
             setShowHelpSupport(view === 'help');
             setShowTermsAndConditions(view === 'terms');
             setShowQRScanner(view === 'scanner');
+            setShowPreferences(view === 'preferences');
             setShowViewAllPopular(view === 'popular-events');
 
             if (view === 'manageRegistrations') {
@@ -1094,6 +1208,10 @@ const App: React.FC = () => {
                 if (event) setManagingEventRegistrations(event);
             } else {
                 setManagingEventRegistrations(null);
+            }
+
+            if (state.adminTab) {
+                setAdminActiveTab(state.adminTab);
             }
 
             if (MAIN_TAB_ORDER.includes(view)) {
@@ -1142,24 +1260,39 @@ const App: React.FC = () => {
     const handleTabChange = useCallback((tab: 'feed' | 'calendar' | 'nearby' | 'notifications') => {
         setShowProfilePanel(false);
 
+        const isStaffUser = currentUser?.role === 'admin' || currentUser?.role === 'facilitator' || currentUser?.isAdmin === true;
+
         if (activeTab === tab) {
-            // Refresh logic: If user clicks "Feed" while on Feed, refresh events
+            // Refresh/reset logic: If user clicks "Feed" while on Feed, refresh events or reset admin tab
             if (tab === 'feed') {
-                const now = Date.now();
-                if (now - lastHomeTapRef.current < 400) {
-                    // Double tap triggers full page reload
-                    window.location.reload();
+                if (isStaffUser) {
+                    if (adminActiveTab !== 'analytics') {
+                        setAdminActiveTab('analytics');
+                        try {
+                            window.history.pushState({ view: 'feed', adminTab: 'analytics' }, '', getUrlForView('feed', undefined, 'analytics'));
+                        } catch (e) { }
+                    }
                 } else {
-                    lastHomeTapRef.current = now;
-                    loadEvents();
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    const now = Date.now();
+                    if (now - lastHomeTapRef.current < 400) {
+                        // Double tap triggers full page reload
+                        window.location.reload();
+                    } else {
+                        lastHomeTapRef.current = now;
+                        loadEvents();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
                 }
             }
             return;
         }
 
         try {
-            window.history.pushState({ view: tab }, '', '/');
+            window.history.pushState(
+                { view: tab, adminTab: tab === 'feed' && isStaffUser ? adminActiveTab : undefined }, 
+                '', 
+                getUrlForView(tab, undefined, tab === 'feed' && isStaffUser ? adminActiveTab : undefined)
+            );
         } catch (e) {
             console.warn("History pushState failed", e);
         }
@@ -1172,7 +1305,7 @@ const App: React.FC = () => {
         setShowTermsAndConditions(false);
         setManagingEventRegistrations(null);
         setSelectedEvent(null);
-    }, [activeTab, loadEvents, setActiveTabWithDirection]);
+    }, [activeTab, adminActiveTab, currentUser, loadEvents, setActiveTabWithDirection]);
 
     const handleDateSelect = (date: Date) => {
         setCalendarPopupDate(date);
@@ -1218,7 +1351,7 @@ const App: React.FC = () => {
 
         // Default: open EventModal
         try {
-            window.history.pushState({ view: 'event-details', eventId: event.id }, '', `?event=${event.id}`);
+            window.history.pushState({ view: 'event-details', eventId: event.id }, '', getUrlForView('event-details', event.id));
         } catch (e) { }
         setSelectedEvent(event);
 
@@ -1254,13 +1387,18 @@ const App: React.FC = () => {
 
         // 2. Safely synchronize the URL/History WITHOUT using history.back()
         // history.back() is dangerous because it can exit the app entirely if the user refreshed
+        const isStaffUser = currentUser?.role === 'admin' || currentUser?.role === 'facilitator' || currentUser?.isAdmin === true;
         try {
-            // Clean the state to 'feed' and update URL to root
-            window.history.replaceState({ view: 'feed' }, '', '/');
+            // Clean the state to activeTab and update URL
+            window.history.replaceState(
+                { view: activeTab, adminTab: activeTab === 'feed' && isStaffUser ? adminActiveTab : undefined }, 
+                '', 
+                getUrlForView(activeTab, undefined, activeTab === 'feed' && isStaffUser ? adminActiveTab : undefined)
+            );
         } catch (e) {
             console.warn("Failed to update history state", e);
         }
-    }, []);
+    }, [activeTab, adminActiveTab, currentUser]);
 
     const handleCloseEvent = useCallback(() => {
         const wasInMyEvents = showMyEvents;
@@ -1268,38 +1406,41 @@ const App: React.FC = () => {
         const wasInPopular = showViewAllPopular;
 
         setSelectedEvent(null);
+        const isStaffUser = currentUser?.role === 'admin' || currentUser?.role === 'facilitator' || currentUser?.isAdmin === true;
         try {
             // Always use replaceState — history.back() can exit the app entirely
             // if the user opened the event directly or after a page refresh
-            let prevView = 'feed';
-            let prevPath = '/';
+            let prevView: string = activeTab;
             if (wasInMyEvents) {
                 prevView = 'my-events';
             } else if (wasInPermit) {
                 prevView = 'permit';
             } else if (wasInPopular) {
                 prevView = 'popular-events';
-                prevPath = '/popular';
             }
-            window.history.replaceState({ view: prevView }, '', prevPath);
+            window.history.replaceState(
+                { view: prevView, adminTab: prevView === 'feed' && isStaffUser ? adminActiveTab : undefined }, 
+                '', 
+                getUrlForView(prevView, undefined, prevView === 'feed' && isStaffUser ? adminActiveTab : undefined)
+            );
         } catch (e) { }
 
         // Immediate state restoration to prevent flickering or accidental feed redirect
         if (wasInMyEvents) setShowMyEvents(true);
         if (wasInPermit) setShowPermitDashboard(true);
         if (wasInPopular) setShowViewAllPopular(true);
-    }, [showMyEvents, showPermitDashboard, showViewAllPopular]);
+    }, [showMyEvents, showPermitDashboard, showViewAllPopular, activeTab, adminActiveTab, currentUser]);
 
     const handleViewEventOnMap = useCallback((event: EventType) => {
         setSelectedEvent(null);
-        try { window.history.replaceState({ view: 'nearby' }, '', '/'); } catch (e) { }
+        try { window.history.replaceState({ view: 'nearby' }, '', getUrlForView('nearby')); } catch (e) { }
         setActiveTabWithDirection('nearby');
         setMapFocusLocation({ lat: event.lat, lng: event.lng });
     }, []);
 
     const handleOpenViewAllPopular = () => {
         try {
-            window.history.pushState({ view: 'popular-events' }, '', '/popular');
+            window.history.pushState({ view: 'popular-events' }, '', getUrlForView('popular-events'));
         } catch (e) { }
         setShowViewAllPopular(true);
     };
@@ -1308,14 +1449,14 @@ const App: React.FC = () => {
 
     const handleOpenPermitDashboard = () => {
         try {
-            window.history.pushState({ view: 'permit' }, '');
+            window.history.pushState({ view: 'permit' }, '', getUrlForView('permit'));
         } catch (e) { }
         setShowPermitDashboard(true);
     };
 
     const handleOpenPreferences = () => {
         try {
-            window.history.pushState({ view: 'preferences' }, '');
+            window.history.pushState({ view: 'preferences' }, '', getUrlForView('preferences'));
         } catch (e) { }
         setShowPreferences(true);
     };
@@ -1326,7 +1467,7 @@ const App: React.FC = () => {
             return;
         }
         try {
-            window.history.pushState({ view: 'my-events' }, '');
+            window.history.pushState({ view: 'my-events' }, '', getUrlForView('my-events'));
         } catch (e) { }
         setShowMyEvents(true);
     };
@@ -1337,7 +1478,7 @@ const App: React.FC = () => {
             return;
         }
         try {
-            window.history.pushState({ view: 'notification-settings' }, '');
+            window.history.pushState({ view: 'notification-settings' }, '', getUrlForView('notification-settings'));
         } catch (e) { }
         setShowNotificationSettings(true);
     };
@@ -1348,7 +1489,7 @@ const App: React.FC = () => {
             return;
         }
         try {
-            window.history.pushState({ view: 'help' }, '');
+            window.history.pushState({ view: 'help' }, '', getUrlForView('help'));
         } catch (e) { }
         setShowHelpSupport(true);
     };
@@ -1359,7 +1500,7 @@ const App: React.FC = () => {
             return;
         }
         try {
-            window.history.pushState({ view: 'terms' }, '');
+            window.history.pushState({ view: 'terms' }, '', getUrlForView('terms'));
         } catch (e) { }
         setShowTermsAndConditions(true);
     };
@@ -1379,7 +1520,7 @@ const App: React.FC = () => {
             return;
         }
         try {
-            window.history.pushState({ view: 'scanner' }, '');
+            window.history.pushState({ view: 'scanner' }, '', getUrlForView('scanner'));
         } catch (e) { }
         setShowQRScanner(true);
     }, [currentUser, showAlert]);
@@ -1417,7 +1558,7 @@ const App: React.FC = () => {
     const handleManageRegistrations = (event: EventType) => {
         setManagingEventRegistrations(event);
         try {
-            window.history.pushState({ view: 'manageRegistrations', eventId: event.id }, '');
+            window.history.pushState({ view: 'manageRegistrations', eventId: event.id }, '', getUrlForView('manageRegistrations', event.id));
         } catch (e) { }
     };
 
@@ -1502,7 +1643,7 @@ const App: React.FC = () => {
         await signOut(auth);
         setCurrentUser(null);
         try {
-            window.history.replaceState({ view: 'feed' }, '');
+            window.history.replaceState({ view: 'feed' }, '', getUrlForView('feed'));
         } catch (e) { }
         setActiveTabWithDirection('feed');
         setShowPermitDashboard(false);
@@ -1544,6 +1685,16 @@ const App: React.FC = () => {
                 toast.success("Event Saved", { description: `${event?.name || 'Event'} has been added to your saved events.` });
             } else {
                 toast.info("Event Removed", { description: `${event?.name || 'Event'} has been removed from your saved events.` });
+                // Clean up notifications and local refs if also not interested
+                const isInterested = (currentUser.interestedEventIds || []).includes(eventId);
+                if (!isInterested) {
+                    deleteEventNotifications(currentUser.uid, eventId).catch(console.error);
+                    notifiedUpcomingEvents.current.delete(eventId);
+                    notifiedTomorrowEvents.current.delete(eventId);
+                    notifiedStartedEvents.current.delete(eventId);
+                    notifiedCustomReminders.current.delete(eventId);
+                    notifiedFeedbackEvents.current.delete(eventId);
+                }
             }
         } catch (error: any) {
             console.error('[save] write failed:', error?.code, error?.message);
@@ -1715,6 +1866,18 @@ const App: React.FC = () => {
             await updateUserParticipation(auth.currentUser?.uid || currentUser.uid, type, newIds);
             if (type === 'interested') {
                 incrementEventCounter(eventId, 'interestedCount', isAlreadyIn ? -1 : 1);
+                if (isAlreadyIn) {
+                    // Clean up notifications and local refs if also not saved
+                    const isSaved = (currentUser.savedEventIds || []).includes(eventId);
+                    if (!isSaved) {
+                        deleteEventNotifications(currentUser.uid, eventId).catch(console.error);
+                        notifiedUpcomingEvents.current.delete(eventId);
+                        notifiedTomorrowEvents.current.delete(eventId);
+                        notifiedStartedEvents.current.delete(eventId);
+                        notifiedCustomReminders.current.delete(eventId);
+                        notifiedFeedbackEvents.current.delete(eventId);
+                    }
+                }
             } else if (type === 'checkedIn') {
                 incrementEventCounter(eventId, 'checkInCount', isAlreadyIn ? -1 : 1);
             }
@@ -1889,7 +2052,7 @@ const App: React.FC = () => {
             // actions do NOT trigger a re-rank and re-order of the visible feed.
             const rankingUser = rankingUserRef.current;
             if (rankingUser) {
-                return getKNNRankedEvents(rankingUser, processedEvents, userLocation);
+                return getKNNRankedEvents(rankingUser, processedEvents, userLocation, events);
             }
 
             return processedEvents.sort((a, b) => {
@@ -1988,12 +2151,11 @@ const App: React.FC = () => {
             });
     }, [events, currentUser]);
 
-    // Admin-curated highlights: maintains order from highlightIds
     const highlightedDisplayEvents = useMemo(() => {
         if (!highlightIds.length) return [];
         return highlightIds
             .map(id => getDisplayEvents.find(e => e.id === id))
-            .filter((e): e is DisplayEventType => !!e && !!e.imageUrl);
+            .filter((e): e is DisplayEventType => !!e);
     }, [highlightIds, getDisplayEvents]);
 
 
@@ -2087,6 +2249,7 @@ const App: React.FC = () => {
                 onProfileClick={handleOpenProfile}
                 title={activeOverlay || undefined}
                 onBack={activeOverlay ? handleCloseAllModals : undefined}
+                isProfileOpen={showProfilePanel}
             />
 
             {activeOverlay ? (
@@ -2130,10 +2293,24 @@ const App: React.FC = () => {
                             pendingFacilitatorCount={pendingFacilitatorCount}
                             unreadNotificationCount={unreadNotificationCount}
                             isStaff={isStaff}
+                            isGuest={isGuest}
                             adminActiveTab={adminActiveTab}
                             onAdminTabChange={(tab) => {
+                                setShowProfilePanel(false);
                                 setAdminActiveTab(tab);
-                                handleTabChange('feed');
+                                setActiveTabWithDirection('feed');
+                                setShowPermitDashboard(false);
+                                setShowMyEvents(false);
+                                setShowNotificationSettings(false);
+                                setShowHelpSupport(false);
+                                setShowTermsAndConditions(false);
+                                setManagingEventRegistrations(null);
+                                setSelectedEvent(null);
+                                try {
+                                    window.history.pushState({ view: 'feed', adminTab: tab }, '', getUrlForView('feed', undefined, tab));
+                                } catch (e) {
+                                    console.warn("History pushState failed", e);
+                                }
                             }}
                             canManageUsers={currentUser?.role === 'admin'}
                             expanded={sidebarExpanded}
@@ -2603,6 +2780,8 @@ const App: React.FC = () => {
                                     onEventSelect={handleOpenEvent}
                                     onToggleSave={handleToggleSaveEvent}
                                     savedEventIds={currentUser?.savedEventIds || []}
+                                    likedEventIds={currentUser?.likedEventIds || []}
+                                    interestedEventIds={currentUser?.interestedEventIds || []}
                                     onOpenScanner={handleOpenScanner}
                                     focusLocation={mapFocusLocation}
                                     onFocusConsumed={() => setMapFocusLocation(null)}
@@ -2673,6 +2852,7 @@ const App: React.FC = () => {
                     pendingFacilitatorCount={pendingFacilitatorCount}
                     unreadNotificationCount={unreadNotificationCount}
                     isStaff={isStaff}
+                    isGuest={isGuest}
                 />
             )}
 

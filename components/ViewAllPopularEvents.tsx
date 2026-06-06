@@ -11,7 +11,7 @@ import {
   Navigation,
 } from 'lucide-react';
 import type { DisplayEventType } from '../types';
-import { formatTime } from '../constants';
+import { formatTime, EventImage } from '../constants';
 import { smartSearchEvents } from '../utils/searchUtils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -94,18 +94,12 @@ const HorizontalEventCard: React.FC<{
 
       {/* Image Side */}
       <div className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 relative z-10 transition-shadow">
-        {event.imageUrl ? (
-          <img
-            src={event.imageUrl}
-            alt={event.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300">
-            <Calendar size={24} />
-          </div>
-        )}
+        <EventImage
+          src={event.imageUrl}
+          alt={event.name}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+          referrerPolicy="no-referrer"
+        />
       </div>
     </button>
   );

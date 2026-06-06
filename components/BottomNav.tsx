@@ -12,6 +12,7 @@ interface BottomNavProps {
     pendingFacilitatorCount?: number;
     unreadNotificationCount?: number;
     isStaff?: boolean;
+    isGuest?: boolean;
 }
 
 const ActiveNavIcon: React.FC<{ tab: AppTab }> = ({ tab }) => {
@@ -68,6 +69,7 @@ const ActiveNavIcon: React.FC<{ tab: AppTab }> = ({ tab }) => {
 const BottomNav: React.FC<BottomNavProps> = React.memo(({
     activeTab, onTabChange, onOpenScanner, onNotificationClick,
     pendingFacilitatorCount, unreadNotificationCount = 0, isStaff = false,
+    isGuest = false,
 }) => {
     const inactiveColor = 'var(--bottom-nav-inactive)';
 
@@ -102,7 +104,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
 
     return (
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 pb-safe z-[5000] will-change-transform">
-            <div className={`grid ${isStaff ? 'grid-cols-4' : 'grid-cols-5'} h-[68px] max-w-lg mx-auto [--nav-cutout:#fff] [--bottom-nav-inactive:#374151] dark:[--nav-cutout:#111827] dark:[--bottom-nav-inactive:#d1d5db]`}>
+            <div className={`grid ${isStaff ? 'grid-cols-4' : (isGuest ? 'grid-cols-4' : 'grid-cols-5')} h-[68px] max-w-lg mx-auto [--nav-cutout:#fff] [--bottom-nav-inactive:#374151] dark:[--nav-cutout:#111827] dark:[--bottom-nav-inactive:#d1d5db]`}>
 
                 {navBtn('feed', Home, 'Feed', () => onTabChange('feed'))}
                 {navBtn('calendar', Calendar, 'Calendar', () => onTabChange('calendar'))}
@@ -122,15 +124,17 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
                     </div>
                 )}
 
-                <div className="relative min-w-0 h-full flex">
-                    {navBtn('notifications', Bell, 'Notif', onNotificationClick)}
-                    {pendingFacilitatorCount !== undefined && pendingFacilitatorCount > 0 && (
-                        <div className="absolute top-3 right-[28%] w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border-2 border-white dark:border-gray-900 pointer-events-none" />
-                    )}
-                    {unreadNotificationCount > 0 && (!pendingFacilitatorCount || pendingFacilitatorCount === 0) && (
-                        <div className="absolute top-3 right-[28%] w-2.5 h-2.5 rounded-full animate-bounce border-2 border-white dark:border-gray-900 pointer-events-none" style={{ background: '#0052A3' }} />
-                    )}
-                </div>
+                {!isGuest && (
+                    <div className="relative min-w-0 h-full flex">
+                        {navBtn('notifications', Bell, 'Notif', onNotificationClick)}
+                        {pendingFacilitatorCount !== undefined && pendingFacilitatorCount > 0 && (
+                            <div className="absolute top-3 right-[28%] w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border-2 border-white dark:border-gray-900 pointer-events-none" />
+                        )}
+                        {unreadNotificationCount > 0 && (!pendingFacilitatorCount || pendingFacilitatorCount === 0) && (
+                            <div className="absolute top-3 right-[28%] w-2.5 h-2.5 rounded-full animate-bounce border-2 border-white dark:border-gray-900 pointer-events-none" style={{ background: '#0052A3' }} />
+                        )}
+                    </div>
+                )}
 
                 {navBtn('nearby', MapPin, 'Nearby', () => onTabChange('nearby'))}
             </div>

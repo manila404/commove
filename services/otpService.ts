@@ -1,9 +1,3 @@
-import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from './firebase';
-
-const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_ATTEMPTS  = 5;
-
 // ─── Persistent OTP-verification tracking ────────────────────────────────────
 // localStorage persists across app restarts / WebView backgrounding so the
 // user stays logged in when they minimize and reopen the app on Android.
@@ -24,66 +18,46 @@ export const setLoginInProgress   = ()            => sessionStorage.setItem('otp
 export const clearLoginInProgress = ()            => sessionStorage.removeItem('otp_login');
 export const isLoginInProgress    = ()            => sessionStorage.getItem('otp_login') === '1';
 
-interface OTPRecord {
-    userId:    string;
-    email:     string;
-    code:      string;
-    createdAt: number;
-    expiresAt: number;
-    attempts:  number;
-}
-
-const toKey = (email: string) =>
-    `otp_${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-
-export const generateOTP = (): string =>
-    Math.floor(100000 + Math.random() * 900000).toString();
-
-export const storeOTP = async (email: string, otp: string, uid?: string): Promise<void> => {
-    // If uid is provided (SignIn), use it. Otherwise (SignUp), use formatted email.
-    const docId = uid || toKey(email);
-    const record: OTPRecord = {
-        userId:    uid || docId,
-        email:     email,
-        code:      otp,
-        createdAt: Date.now(),
-        expiresAt: Date.now() + OTP_EXPIRY_MS,
-        attempts:  0,
-    };
-    
+export const storeOTP = async (email: string, userName: string, uid?: string): Promise<boolean> => {
     try {
-        await setDoc(doc(db, "otpCodes", docId), record);
+        const response = await fetch('/api/send-otp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, userName, uid }),
+        });
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `HTTP error ${response.status}`);
+        }
+        const data = await response.json();
+        return !!data.success;
     } catch (err) {
-        console.error("Failed to store OTP in Firestore:", err);
+        console.error("Failed to send OTP:", err);
+        return false;
     }
-    // DEV: log so you can verify the code matches the email
-    console.info(`[OTP] Stored code for ${email}: ${otp}`);
 };
 
 export type OTPResult = 'valid' | 'invalid' | 'expired' | 'too_many_attempts' | 'not_found';
 
 export const verifyOTP = async (email: string, entered: string, uid?: string): Promise<OTPResult> => {
-    const docId = uid || toKey(email);
-    const docRef = doc(db, "otpCodes", docId);
-    
     try {
-        const snapshot = await getDoc(docRef);
-        if (!snapshot.exists()) return 'not_found';
-
-        const record = snapshot.data() as OTPRecord;
-
-        if (record.attempts >= MAX_ATTEMPTS) return 'too_many_attempts';
-        if (Date.now() > record.expiresAt)   return 'expired';
-
-        if (record.code !== entered.trim()) {
-            await updateDoc(docRef, { attempts: record.attempts + 1 });
-            return 'invalid';
+        const response = await fetch('/api/verify-otp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, enteredCode: entered, uid }),
+        });
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `HTTP error ${response.status}`);
         }
-
-        await deleteDoc(docRef); // invalidate after successful use
-        return 'valid';
+        const data = await response.json();
+        return data.result as OTPResult;
     } catch (err) {
-        console.error("Failed to verify OTP from Firestore:", err);
+        console.error("Failed to verify OTP:", err);
         return 'not_found';
     }
 };

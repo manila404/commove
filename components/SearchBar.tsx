@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Clock, Trash2, MapPin, Calendar } from 'lucide-react';
 import type { EventType } from '../types';
-import { formatDisplayDate } from '../constants';
+import { formatDisplayDate, EventImage } from '../constants';
 import { smartSearchEvents } from '../utils/searchUtils';
 
 interface SearchBarProps {
@@ -135,13 +135,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
                       className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left group"
                     >
                       <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-600">
-                        {event.imageUrl ? (
-                          <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Search size={14} className="text-gray-400" />
-                          </div>
-                        )}
+                        <EventImage src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                       <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate line-clamp-2 leading-tight">{event.name}</span>
                     </button>

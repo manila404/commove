@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { verifyOTP, generateOTP, storeOTP, type OTPResult } from '../services/otpService';
-import { sendOTPEmail } from '../services/emailService';
+import { verifyOTP, storeOTP, type OTPResult } from '../services/otpService';
 
 interface OTPVerificationProps {
     email:       string;
@@ -129,9 +128,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({
         setIsResending(true);
         setError('');
 
-        const otp  = generateOTP();
-        await storeOTP(email, otp, uid);
-        const ok   = await sendOTPEmail(email, otp, userName);
+        const ok   = await storeOTP(email, userName, uid);
 
         setIsResending(false);
 

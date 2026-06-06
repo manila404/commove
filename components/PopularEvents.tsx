@@ -2,7 +2,7 @@
 import React from 'react';
 import { ChevronRight, Calendar, TrendingUp } from 'lucide-react';
 import type { DisplayEventType } from '../types';
-import { formatTime } from '../constants';
+import { formatTime, EventImage } from '../constants';
 
 interface PopularEventsProps {
   events: DisplayEventType[];
@@ -73,9 +73,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
                   <button key={event.id} onClick={() => onEventSelect(event)}
                     className="flex items-center gap-3 text-left w-full active:scale-95 transition-transform group">
                     <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 group-hover:scale-105 transition-transform">
-                      {event.imageUrl
-                        ? <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        : <div className="w-full h-full flex items-center justify-center text-primary-400"><Calendar size={24} /></div>}
+                      <EventImage src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       {event.isLive && (
                         <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse" />
                       )}
@@ -109,9 +107,7 @@ const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, on
             <button key={event.id} onClick={() => onEventSelect(event)}
               className={`flex items-center gap-3 text-left w-full py-4 transition-all group ${idx < popularEvents.length - 1 ? 'border-b border-gray-100 dark:border-gray-800' : ''}`}>
               <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 border border-gray-50 dark:border-gray-600 group-hover:scale-105 transition-transform">
-                {event.imageUrl
-                  ? <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  : <div className="w-full h-full flex items-center justify-center bg-primary-50 dark:bg-primary-900/20 text-primary-500"><Calendar size={24} /></div>}
+                <EventImage src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 {event.isLive && (
                   <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse" />
                 )}
