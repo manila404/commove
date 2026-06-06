@@ -608,7 +608,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                             <button 
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full flex items-center justify-center bg-primary-600 text-white font-bold py-3 px-4 rounded-full hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/20 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-base active:scale-95"
+                                className="w-full flex items-center justify-center bg-primary-600 text-white font-bold py-3 px-4 rounded-full hover:bg-primary-700 transition-all disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-base active:scale-95"
                             >
                                 {isLoading ? (
                                     <>

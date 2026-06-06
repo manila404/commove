@@ -45,7 +45,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 200, mass: 1 }}
-            className={`w-full h-full md:h-auto bg-white dark:bg-[#111827] rounded-none md:rounded-[15px] shadow-2xl overflow-hidden flex flex-col md:flex-row relative transition-all duration-300 ${isSigningUp ? 'max-w-5xl md:max-h-[calc(100vh-4rem)]' : 'max-w-4xl'}`}
+            className={`w-full h-full md:h-auto bg-white dark:bg-[#111827] rounded-none md:rounded-[15px] shadow-2xl overflow-hidden flex flex-col md:flex-row relative transition-all duration-300 ${isSigningUp ? 'max-w-5xl md:max-h-[calc(100vh-4rem)]' : 'max-w-4xl md:min-h-[560px]'}`}
         >
             {/* Close Button — desktop only (mobile X is inline with logo) */}
             <button
@@ -60,58 +60,47 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
 
             {/* Left Side (Desktop) / Top Side (Mobile): Branding with Primary Purple on Mobile */}
             {/* On desktop, hide this panel entirely when showing Sign Up */}
-            <div className={`flex md:w-[55%] bg-primary-600 md:bg-white md:dark:bg-[#111827] p-4 pt-safe md:p-12 flex-col justify-start md:justify-between border-b md:border-b-0 md:border-r border-primary-500 md:border-gray-100 dark:md:border-gray-800 relative z-0 min-h-[45vh] max-h-[50vh] md:max-h-none md:min-h-0 ${isSigningUp ? 'md:hidden' : ''}`}>
-                <div className="flex flex-col items-center md:items-start text-center md:text-left mt-2 md:mt-10">
+            <div
+                className={`flex md:w-[55%] bg-white dark:bg-[#111827] flex-col border-b md:border-b-0 md:border-r border-gray-100 dark:border-gray-800 relative z-0 min-h-[45vh] max-h-[50vh] md:max-h-none md:min-h-0 ${isSigningUp ? 'md:hidden' : ''}`}
+            >
+                <div
+                    className="relative flex flex-1 flex-col justify-between overflow-hidden rounded-[15px] p-5 md:p-8 min-h-0 bg-cover bg-center"
+                    style={{ backgroundImage: "url('/realevent.jpg')" }}
+                >
+                <div className="absolute inset-0 bg-black/35" />
+                <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left mt-2 md:mt-10">
                     {/* Mobile: logo + X on same row */}
                     <div className="w-full flex items-center justify-between md:justify-start">
-                    <div className="flex items-center select-none text-3xl tracking-tighter" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
-                        <div className="relative inline-flex items-center justify-center text-white md:text-gray-900 dark:md:text-white mr-[-0.08em]">
-                            <svg style={{ width: '0.65em', height: '0.65em', transform: 'translateY(0.06em)' }} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="20">
-                                <path d="M 82 26 A 40 40 0 1 0 82 74" />
-                                <circle cx="48" cy="50" r="14" fill="currentColor" stroke="none" className="text-white/40 md:text-primary-700 dark:md:text-primary-500" />
-                            </svg>
+                        <div className="flex items-center select-none text-3xl tracking-tighter" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
+                            <div className="relative inline-flex items-center justify-center text-white md:text-gray-900 dark:md:text-white mr-[-0.08em]">
+                                <svg style={{ width: '0.65em', height: '0.65em', transform: 'translateY(0.06em)' }} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="20">
+                                    <path d="M 82 26 A 40 40 0 1 0 82 74" />
+                                    <circle cx="48" cy="50" r="14" fill="currentColor" stroke="none" className="text-white/40 md:text-primary-700 dark:md:text-primary-500" />
+                                </svg>
+                            </div>
+                            <span className="text-white font-semibold">om</span>
+                            <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
                         </div>
-                        <span className="text-white md:text-gray-900 dark:md:text-white font-semibold">om</span>
-                        <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
-                    </div>
-                    {/* Mobile X button — aligned with logo */}
-                    <button
-                        onClick={onGuestAccess}
-                        className="md:hidden p-2 text-white/80 hover:text-white transition-colors"
-                        aria-label="Close"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+                        {/* Mobile X button — aligned with logo */}
+                        <button
+                            onClick={onGuestAccess}
+                            className="md:hidden p-2 text-white/80 hover:text-white transition-colors"
+                            aria-label="Close"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>{/* end logo row */}
-                    {/* Subtitle hidden on mobile */}
-                    <p className="hidden md:block mt-3 text-[13px] text-gray-500 dark:text-gray-400 font-medium">
+                    <p className="hidden md:block mt-3 text-[13px] text-white/90 font-medium">
                         Discover events and connect with your community.
                     </p>
                 </div>
-                <div className="flex items-center justify-center pt-1 md:flex-1 md:pt-10 md:pb-0 z-0 overflow-visible h-12 md:h-auto">
-                    {/* Use the specific purple background version on mobile */}
-                    <img
-                        src="/event_illustration_purple.png"
-                        alt="Event Illustration Mobile"
-                        className="md:hidden w-full max-w-[310px] md:max-w-none object-contain transform translate-y-50 md:translate-y-50 scale-125 md:scale-110"
-                    />
-                    <img
-                        src="/event_illustration.jpg"
-                        alt="Event Illustration"
-                        className="hidden md:block md:max-w-[380px] object-contain dark:md:hidden"
-                    />
-                    <img
-                        src="/event_illustration_dark.png"
-                        alt="Event Illustration Dark"
-                        className="hidden md:dark:block md:max-w-[380px] object-contain"
-                    />
                 </div>
             </div>
 
             {/* Right Side (Desktop) / Bottom Side (Mobile): Forms with Draggable Sheet logic */}
-            <motion.div 
+            <motion.div
                 drag={false}
                 dragConstraints={{ top: -450, bottom: 0 }}
                 dragElastic={0.1}
