@@ -67,35 +67,35 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
                     className="relative flex flex-1 flex-col justify-between overflow-hidden rounded-[15px] p-5 md:p-8 min-h-0 bg-cover bg-center"
                     style={{ backgroundImage: "url('/realevent.jpg')" }}
                 >
-                <div className="absolute inset-0 bg-black/35" />
-                <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left mt-2 md:mt-10">
-                    {/* Mobile: logo + X on same row */}
-                    <div className="w-full flex items-center justify-between md:justify-start">
-                        <div className="flex items-center select-none text-3xl tracking-tighter" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
-                            <div className="relative inline-flex items-center justify-center text-white md:text-gray-900 dark:md:text-white mr-[-0.08em]">
-                                <svg style={{ width: '0.65em', height: '0.65em', transform: 'translateY(0.06em)' }} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="20">
-                                    <path d="M 82 26 A 40 40 0 1 0 82 74" />
-                                    <circle cx="48" cy="50" r="14" fill="currentColor" stroke="none" className="text-white/40 md:text-primary-700 dark:md:text-primary-500" />
-                                </svg>
+                    <div className="absolute inset-0 bg-black/35" />
+                    <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left mt-2 md:mt-10">
+                        {/* Mobile: logo + X on same row */}
+                        <div className="w-full flex items-center justify-between md:justify-start">
+                            <div className="flex items-center select-none text-3xl tracking-tighter" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
+                                <div className="relative inline-flex items-center justify-center text-white md:text-gray-900 dark:md:text-white mr-[-0.08em]">
+                                    <svg style={{ width: '0.65em', height: '0.65em', transform: 'translateY(0.06em)' }} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="20">
+                                        <path d="M 82 26 A 40 40 0 1 0 82 74" />
+                                        <circle cx="48" cy="50" r="14" fill="currentColor" stroke="none" className="text-white/40 md:text-primary-700 dark:md:text-primary-500" />
+                                    </svg>
+                                </div>
+                                <span className="text-white font-semibold">om</span>
+                                <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
                             </div>
-                            <span className="text-white font-semibold">om</span>
-                            <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
-                        </div>
-                        {/* Mobile X button — aligned with logo */}
-                        <button
-                            onClick={onGuestAccess}
-                            className="md:hidden p-2 text-white/80 hover:text-white transition-colors"
-                            aria-label="Close"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>{/* end logo row */}
-                    <p className="hidden md:block mt-3 text-[13px] text-white/90 font-medium">
-                        Discover events and connect with your community.
-                    </p>
-                </div>
+                            {/* Mobile X button — aligned with logo */}
+                            <button
+                                onClick={onGuestAccess}
+                                className="md:hidden p-2 text-white/80 hover:text-white transition-colors"
+                                aria-label="Close"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>{/* end logo row */}
+                        <p className="hidden md:block mt-3 text-[13px] text-white/90 font-medium">
+                            Discover events and connect with your community.
+                        </p>
+                    </div>
                 </div>
             </div>
 
