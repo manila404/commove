@@ -103,6 +103,10 @@ const CUSTOM_CATEGORY_GRADIENTS = [
     'from-[#d9f99d] to-[#84cc16]',
 ];
 
+type MainTab = 'feed' | 'calendar' | 'nearby' | 'notifications';
+
+const MAIN_TAB_ORDER: MainTab[] = ['feed', 'calendar', 'notifications', 'nearby'];
+
 const App: React.FC = () => {
     // Theme State
     const [theme, setTheme] = useState(() => {
@@ -196,19 +200,45 @@ const App: React.FC = () => {
     });
 
     // UI State - Managed via History
-    const [activeTab, setActiveTab] = useState<'feed' | 'calendar' | 'nearby' | 'notifications'>(() => {
+    const [activeTab, setActiveTab] = useState<MainTab>(() => {
         try {
             if (typeof window !== 'undefined' && window.history.state?.view) {
                 const view = window.history.state.view;
-                if (['feed', 'calendar', 'nearby', 'notifications', 'profile'].includes(view)) {
-                    return view as any;
+                if (MAIN_TAB_ORDER.includes(view)) {
+                    return view;
                 }
             }
         } catch (e) { }
         return 'feed';
     });
+    const [mobileTabDirection, setMobileTabDirection] = useState(1);
+    const [isMobileViewport, setIsMobileViewport] = useState(() => {
+        try {
+            return typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+        } catch {
+            return false;
+        }
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
+
+    const setActiveTabWithDirection = useCallback((nextTab: MainTab) => {
+        setActiveTab(prevTab => {
+            const previousIndex = MAIN_TAB_ORDER.indexOf(prevTab);
+            const nextIndex = MAIN_TAB_ORDER.indexOf(nextTab);
+            setMobileTabDirection(nextIndex >= previousIndex ? 1 : -1);
+            return nextTab;
+        });
+    }, []);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(max-width: 767px)');
+        const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+
+        updateViewport();
+        mediaQuery.addEventListener('change', updateViewport);
+        return () => mediaQuery.removeEventListener('change', updateViewport);
+    }, []);
 
     const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null); // New state for Calendar filter
     const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
@@ -251,6 +281,7 @@ const App: React.FC = () => {
     const [isSearchSticky, setIsSearchSticky] = useState(false);
     const [isCategoriesHidden, setIsCategoriesHidden] = useState(false);
     const [headerHeight, setHeaderHeight] = useState(60);
+    const [sidebarExpanded, setSidebarExpanded] = useState(false);
     const categoriesSentinelRef = useRef<HTMLDivElement>(null);
     const outerContainerRef = useRef<HTMLDivElement>(null);
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -410,7 +441,7 @@ const App: React.FC = () => {
 
                     // Reset Navigation on Login ONLY for explicit manual logins
                     if (!isInitialAuthRef.current) {
-                        setActiveTab('feed');
+                        setActiveTabWithDirection('feed');
                         setShowPermitDashboard(false);
                         setShowMyEvents(false);
                         setShowNotificationSettings(false);
@@ -466,7 +497,7 @@ const App: React.FC = () => {
 
                     if (profile.role === 'admin' || profile.role === 'facilitator') {
                         if (!isInitialAuthRef.current) {
-                            setActiveTab('feed');
+                            setActiveTabWithDirection('feed');
                         }
                     }
 
@@ -1037,7 +1068,7 @@ const App: React.FC = () => {
                 setShowViewAllPopular(false);
                 setManagingEventRegistrations(null);
                 setShowQRScanner(false);
-                setActiveTab('feed');
+                setActiveTabWithDirection('feed');
                 return;
             }
 
@@ -1065,14 +1096,14 @@ const App: React.FC = () => {
                 setManagingEventRegistrations(null);
             }
 
-            if (['feed', 'calendar', 'nearby', 'notifications', 'profile'].includes(view)) {
-                setActiveTab(view as any);
+            if (MAIN_TAB_ORDER.includes(view)) {
+                setActiveTabWithDirection(view as MainTab);
             }
         };
 
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
-    }, [events]);
+    }, [events, setActiveTabWithDirection]);
 
     // 6b. Android hardware back button support
     // Runs after every render so backHandlerRef always sees the latest state values.
@@ -1133,7 +1164,7 @@ const App: React.FC = () => {
             console.warn("History pushState failed", e);
         }
 
-        setActiveTab(tab);
+        setActiveTabWithDirection(tab);
         setShowPermitDashboard(false);
         setShowMyEvents(false);
         setShowNotificationSettings(false);
@@ -1141,7 +1172,7 @@ const App: React.FC = () => {
         setShowTermsAndConditions(false);
         setManagingEventRegistrations(null);
         setSelectedEvent(null);
-    }, [activeTab, loadEvents]);
+    }, [activeTab, loadEvents, setActiveTabWithDirection]);
 
     const handleDateSelect = (date: Date) => {
         setCalendarPopupDate(date);
@@ -1157,7 +1188,7 @@ const App: React.FC = () => {
 
         // For admin/facilitator: route approval-type notifications to Admin Panel
         if (isStaffUser && (notifType === 'event_created' || notifType === 'event_approved' || notifType === 'event_rejected')) {
-            setActiveTab('feed');
+            setActiveTabWithDirection('feed');
             // Give AdminPanel a moment to mount, then dispatch the preview event
             setTimeout(() => {
                 window.dispatchEvent(new CustomEvent('admin-preview-event', { detail: event }));
@@ -1262,7 +1293,7 @@ const App: React.FC = () => {
     const handleViewEventOnMap = useCallback((event: EventType) => {
         setSelectedEvent(null);
         try { window.history.replaceState({ view: 'nearby' }, '', '/'); } catch (e) { }
-        setActiveTab('nearby');
+        setActiveTabWithDirection('nearby');
         setMapFocusLocation({ lat: event.lat, lng: event.lng });
     }, []);
 
@@ -1455,7 +1486,7 @@ const App: React.FC = () => {
     const handleOnboardingSkip = () => {
         setOnboardingStep('completed');
         setIsGuest(true);
-        setActiveTab('feed');
+        setActiveTabWithDirection('feed');
         try {
             localStorage.setItem('hasCompletedOnboarding', 'true');
         } catch (e) { }
@@ -1473,7 +1504,7 @@ const App: React.FC = () => {
         try {
             window.history.replaceState({ view: 'feed' }, '');
         } catch (e) { }
-        setActiveTab('feed');
+        setActiveTabWithDirection('feed');
         setShowPermitDashboard(false);
         setShowMyEvents(false);
         setShowNotificationSettings(false);
@@ -1506,7 +1537,7 @@ const App: React.FC = () => {
         const newSavedArray = Array.from(currentSaved);
         setCurrentUser({ ...currentUser, savedEventIds: newSavedArray });
         try {
-            await updateUserSavedEvents(currentUser.uid, currentSaved);
+            await updateUserSavedEvents(auth.currentUser?.uid || currentUser.uid, currentSaved);
             incrementEventCounter(eventId, 'saveCount', isSaving ? 1 : -1);
             const event = events.find(e => e.id === eventId);
             if (isSaving) {
@@ -1537,7 +1568,7 @@ const App: React.FC = () => {
         const newLikedArray = Array.from(currentLiked);
         setCurrentUser({ ...currentUser, likedEventIds: newLikedArray });
         try {
-            await updateUserLikes(currentUser.uid, new Set(newLikedArray));
+            await updateUserLikes(auth.currentUser?.uid || currentUser.uid, new Set(newLikedArray));
             incrementEventCounter(eventId, 'likeCount', isLiking ? 1 : -1);
             if (isLiking) {
                 toast.success("Event Liked", { description: "Event added to your likes." });
@@ -1681,7 +1712,7 @@ const App: React.FC = () => {
 
         setCurrentUser({ ...currentUser, [field]: newIds });
         try {
-            await updateUserParticipation(currentUser.uid, type, newIds);
+            await updateUserParticipation(auth.currentUser?.uid || currentUser.uid, type, newIds);
             if (type === 'interested') {
                 incrementEventCounter(eventId, 'interestedCount', isAlreadyIn ? -1 : 1);
             } else if (type === 'checkedIn') {
@@ -1985,6 +2016,12 @@ const App: React.FC = () => {
                             showViewAllPopular ? 'Popular Events' :
                                 showViewAllUpcoming ? 'Upcoming Events' : null;
 
+    const mobileTabVariants = {
+        enter: (direction: number) => ({ x: direction * 36, opacity: 0.96 }),
+        center: { x: 0, opacity: 1 },
+        exit: (direction: number) => ({ x: direction * -36, opacity: 0.96 }),
+    };
+
     // ── Account Recovery Modal ────────────────────────────────────────────────
     const handleRecoverAccount = async () => {
         if (!pendingDeletionUser) return;
@@ -2099,11 +2136,24 @@ const App: React.FC = () => {
                                 handleTabChange('feed');
                             }}
                             canManageUsers={currentUser?.role === 'admin'}
+                            expanded={sidebarExpanded}
+                            onExpandedChange={setSidebarExpanded}
                         />
                         <main ref={outerContainerRef} className={`flex-1 min-h-0 transition-all duration-300 scroll-smooth ${activeTab === 'nearby'
                             ? 'h-full overflow-hidden'
                             : 'w-full px-0'
                             } ${activeTab === 'feed' && isStaff ? '' : activeTab === 'feed' ? 'pb-24' : ''} overflow-x-hidden`}>
+                            <AnimatePresence mode="wait" initial={false} custom={mobileTabDirection}>
+                                <motion.div
+                                    key={activeTab}
+                                    custom={mobileTabDirection}
+                                    variants={mobileTabVariants}
+                                    initial={isMobileViewport ? 'enter' : false}
+                                    animate="center"
+                                    exit={isMobileViewport ? 'exit' : undefined}
+                                    transition={{ duration: isMobileViewport ? 0.28 : 0, ease: [0.22, 1, 0.36, 1] }}
+                                    className={`md:contents ${activeTab === 'nearby' || (activeTab === 'feed' && isStaff) ? 'h-full min-h-0 flex flex-col' : ''}`}
+                                >
                             {activeTab === 'feed' && !isStaff && (
                                 <div key="feed" className="space-y-4 animate-fade-in pt-8 md:pt-10">
                                     {currentUser?.facilitatorRequestStatus === 'rejected' && (
@@ -2184,7 +2234,7 @@ const App: React.FC = () => {
 
                                     {/* Sticky bar — desktop only, fixed below header when scrolled past heading */}
                                     {isSearchSticky && (
-                                        <div className="hidden md:block fixed top-16 left-20 right-4 z-[200] bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm">
+                                        <div className={`hidden md:block fixed top-16 ${sidebarExpanded ? 'left-52' : 'left-20'} right-4 z-[200] bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm transition-[left] duration-300`}>
                                             {/* Row 1: Search + quick filters */}
                                             <div className="flex items-center gap-3 pl-8 pr-4 py-2.5">
                                                 <div className="flex-1">
@@ -2516,7 +2566,7 @@ const App: React.FC = () => {
                                             onEventSelect={(event, notifType) => handleOpenEvent(event, notifType)}
                                             onEventUpdated={handleEventUpdated}
                                             onNavigateToAdmin={(event, tab, targetId) => {
-                                                setActiveTab('feed');
+                                                setActiveTabWithDirection('feed');
                                                 setTimeout(() => {
                                                     window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { event, tab, targetId } }));
                                                 }, 300);
@@ -2560,6 +2610,8 @@ const App: React.FC = () => {
                             )}
 
                             {/* Removed activeTab === 'profile' rendering */}
+                                </motion.div>
+                            </AnimatePresence>
                         </main>
                     </div>
 
@@ -2761,7 +2813,7 @@ const App: React.FC = () => {
                     {/* Floating Toggle Button */}
                     <button
                         onClick={() => setIsChatOpen(prev => !prev)}
-                        className="fixed bottom-24 right-6 md:bottom-6 md:right-6 z-[4900] flex items-center justify-center w-14 h-14 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-transform overflow-hidden cursor-pointer bg-gradient-to-br from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white"
+                        className="fixed bottom-24 right-6 md:bottom-6 md:right-6 z-[4900] flex items-center justify-center w-14 h-14 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-transform overflow-hidden cursor-pointer bg-gradient-to-br from-[#0067c8] to-[#0052A3] hover:from-[#005bb2] hover:to-[#004482] text-white"
                         title="AI Assistant"
                     >
                         {isChatOpen ? (
@@ -2783,7 +2835,7 @@ const App: React.FC = () => {
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 50, scale: 0.95 }}
                                 transition={{ duration: 0.2 }}
-                                className="fixed inset-0 w-full h-full md:inset-auto md:bottom-24 md:right-6 z-[5500] md:w-[440px] md:h-[640px] md:max-h-[80vh] bg-white dark:bg-gray-950 md:rounded-3xl md:border md:border-gray-100 md:dark:border-gray-800 md:shadow-2xl overflow-hidden flex flex-col"
+                                className="fixed inset-0 w-full h-full md:inset-auto md:bottom-6 md:right-24 z-[5500] md:w-[430px] md:h-[540px] md:max-h-[74vh] bg-white dark:bg-gray-950 md:rounded-3xl md:border md:border-gray-100 md:dark:border-gray-800 md:shadow-2xl overflow-hidden flex flex-col"
                             >
                                 <ChatBot
                                     events={events}

@@ -40,9 +40,9 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
         if (userDoc.exists()) {
             const userData = userDoc.data() as User;
             if (userData.email === 'admincommove@gmail.com') {
-                return { uid: userDoc.id, ...userData, role: 'admin' as UserRole, isAdmin: true } as User;
+                return { ...userData, uid: userDoc.id, role: 'admin' as UserRole, isAdmin: true } as User;
             }
-            return { uid: userDoc.id, ...userData } as User;
+            return { ...userData, uid: userDoc.id } as User;
         }
         return null;
     } catch (error: any) {
@@ -63,9 +63,9 @@ export const subscribeToUserProfile = (uid: string, callback: (user: User | null
         if (snap.exists()) {
             const data = snap.data() as User;
             if (data.email === 'admincommove@gmail.com') {
-                callback({ uid: snap.id, ...data, role: 'admin' as UserRole, isAdmin: true });
+                callback({ ...data, uid: snap.id, role: 'admin' as UserRole, isAdmin: true });
             } else {
-                callback({ uid: snap.id, ...data });
+                callback({ ...data, uid: snap.id });
             }
         } else {
             callback(null);
@@ -226,18 +226,32 @@ export const updateUserSavedEvents = async (uid: string, eventIds: Set<string>):
     if (!uid) throw new Error("User ID is required to update saved events");
     await assertAuth(uid);
     const userDocRef = doc(db, usersCollectionRef, uid);
-    await setDoc(userDocRef, {
-        savedEventIds: Array.from(eventIds)
-    }, { merge: true });
+    const updateData = { savedEventIds: Array.from(eventIds) };
+    try {
+        await updateDoc(userDocRef, updateData);
+    } catch (e: any) {
+        if (e?.code === 'not-found' || e?.message?.includes('No document to update')) {
+            await setDoc(userDocRef, updateData, { merge: true });
+        } else {
+            throw e;
+        }
+    }
 };
 
 export const updateUserLikes = async (uid: string, eventIds: Set<string>): Promise<void> => {
     if (!uid) throw new Error("User ID is required to update liked events");
     await assertAuth(uid);
     const userDocRef = doc(db, usersCollectionRef, uid);
-    await setDoc(userDocRef, {
-        likedEventIds: Array.from(eventIds)
-    }, { merge: true });
+    const updateData = { likedEventIds: Array.from(eventIds) };
+    try {
+        await updateDoc(userDocRef, updateData);
+    } catch (e: any) {
+        if (e?.code === 'not-found' || e?.message?.includes('No document to update')) {
+            await setDoc(userDocRef, updateData, { merge: true });
+        } else {
+            throw e;
+        }
+    }
 };
 
 export const updateUserParticipation = async (
@@ -249,9 +263,16 @@ export const updateUserParticipation = async (
     await assertAuth(uid);
     const userDocRef = doc(db, usersCollectionRef, uid);
     const field = `${type}EventIds`;
-    await setDoc(userDocRef, {
-        [field]: eventIds
-    }, { merge: true });
+    const updateData = { [field]: eventIds };
+    try {
+        await updateDoc(userDocRef, updateData);
+    } catch (e: any) {
+        if (e?.code === 'not-found' || e?.message?.includes('No document to update')) {
+            await setDoc(userDocRef, updateData, { merge: true });
+        } else {
+            throw e;
+        }
+    }
 };
 
 export const addUserViewedEvent = async (uid: string, eventId: string): Promise<void> => {

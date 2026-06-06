@@ -29,6 +29,8 @@ interface SidebarProps {
     adminActiveTab?: AdminTab;
     onAdminTabChange?: (tab: AdminTab) => void;
     canManageUsers?: boolean;
+    expanded?: boolean;
+    onExpandedChange?: (expanded: boolean) => void;
 }
 
 const ADMIN_TABS: { tab: AdminTab; label: string; icon: React.ReactNode }[] = [
@@ -50,9 +52,17 @@ const Sidebar: React.FC<SidebarProps> = ({
     activeTab, onTabChange, onOpenScanner,
     pendingFacilitatorCount, unreadNotificationCount = 0, isStaff = false,
     adminActiveTab, onAdminTabChange, canManageUsers = false,
+    expanded: controlledExpanded,
+    onExpandedChange,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+    const [internalExpanded, setInternalExpanded] = useState(false);
+    const expanded = controlledExpanded ?? internalExpanded;
     const navItems = NAV_ITEMS;
+    const toggleExpanded = () => {
+        const nextExpanded = !expanded;
+        if (controlledExpanded === undefined) setInternalExpanded(nextExpanded);
+        onExpandedChange?.(nextExpanded);
+    };
 
     const adminTabs = ADMIN_TABS.filter(t =>
         t.tab !== 'users' && t.tab !== 'highlights' ? true : canManageUsers
@@ -109,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                 {/* ── Floating toggle — sticks out from right edge at top ── */}
                 <button
-                    onClick={() => setExpanded(v => !v)}
+                    onClick={toggleExpanded}
                     title={expanded ? 'Collapse' : 'Expand'}
                     className="absolute -right-3.5 top-5 z-40 w-7 h-7 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:border-primary-300 transition-all"
                 >

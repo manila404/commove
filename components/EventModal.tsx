@@ -466,8 +466,8 @@ const EventModal: React.FC<EventModalProps> = ({
               </div>
 
               {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
-                <div className={`p-3 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
-                  <p className="font-bold text-sm">
+                <div className={`p-2.5 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
+                  <p className="font-semibold text-xs">
                     {event.maxParticipants - approvedCount <= 0
                       ? 'Event is Full'
                       : `${event.maxParticipants - approvedCount} slot${event.maxParticipants - approvedCount !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
@@ -478,46 +478,46 @@ const EventModal: React.FC<EventModalProps> = ({
               {isResident ? (
                 // RESIDENT VIEW
                 event.isPrivate ? (
-                  <div className="p-8 bg-primary-50 dark:bg-primary-900/20 rounded-[20px] border-2 border-dashed border-primary-200 dark:border-primary-800/50">
+                  <div className="p-4 bg-white dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-700">
                     {isLoadingReg ? (
                       <div className="flex justify-center p-4"><Spinner /></div>
                     ) : userReg ? (
                       // User already has a registration — show their status
-                      <div className={`p-6 rounded-2xl text-center shadow-sm border-2 ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
+                      <div className={`p-4 rounded-xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                         userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
                           'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
                         }`}>
                         {userReg.status === 'pending' && (
                           <>
-                            <div className={`w-12 h-12 mx-auto mb-3 rounded-full ${isEventFull ? 'bg-red-100 dark:bg-red-900/40' : 'bg-yellow-100 dark:bg-yellow-900/40'} flex items-center justify-center`}>
+                            <div className={`w-9 h-9 mx-auto mb-2 rounded-full ${isEventFull ? 'bg-red-100 dark:bg-red-900/40' : 'bg-yellow-100 dark:bg-yellow-900/40'} flex items-center justify-center`}>
                               {isEventFull ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                 </svg>
                               ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                               )}
                             </div>
-                            <p className="text-base font-black mb-1 tracking-tight">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
-                            <p className="text-sm font-medium opacity-80">
+                            <p className="text-sm font-semibold mb-1 tracking-tight">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
+                            <p className="text-xs font-semibold opacity-80">
                               {isEventFull ? 'Unfortunately, all slots for this event have been filled.' : 'Your request is pending approval. The organizer will review it shortly.'}
                             </p>
                           </>
                         )}
                         {userReg.status === 'approved' && (
                           <>
-                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <div className="w-9 h-9 mx-auto mb-2 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                             </div>
-                            <p className="text-base font-black mb-1 tracking-tight">You are already registered!</p>
-                            <p className="text-sm font-medium opacity-80 mb-3">A slot has been assigned to you for this event.</p>
+                            <p className="text-sm font-semibold mb-1 tracking-tight">You are already registered!</p>
+                            <p className="text-xs font-semibold opacity-80 mb-3">A slot has been assigned to you for this event.</p>
                             <button
                               onClick={handleCheckIn}
-                              className="w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
+                              className="w-full py-2.5 bg-green-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-green-700 transition-all active:scale-95"
                             >
                               {isCheckedIn ? '✓ Already Checked-In' : 'Check-In to Event'}
                             </button>
@@ -525,13 +525,13 @@ const EventModal: React.FC<EventModalProps> = ({
                         )}
                         {userReg.status === 'rejected' && (
                           <>
-                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <div className="w-9 h-9 mx-auto mb-2 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                             </div>
-                            <p className="text-base font-black mb-1 tracking-tight">Registration Not Approved</p>
-                            <p className="text-sm font-medium opacity-80">Your registration for this event was not approved at this time.</p>
+                            <p className="text-sm font-semibold mb-1 tracking-tight">Registration Not Approved</p>
+                            <p className="text-xs font-semibold opacity-80">Your registration for this event was not approved at this time.</p>
                           </>
                         )}
                       </div>
@@ -548,32 +548,32 @@ const EventModal: React.FC<EventModalProps> = ({
                       </div>
                     ) : (
                       // No existing registration and slots available — show the form
-                      <div className="space-y-6">
+                      <div className="space-y-4">
                         <div className="text-center">
-                          <p className="text-primary-900 dark:text-primary-100 font-bold text-lg mb-1">Request to Join</p>
-                          <p className="text-primary-600/60 dark:text-primary-400/60 text-xs font-medium uppercase tracking-tighter">Fill in your details below to register</p>
+                          <p className="text-primary-900 dark:text-primary-100 font-semibold text-sm mb-1">Request to Join</p>
+                          <p className="text-primary-600/70 dark:text-primary-400/70 text-[11px] font-semibold">Fill in your details below to register</p>
                         </div>
-                        <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
+                        <form onSubmit={handleRegisterSubmit} className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
                             <input
                               type="text" placeholder="Full Name" required
                               value={regData.name} onChange={e => setRegData({ ...regData, name: e.target.value })}
-                              className="w-full px-5 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all"
+                              className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] font-semibold focus:border-primary-500 outline-none transition-all"
                             />
                             <input
                               type="tel" placeholder="Phone Number (Optional)"
                               value={regData.phoneNumber} onChange={e => setRegData({ ...regData, phoneNumber: e.target.value })}
-                              className="w-full px-5 py-4 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all"
+                              className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] font-semibold focus:border-primary-500 outline-none transition-all"
                             />
                           </div>
                           <input
                             type="email" placeholder="Email Address" required readOnly
                             value={regData.email} onChange={e => setRegData({ ...regData, email: e.target.value })}
-                            className="w-full px-5 py-4 bg-gray-100 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all cursor-not-allowed opacity-70"
+                            className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] font-semibold outline-none cursor-not-allowed opacity-70"
                           />
                           <button
                             type="submit" disabled={isRegistering || !currentUser}
-                            className="w-full py-4 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/30 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95"
+                            className="w-full py-2.5 bg-primary-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95"
                           >
                             {isRegistering ? 'Submitting Request...' : 'Submit Registration Request'}
                           </button>
@@ -826,14 +826,14 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
         ) : (
           <>
-            <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Participation</h3>
-            <p className={`text-xs font-bold uppercase tracking-widest ${event.isPrivate ? 'text-orange-500' : 'text-primary-600'}`}>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">Participation</h3>
+            <p className={`text-xs font-semibold ${event.isPrivate ? 'text-orange-500' : 'text-primary-600'}`}>
               {event.isPrivate ? 'Private Event • Registration Required' : 'Public Event • Anyone Can Attend'}
             </p>
 
             {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
               <div className={`p-2.5 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
-                <p className="font-bold text-sm">
+                <p className="font-semibold text-xs">
                   {event.maxParticipants - approvedCount <= 0
                     ? 'Event is Full'
                     : `${event.maxParticipants - approvedCount} slot${event.maxParticipants - approvedCount !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
@@ -844,30 +844,30 @@ const EventModal: React.FC<EventModalProps> = ({
             {isResident ? (
               // RESIDENT VIEW
               event.isPrivate ? (
-                <div className="p-5 bg-primary-50 dark:bg-primary-900/20 rounded-3xl border border-primary-100 dark:border-primary-800">
+                <div className="p-4 bg-white dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-700">
                   {isLoadingReg ? (
                     <div className="flex justify-center p-4"><Spinner /></div>
                   ) : userReg ? (
                     // User already has a registration — show their current status
-                    <div className={`p-4 rounded-2xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
+                      <div className={`p-3 rounded-xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                       userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
                         'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
                       }`}>
                       {userReg.status === 'pending' && (
                         <>
-                          <p className="font-black mb-1">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
-                          <p className="text-xs font-medium opacity-80">
+                          <p className="text-sm font-semibold mb-1">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
+                          <p className="text-xs font-semibold opacity-80">
                             {isEventFull ? 'Unfortunately, all slots have been filled.' : 'Your request is pending approval from the organizer.'}
                           </p>
                         </>
                       )}
                       {userReg.status === 'approved' && (
                         <>
-                          <p className="font-black mb-1">You are already registered!</p>
-                          <p className="text-xs font-medium opacity-80 mb-3">A slot has been assigned to you for this event.</p>
+                          <p className="text-sm font-semibold mb-1">You are already registered!</p>
+                          <p className="text-xs font-semibold opacity-80 mb-3">A slot has been assigned to you for this event.</p>
                           <button
                             onClick={handleCheckIn}
-                            className="w-full py-2.5 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95"
+                            className="w-full py-2.5 bg-green-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-green-700 transition-all active:scale-95"
                           >
                             {isCheckedIn ? '✓ Checked-In' : 'Check-In Now'}
                           </button>
@@ -875,8 +875,8 @@ const EventModal: React.FC<EventModalProps> = ({
                       )}
                       {userReg.status === 'rejected' && (
                         <>
-                          <p className="font-black mb-1">Registration Not Approved</p>
-                          <p className="text-xs font-medium opacity-80">Your registration was not approved at this time.</p>
+                          <p className="text-sm font-semibold mb-1">Registration Not Approved</p>
+                          <p className="text-xs font-semibold opacity-80">Your registration was not approved at this time.</p>
                         </>
                       )}
                     </div>
@@ -894,25 +894,25 @@ const EventModal: React.FC<EventModalProps> = ({
                   ) : (
                     // No registration yet and slots available — show the form
                     <form onSubmit={handleRegisterSubmit} className="space-y-3">
-                      <p className="text-center text-sm font-bold text-primary-800 dark:text-primary-200 mb-1">Request to Attend</p>
+                      <p className="text-center text-sm font-semibold text-primary-800 dark:text-primary-200 mb-1">Request to Attend</p>
                       <input
                         type="text" placeholder="Full Name" required
                         value={regData.name} onChange={e => setRegData({ ...regData, name: e.target.value })}
-                        className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-primary-500 outline-none transition-all"
+                        className="w-full px-4 py-2.5 text-[13px] font-semibold border border-gray-200 dark:border-gray-700 rounded-xl dark:bg-gray-800 shadow-sm focus:border-primary-500 outline-none transition-all"
                       />
                       <input
                         type="email" placeholder="Email Address" required readOnly
                         value={regData.email}
-                        className="w-full p-3 text-sm border-2 border-gray-100 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-800 shadow-sm outline-none cursor-not-allowed opacity-70"
+                        className="w-full px-4 py-2.5 text-[13px] font-semibold border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 shadow-sm outline-none cursor-not-allowed opacity-70"
                       />
                       <input
                         type="tel" placeholder="Phone Number (Optional)"
                         value={regData.phoneNumber} onChange={e => setRegData({ ...regData, phoneNumber: e.target.value })}
-                        className="w-full p-3 text-sm border-2 border-white dark:border-gray-800 rounded-xl dark:bg-gray-800 shadow-sm focus:border-primary-500 outline-none transition-all"
+                        className="w-full px-4 py-2.5 text-[13px] font-semibold border border-gray-200 dark:border-gray-700 rounded-xl dark:bg-gray-800 shadow-sm focus:border-primary-500 outline-none transition-all"
                       />
                       <button
                         type="submit" disabled={isRegistering || !currentUser}
-                        className="w-full py-3 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/20 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95"
+                        className="w-full py-2.5 bg-primary-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95"
                       >
                         {isRegistering ? 'Submitting Request...' : 'Request to Attend'}
                       </button>
@@ -1395,8 +1395,8 @@ const EventModal: React.FC<EventModalProps> = ({
                   </div>
 
                   {event.isPrivate && event.maxParticipants !== undefined && event.maxParticipants !== null && (
-                    <div className={`p-3 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
-                      <p className="font-bold text-xs">
+                    <div className={`p-2.5 rounded-xl border ${event.maxParticipants - approvedCount <= 0 ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-300' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800/50 dark:text-blue-300'} text-center shadow-sm`}>
+                      <p className="font-semibold text-xs">
                         {event.maxParticipants - approvedCount <= 0
                           ? 'Event is Full'
                           : `${event.maxParticipants - approvedCount} slot${event.maxParticipants - approvedCount !== 1 ? 's' : ''} available out of ${event.maxParticipants}`}
@@ -1406,7 +1406,7 @@ const EventModal: React.FC<EventModalProps> = ({
 
                   {isResident ? (
                     event.isPrivate ? (
-                      <div className="p-5 bg-primary-50 dark:bg-primary-900/20 rounded-[20px] border-2 border-dashed border-primary-200 dark:border-primary-800/50">
+                      <div className="p-4 bg-white dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-700">
                         {isLoadingReg ? (
                           <div className="flex justify-center p-4"><Spinner /></div>
                         ) : userReg ? (
@@ -1416,36 +1416,36 @@ const EventModal: React.FC<EventModalProps> = ({
                             }`}>
                             {userReg.status === 'pending' && (
                               <>
-                                <div className={`w-10 h-10 mx-auto mb-2 rounded-full ${isEventFull ? 'bg-red-100 dark:bg-red-900/40' : 'bg-yellow-100 dark:bg-yellow-900/40'} flex items-center justify-center`}>
+                                <div className={`w-9 h-9 mx-auto mb-2 rounded-full ${isEventFull ? 'bg-red-100 dark:bg-red-900/40' : 'bg-yellow-100 dark:bg-yellow-900/40'} flex items-center justify-center`}>
                                   {isEventFull ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                   ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                   )}
                                 </div>
-                                <p className="text-sm font-black mb-1">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
-                                <p className="text-xs font-medium opacity-80">{isEventFull ? 'All slots have been filled.' : 'Pending approval from organizer.'}</p>
+                                <p className="text-sm font-semibold mb-1">{isEventFull ? 'Event is Full' : 'Request Pending'}</p>
+                                <p className="text-xs font-semibold opacity-80">{isEventFull ? 'All slots have been filled.' : 'Pending approval from organizer.'}</p>
                               </>
                             )}
                             {userReg.status === 'approved' && (
                               <>
-                                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <div className="w-9 h-9 mx-auto mb-2 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </div>
-                                <p className="text-sm font-black mb-1">You are already registered!</p>
-                                <p className="text-xs font-medium opacity-80 mb-3">A slot has been assigned to you.</p>
-                                <button onClick={handleCheckIn} className="w-full py-2.5 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition-all active:scale-95">
+                                <p className="text-sm font-semibold mb-1">You are already registered!</p>
+                                <p className="text-xs font-semibold opacity-80 mb-3">A slot has been assigned to you.</p>
+                                <button onClick={handleCheckIn} className="w-full py-2.5 bg-green-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-green-700 transition-all active:scale-95">
                                   {isCheckedIn ? '✓ Already Checked-In' : 'Check-In to Event'}
                                 </button>
                               </>
                             )}
                             {userReg.status === 'rejected' && (
                               <>
-                                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <div className="w-9 h-9 mx-auto mb-2 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px] text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </div>
-                                <p className="text-sm font-black mb-1">Registration Not Approved</p>
-                                <p className="text-xs font-medium opacity-80">Your registration was not approved.</p>
+                                <p className="text-sm font-semibold mb-1">Registration Not Approved</p>
+                                <p className="text-xs font-semibold opacity-80">Your registration was not approved.</p>
                               </>
                             )}
                           </div>
@@ -1460,14 +1460,14 @@ const EventModal: React.FC<EventModalProps> = ({
                         ) : (
                           <div className="space-y-4">
                             <div className="text-center">
-                              <p className="text-primary-900 dark:text-primary-100 font-bold mb-1">Request to Join</p>
-                              <p className="text-primary-600/60 dark:text-primary-400/60 text-xs font-medium uppercase tracking-tighter">Fill in your details below to register</p>
+                              <p className="text-primary-900 dark:text-primary-100 font-semibold text-sm mb-1">Request to Join</p>
+                              <p className="text-primary-600/70 dark:text-primary-400/70 text-[11px] font-semibold">Fill in your details below to register</p>
                             </div>
                             <form onSubmit={handleRegisterSubmit} className="space-y-3">
-                              <input type="text" placeholder="Full Name" required value={regData.name} onChange={e => setRegData({ ...regData, name: e.target.value })} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all" />
-                              <input type="tel" placeholder="Phone Number (Optional)" value={regData.phoneNumber} onChange={e => setRegData({ ...regData, phoneNumber: e.target.value })} className="w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold focus:border-primary-500 outline-none transition-all" />
-                              <input type="email" placeholder="Email Address" required readOnly value={regData.email} className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold outline-none cursor-not-allowed opacity-70" />
-                              <button type="submit" disabled={isRegistering || !currentUser} className="w-full py-3 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-500/20 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95">
+                              <input type="text" placeholder="Full Name" required value={regData.name} onChange={e => setRegData({ ...regData, name: e.target.value })} className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] font-semibold focus:border-primary-500 outline-none transition-all" />
+                              <input type="tel" placeholder="Phone Number (Optional)" value={regData.phoneNumber} onChange={e => setRegData({ ...regData, phoneNumber: e.target.value })} className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] font-semibold focus:border-primary-500 outline-none transition-all" />
+                              <input type="email" placeholder="Email Address" required readOnly value={regData.email} className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] font-semibold outline-none cursor-not-allowed opacity-70" />
+                              <button type="submit" disabled={isRegistering || !currentUser} className="w-full py-2.5 bg-primary-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-95">
                                 {isRegistering ? 'Submitting...' : 'Submit Registration Request'}
                               </button>
                             </form>

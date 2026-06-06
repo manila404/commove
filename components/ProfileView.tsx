@@ -186,7 +186,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     const isStaff = user?.role === 'admin' || user?.role === 'facilitator' || user?.isAdmin === true;
     const isAdminUser = user?.role === 'admin' || (user?.isAdmin === true && user?.role !== 'facilitator');
     const roleLabel = isGuest ? 'Guest' : (user?.role === 'facilitator' ? 'Facilitator' : (isAdminUser ? 'Administrator' : 'Resident'));
-    const badgeColor = 'bg-white/20 text-white';
     const isPendingFacilitator = user?.facilitatorRequestStatus === 'pending';
 
     // Delete / Deactivate view — slides in over Manage Account panel
@@ -393,7 +392,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     >
                         <ArrowRightIcon className="w-5 h-5 rotate-180" />
                     </button>
-                    <h2 className="text-base font-bold text-gray-900 dark:text-white">Manage Account</h2>
+                    <h2 className="text-[15px] font-medium text-gray-900 dark:text-white">Manage Account</h2>
                 </div>
                 {/* Options */}
                 <div className="flex-1 px-4 pt-5 pb-6 bg-white dark:bg-gray-900">
@@ -401,44 +400,44 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                         {onProfileCardClick && (
                             <button
                                 onClick={() => { setShowManageAccountPanel(false); onProfileCardClick(); }}
-                                className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
+                                className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
                             >
                                 <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                     </svg>
                                 </div>
                                 <div className="flex-1 text-left min-w-0">
-                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Edit Profile</p>
+                                    <p className="text-[13px] font-medium text-gray-800 dark:text-gray-100">Edit Profile</p>
                                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Name, avatar, contact info</p>
                                 </div>
                             </button>
                         )}
                         <button
                             onClick={() => setShowAccountWarning('deactivate')}
-                            className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
                         >
                             <div className="w-9 h-9 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center shrink-0 text-amber-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                 </svg>
                             </div>
                             <div className="flex-1 text-left min-w-0">
-                                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Deactivate Account</p>
+                                <p className="text-[13px] font-medium text-gray-800 dark:text-gray-100">Deactivate Account</p>
                                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Temporarily hide your profile</p>
                             </div>
                         </button>
                         <button
                             onClick={() => setShowAccountWarning('delete')}
-                            className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
                         >
                             <div className="w-9 h-9 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0 text-red-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                             </div>
                             <div className="flex-1 text-left min-w-0">
-                                <p className="text-sm font-semibold text-red-600 dark:text-red-400">Delete Account</p>
+                                <p className="text-[13px] font-medium text-red-600 dark:text-red-400">Delete Account</p>
                                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Permanently remove your account</p>
                             </div>
                         </button>
@@ -520,14 +519,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             `}</style>
 
             {/* Header Section */}
-            <div className="bg-primary-600 dark:bg-primary-800 p-5 rounded-2xl relative z-20 mx-4 mt-4 md:!mt-0">
-                <div className="flex items-center gap-4">
+            <div className="relative z-20 mx-4 mt-4 md:!mt-0 rounded-2xl overflow-hidden p-3 shadow-sm" style={{ background: 'linear-gradient(to right, #0052A3 0%, #0066cc 58%, #FFD200 100%)' }}>
+                <div className="absolute -left-10 -top-12 w-36 h-28 rounded-[28px] bg-white/10 border border-white/20 rotate-[-18deg]" />
+                <div className="absolute right-5 -top-10 w-32 h-24 rounded-[26px] bg-white/12 border border-white/25 rotate-[20deg]" />
+                <div className="absolute -right-8 top-7 w-28 h-20 rounded-[24px] bg-white/10 border border-white/20 rotate-[8deg]" />
+                <div className="relative flex items-center gap-3">
                     <div className="relative group shrink-0">
-                        <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-primary-600 shadow-md overflow-hidden">
+                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-primary-600 shadow-sm overflow-hidden">
                             {user?.avatarUrl ? (
                                 <img src={user.avatarUrl || undefined} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             ) : (
-                                <UserIcon className="w-7 h-7" />
+                                <UserIcon className="w-[18px] h-[18px]" />
                             )}
                         </div>
                         {!isGuest && (
@@ -540,15 +542,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                         )}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <h2 className="text-base font-semibold text-white truncate leading-tight">{isGuest ? 'Welcome, Guest' : (user?.name || auth.currentUser?.displayName || 'User')}</h2>
-                        <p className="text-white/80 text-xs truncate mb-1.5 leading-tight mt-0.5">{isGuest ? 'Sign in to save events and more' : (user?.email || auth.currentUser?.email || 'No email')}</p>
+                        <h2 className="text-[13px] font-medium text-white truncate leading-tight">{isGuest ? 'Welcome, Guest' : (user?.name || auth.currentUser?.displayName || 'User')}</h2>
+                        <p className="text-white/85 text-[13px] font-medium truncate mb-1.5 leading-tight mt-0.5">{isGuest ? 'Sign in to save events and more' : (user?.email || auth.currentUser?.email || 'No email')}</p>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${badgeColor}`}>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/20 text-white backdrop-blur-sm border border-white/10">
                                 {isStaff && <ShieldCheckIcon className="w-2.5 h-2.5 mr-1" />}
                                 {roleLabel}
                             </span>
                             {isPendingFacilitator && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-400 text-yellow-900">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-yellow-400 text-yellow-900">
                                     Pending Facilitator Approval
                                 </span>
                             )}
@@ -592,19 +594,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
             )}
 
-            <div className="container mx-auto px-4 mt-6 relative z-20 space-y-6 flex-grow w-full pb-6">
+            <div className="container mx-auto px-4 mt-4 relative z-20 space-y-3 flex-grow w-full pb-6">
                  {/* Login Card for Guests */}
                  {isGuest && (
                     <button 
-                        className="w-full bg-gray-900 dark:bg-black rounded-2xl p-4 shadow-xl flex items-center justify-between cursor-pointer animate-slide-in hover:scale-[1.02] transition-transform duration-200 text-left" 
+                        className="w-full bg-gray-900 dark:bg-black rounded-2xl p-3 shadow-lg flex items-center justify-between cursor-pointer animate-slide-in hover:scale-[1.01] transition-transform duration-200 text-left" 
                         onClick={onLogin}
                     >
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-primary-400">
-                                <UserIcon className="w-5 h-5" />
+                            <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center text-primary-400">
+                                <UserIcon className="w-[18px] h-[18px]" />
                             </div>
                             <div>
-                                <h3 className="text-white font-semibold text-sm">Sign In / Create Account</h3>
+                                <h3 className="text-white font-medium text-[13px]">Sign In / Create Account</h3>
                                 <p className="text-gray-400 text-xs text-left">Unlock all features</p>
                             </div>
                         </div>
@@ -621,38 +623,38 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 <div className="rounded-2xl overflow-hidden bg-white dark:bg-gray-800">
                     {!isGuest && (
                         isAdminUser && onEditProfile ? (
-                            <button onClick={onEditProfile} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                            <button onClick={onEditProfile} className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                                 <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5 w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                 </div>
                                 <div className="flex-1 text-left min-w-0">
-                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Edit Profile</p>
+                                    <p className="text-[13px] font-medium text-gray-800 dark:text-gray-100">Edit Profile</p>
                                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Name, avatar, contact info</p>
                                 </div>
                             </button>
                         ) : (
-                            <button onClick={() => setShowManageAccountPanel(true)} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                            <button onClick={() => setShowManageAccountPanel(true)} className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                                 <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
                                 <div className="flex-1 text-left min-w-0">
-                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Manage Account</p>
+                                    <p className="text-[13px] font-medium text-gray-800 dark:text-gray-100">Manage Account</p>
                                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Deactivate or delete account</p>
                                 </div>
                             </button>
                         )
                     )}
 
-                    <button onClick={toggleTheme} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                    <button onClick={toggleTheme} className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                         <div className="w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center shrink-0 text-orange-500">
                             {theme === 'dark' ? <MoonIcon className="w-[18px] h-[18px]" /> : <SunIcon className="w-[18px] h-[18px]" />}
                         </div>
                         <div className="flex-1 text-left min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Dark Mode</p>
+                            <p className="text-[13px] font-medium text-gray-800 dark:text-gray-100">Dark Mode</p>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">{theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}</p>
                         </div>
                         <div className={`w-10 h-5.5 h-[22px] w-[40px] rounded-full transition-colors duration-200 flex items-center px-0.5 shrink-0 ${theme === 'dark' ? 'bg-primary-600' : 'bg-gray-300'}`}>
@@ -662,24 +664,24 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 
                     {!isStaff && (
                     <>
-                    <button onClick={onShowMyEvents} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                    <button onClick={onShowMyEvents} className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                         <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
                             <BookmarkIcon className="w-[18px] h-[18px]" />
                         </div>
                         <div className="flex-1 text-left min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">My Events</p>
+                            <p className="text-[13px] font-medium text-gray-800 dark:text-gray-100">My Events</p>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Saved and attended events</p>
                         </div>
                     </button>
                     {onOpenScanner && (
-                    <button onClick={onOpenScanner} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                    <button onClick={onOpenScanner} className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                         <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                             </svg>
                         </div>
                         <div className="flex-1 text-left min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Scan QR Code</p>
+                            <p className="text-[13px] font-medium text-gray-800 dark:text-gray-100">Scan QR Code</p>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Check in to events</p>
                         </div>
                     </button>
@@ -687,12 +689,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     </>
                     )}
 
-                    <button onClick={onShowNotificationSettings} className="w-full flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                    <button onClick={onShowNotificationSettings} className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-gray-100 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                         <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
                             <BellIcon className="w-[18px] h-[18px]" />
                         </div>
                         <div className="flex-1 text-left min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Notification Settings</p>
+                            <p className="text-[13px] font-medium text-gray-800 dark:text-gray-100">Notification Settings</p>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Alerts, reminders, sounds</p>
                         </div>
                     </button>
@@ -709,23 +711,23 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                             </button>
                         */}
 
-                    <button onClick={onShowTermsAndConditions} className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                    <button onClick={onShowTermsAndConditions} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                         <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-300">
                             <ShieldCheckIcon className="w-[18px] h-[18px]" />
                         </div>
                         <div className="flex-1 text-left min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Terms & Conditions</p>
+                            <p className="text-[13px] font-medium text-gray-800 dark:text-gray-100">Terms & Conditions</p>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">Privacy policy, terms of use</p>
                         </div>
                     </button>
                 </div>
 
                 {!isGuest && (
-                    <button onClick={onLogout} className="w-full bg-white dark:bg-gray-800 rounded-2xl flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors mt-4 mb-4">
+                    <button onClick={onLogout} className="w-full bg-white dark:bg-gray-800 rounded-2xl flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors mt-3 mb-4">
                         <div className="w-9 h-9 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0 text-red-500">
                             <ArrowRightIcon className="w-[18px] h-[18px]" />
                         </div>
-                        <p className="text-sm font-semibold text-red-600 dark:text-red-400">Logout</p>
+                        <p className="text-[13px] font-medium text-red-600 dark:text-red-400">Logout</p>
                     </button>
                 )}
 

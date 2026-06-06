@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Send, Bot, Mic, ArrowLeft, X, ArrowUpRight,
+  Send, Bot, Mic, ArrowLeft, X,
 } from 'lucide-react';
 import type { EventType } from '../types';
 import {
@@ -61,6 +61,8 @@ const saveMessages = (msgs: ChatMessage[]) => {
 // ── Animated orb ──────────────────────────────────────────────────────────────
 const AnimatedOrb = () => (
   <div className="relative w-[50px] h-[50px] mx-auto mb-3" style={{ aspectRatio: '1' }}>
+    <div className="absolute inset-[-10px] rounded-full border-2 border-[#0052A3]/30 animate-ping" />
+    <div className="absolute inset-[-5px] rounded-full border border-[#0052A3]/40 animate-pulse" />
     <div className="absolute inset-0 rounded-full animate-pulse" style={{
       background: 'radial-gradient(circle, #93c5fd 0%, #3b82f6 60%, #1d4ed8 100%)',
       filter: 'blur(12px)', transform: 'scale(1.4)', opacity: 0.5,
@@ -100,11 +102,13 @@ const QUICK_ACTIONS = [
   },
 ];
 
+const INPUT_QUICK_ACTIONS = QUICK_ACTIONS.slice(0, 3);
+
 // ── Typing indicator ──────────────────────────────────────────────────────────
 const TypingDots = () => (
   <div className="flex items-end gap-2 mb-4">
-    <div className="w-7 h-7 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center flex-shrink-0">
-      <Bot size={14} className="text-violet-500" />
+    <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+      <Bot size={14} className="text-[#0052A3] dark:text-blue-300" />
     </div>
     <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-bl-sm px-4 py-3">
       <div className="flex gap-1 items-center h-3.5">
@@ -167,23 +171,34 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
           onKeyDown={handleKeyDown}
           disabled={isLoading}
           placeholder="Ask me anything about events..."
-          className="flex-1 text-sm px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:border-violet-400 dark:focus:border-violet-500 text-gray-700 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-colors disabled:opacity-50"
+          className="flex-1 text-sm px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:border-[#0052A3] dark:focus:border-blue-400 text-gray-700 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-colors disabled:opacity-50"
         />
         <button
           onClick={() => handleSend()}
           disabled={!input.trim() || isLoading}
-          className="w-9 h-9 rounded-full bg-violet-600 hover:bg-violet-700 disabled:bg-gray-200 dark:disabled:bg-gray-700 text-white disabled:text-gray-400 flex items-center justify-center transition-all active:scale-95 disabled:cursor-not-allowed flex-shrink-0">
+          className="w-9 h-9 rounded-full bg-[#0052A3] hover:bg-[#004482] disabled:bg-gray-200 dark:disabled:bg-gray-700 text-white disabled:text-gray-400 flex items-center justify-center transition-all active:scale-95 disabled:cursor-not-allowed flex-shrink-0">
           <Send size={14} />
         </button>
       </div>
-      <div className="flex items-center justify-between mt-2 px-1">
-        <button className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+      <div className="flex items-center gap-1.5 mt-2 px-1 overflow-x-auto no-scrollbar">
+        <button className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0">
           <Mic size={12} /><span>Voice Record</span>
         </button>
+        {INPUT_QUICK_ACTIONS.map(action => (
+          <button
+            key={action.id}
+            type="button"
+            onClick={() => handleSend(action.query)}
+            disabled={isLoading || !available}
+            className="flex-shrink-0 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-blue-50 hover:text-[#0052A3] dark:hover:bg-blue-900/30 dark:hover:text-blue-300 text-[10px] font-medium transition-colors disabled:opacity-50"
+          >
+            {action.title}
+          </button>
+        ))}
         {chatMessages.length > 0 && (
           <button
             onClick={() => { localStorage.removeItem(CHAT_KEY); setMessages([]); }}
-            className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-red-400 transition-colors">
+            className="ml-auto text-[11px] text-gray-400 dark:text-gray-500 hover:text-red-400 transition-colors flex-shrink-0">
             Clear chat
           </button>
         )}
@@ -196,7 +211,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
     <div className="relative flex flex-col h-full w-full overflow-hidden bg-white dark:bg-gray-950">
 
       {/* Global Header with Back and Close button */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 bg-white/80 dark:bg-gray-950 z-10">
+      <div className="pt-safe md:pt-3 flex items-center gap-3 px-4 pb-3 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 bg-white/80 dark:bg-gray-950 z-10">
         {hasChat && (
           <button onClick={() => setMessages([])} title="Back to welcome"
             className="p-2 -ml-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
@@ -204,7 +219,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
           </button>
         )}
         <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'radial-gradient(circle at 35% 30%, #c4b5fd, #7c3aed 60%, #4338ca 100%)' }}>
+          style={{ background: 'radial-gradient(circle at 35% 30%, #93c5fd, #0052A3 60%, #003f7f 100%)' }}>
           <Bot size={14} className="text-white" />
         </div>
         <div className="flex-1 min-w-0">
@@ -222,7 +237,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
         <div className="flex flex-col flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
 
           {/* Orb + heading — compact padding */}
-          <div className="flex-shrink-0 flex flex-col items-center justify-center text-center px-5 py-6">
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-5 pt-12 pb-8">
             <AnimatedOrb />
             <h1 className="text-base md:text-lg font-bold text-gray-900 dark:text-white leading-snug">
               Hi! I'm your Assistant.<br />How can I help you today?
@@ -232,36 +247,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
             </p>
           </div>
 
-          {/* Quick Actions — horizontal snap-scroll */}
-          <div className="flex-shrink-0 w-full pb-4">
-            <div className="mb-2 px-4">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quick Actions</span>
-            </div>
-            <div
-              className="flex gap-2.5 overflow-x-auto overflow-y-hidden snap-x snap-mandatory px-4 py-1"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              {QUICK_ACTIONS.map(qa => (
-                <button
-                  key={qa.id}
-                  onClick={() => handleSend(qa.query)}
-                  className="relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md active:scale-[0.99] transition-all snap-start flex-shrink-0 w-[180px]"
-                >
-                  {/* ↗ arrow top-right */}
-                  <div className="absolute top-2 right-2 text-gray-300 dark:text-gray-600">
-                    <ArrowUpRight size={10} />
-                  </div>
-                  {/* Emoji icon */}
-                  <span className="text-xl leading-none flex-shrink-0">{qa.emoji}</span>
-                  {/* Text */}
-                  <div className="min-w-0 pr-1.5">
-                    <p className="text-[11px] font-semibold text-gray-800 dark:text-gray-100 leading-snug truncate">{qa.title}</p>
-                    <p className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5 leading-snug truncate">{qa.subtitle}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 
@@ -273,13 +258,13 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
               <div key={msg.id} className={`flex items-end gap-2 mb-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                 {msg.role === 'assistant' && (
                   <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 self-end"
-                    style={{ background: 'radial-gradient(circle at 35% 30%, #c4b5fd, #7c3aed 60%, #4338ca 100%)' }}>
+                    style={{ background: 'radial-gradient(circle at 35% 30%, #93c5fd, #0052A3 60%, #003f7f 100%)' }}>
                     <Bot size={11} className="text-white" />
                   </div>
                 )}
                 <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap break-words ${
                   msg.role === 'user'
-                    ? 'bg-violet-600 text-white rounded-br-sm'
+                    ? 'bg-[#0052A3] text-white rounded-br-sm'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-sm'
                 }`}>
                   {msg.role === 'user'
@@ -288,7 +273,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
                         seg.type === 'event-link' ? (
                           <button key={i}
                             onClick={() => { const ev = events.find(e => e.id === seg.eventId); if (ev) onEventSelect(ev); }}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 mx-0.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium transition-colors active:scale-95">
+                            className="inline-flex items-center gap-1 px-2 py-0.5 mx-0.5 rounded-lg bg-[#0052A3] hover:bg-[#004482] text-white text-xs font-medium transition-colors active:scale-95">
                             {seg.content} ↗
                           </button>
                         ) : <span key={i}>{seg.content}</span>
