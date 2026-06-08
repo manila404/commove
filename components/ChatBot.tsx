@@ -282,20 +282,21 @@ const ChatBot: React.FC<ChatBotProps> = ({ events, onEventSelect, onClose }) => 
     <div className="relative flex flex-col h-full w-full overflow-hidden bg-white dark:bg-gray-950">
 
       {/* Global Header with Back and Close button */}
-      <div className="pt-safe md:pt-3 flex items-center gap-3 px-4 pb-3 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 bg-white/80 dark:bg-gray-950 z-10">
+      <div className="pt-safe md:pt-0 flex items-center gap-3 px-4 md:px-5 pb-3 md:pb-0 md:h-[64px] border-b border-gray-100 dark:border-gray-800 flex-shrink-0 bg-white/80 dark:bg-gray-950 z-10">
         {hasChat && (
           <button onClick={() => setMessages([])} title="Back to welcome"
             className="p-2 -ml-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
             <ArrowLeft size={18} />
           </button>
         )}
-        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+        <div className="w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ background: 'radial-gradient(circle at 35% 30%, #93c5fd, #0052A3 60%, #003f7f 100%)' }}>
-          <Bot size={14} className="text-white" />
+          <Bot size={14} className="text-white md:hidden" />
+          <Bot size={17} className="text-white hidden md:block" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none">Commove Assistant</p>
-          <p className="text-xs text-gray-400 mt-0.5">Events in Bacoor, Cavite</p>
+          <p className="text-sm md:text-[15px] font-semibold text-gray-900 dark:text-white leading-none">Commove Assistant</p>
+          <p className="text-xs text-gray-400 mt-0.5 md:mt-1">Events in Bacoor, Cavite</p>
         </div>
         <button onClick={onClose} title="Close Chat"
           className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
