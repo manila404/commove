@@ -13,8 +13,10 @@ interface ExtendedResponse extends ServerResponse {
 
 // Initialize Firebase Admin SDK
 const initAdmin = () => {
-  if (admin.apps.length > 0) {
-    return admin.firestore();
+  const firebaseAdmin = (admin as any).default || admin;
+
+  if (firebaseAdmin.apps && firebaseAdmin.apps.length > 0) {
+    return firebaseAdmin.firestore();
   }
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -26,15 +28,15 @@ const initAdmin = () => {
     throw new Error("Firebase Admin environment variables are not configured.");
   }
 
-  admin.initializeApp({
-    credential: admin.credential.cert({
+  firebaseAdmin.initializeApp({
+    credential: firebaseAdmin.credential.cert({
       projectId,
       clientEmail,
       privateKey: privateKey.replace(/\\n/g, '\n'),
     }),
   });
 
-  return admin.firestore();
+  return firebaseAdmin.firestore();
 };
 
 const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
