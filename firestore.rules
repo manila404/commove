@@ -30,34 +30,44 @@ service cloud.firestore {
     }
 
     // ─── OTP Verification Codes ───────────────────────────────────────────────
-    // Offloaded to Serverless Backend: direct client access is locked down.
-
-    match /otpCodes/{emailKey} {
-      allow read, write: if false;
+    // Allow public read/write access because signup OTP requests occur before 
+    // the user is authenticated (request.auth is null).
+    match /otpCodes/{otpDocId} {
+      allow read, delete: if true;
+      allow create, update: if request.resource.data.keys().hasAll([
+        'email',
+        'code',
+        'createdAt',
+        'expiresAt',
+        'attempts'
+      ]);
     }
 
     // ─── Users ────────────────────────────────────────────────────────────────
-
     match /users/{userId} {
       allow get: if isOwner(userId) || isStaff() ||
         get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
-      allow list: if true; // username uniqueness check runs before auth exists
+
+      allow list: if true;
+
       allow create: if isOwner(userId);
+
       allow update: if (isOwner(userId) || isStaff()) &&
         !(resource.data.email == 'admincommove@gmail.com' && (
           request.resource.data.email != 'admincommove@gmail.com' ||
           request.resource.data.role != 'admin'
         ));
+
       allow delete: if isAdmin() && resource.data.email != 'admincommove@gmail.com';
     }
 
     // ─── Events ───────────────────────────────────────────────────────────────
-
     match /events/{eventId} {
       allow read: if true;
+
       allow create: if isAuthenticated();
+
       allow update: if isStaff() ||
-        // Creator may edit their own pending event (non-sensitive fields only)
         (
           isAuthenticated() &&
           resource.data.createdBy == request.auth.uid &&
@@ -65,49 +75,79 @@ service cloud.firestore {
           !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['status', 'isAdmin', 'role', 'createdBy'])
         ) ||
-        // Any authenticated user may update analytics counters only
         (
           isAuthenticated() &&
           request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['viewCount', 'saveCount', 'likeCount', 'interestedCount', 'checkInCount', 'feedbackCount', 'averageRating'])
+            .hasOnly([
+              'viewCount',
+              'saveCount',
+              'likeCount',
+              'interestedCount',
+              'checkInCount',
+              'feedbackCount',
+              'averageRating'
+            ])
         );
+
       allow delete: if isStaff();
     }
 
     // ─── Registrations ────────────────────────────────────────────────────────
-
     match /registrations/{registrationId} {
       allow read: if isAuthenticated() &&
         (resource.data.userId == request.auth.uid || isStaff());
+
       allow create: if isAuthenticated() &&
         request.resource.data.userId == request.auth.uid;
+
       allow update: if isStaff();
+
       allow delete: if isStaff();
     }
 
     // ─── Notifications ────────────────────────────────────────────────────────
-
     match /notifications/{notificationId} {
-      allow read, update, delete: if isOwner(resource.data.userId);
-      allow create: if isAuthenticated() && (
-        isStaff() ||
-        request.resource.data.userId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.role == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.resource.data.userId)).data.email == 'admincommove@gmail.com'
-      );
+
+      // Users can only read their own notifications
+      allow read: if isAuthenticated()
+        && resource.data.userId == request.auth.uid;
+
+      // Users can only update their own notification read status
+      allow update: if isAuthenticated()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['isRead']);
+
+      // Users can only delete their own notifications
+      allow delete: if isAuthenticated()
+        && resource.data.userId == request.auth.uid;
+
+      // Staff can create notifications for other users.
+      // Regular users can only create notifications for themselves.
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasAll([
+          'userId',
+          'title',
+          'body',
+          'type',
+          'createdAt',
+          'isRead'
+        ])
+        && (
+          isStaff() ||
+          request.resource.data.userId == request.auth.uid
+        );
     }
 
     // ─── Event Feedback ───────────────────────────────────────────────────────
-
     match /eventFeedback/{feedbackId} {
       allow read: if true;
       allow create: if isAuthenticated();
       allow update, delete: if isStaff();
     }
 
-    // ─── App Config (highlights, etc.) ────────────────────────────────────────
-    // Any user may read config docs; only admins may write them.
-
+    // ─── App Config ───────────────────────────────────────────────────────────
     match /config/{configId} {
       allow read: if true;
       allow write: if isAdmin();
