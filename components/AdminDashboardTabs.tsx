@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { EventType, User } from '../types';
@@ -17,6 +17,7 @@ import type { CrossDomainSummary, DomainInsight, InsightDomain, InsightLevel } f
 import type { EventFeedback } from '../types';
 import ConfirmationDialog from './ConfirmationDialog';
 import { getCategoryStyle } from '../utils/categoryStyles';
+import { buildDayMap, toYMD } from '../utils/calendarUtils';
 interface AdminDashboardTabsProps {
     events: EventType[];
     allEvents: EventType[]; // Full non-deduplicated list for recurring count badges
@@ -175,6 +176,20 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [calendarView, setCalendarView] = useState<'month' | 'agenda'>('month');
     const [calendarMonthDate, setCalendarMonthDate] = useState<Date>(new Date());
     const [isMobile, setIsMobile] = React.useState(false);
+    const agendaMonthStart = useMemo(() => {
+        const date = new Date(viewingDate.getFullYear(), viewingDate.getMonth(), 1);
+        date.setHours(0, 0, 0, 0);
+        return date;
+    }, [viewingDate]);
+    const agendaMonthEnd = useMemo(() => {
+        const date = new Date(viewingDate.getFullYear(), viewingDate.getMonth() + 1, 0);
+        date.setHours(23, 59, 59, 999);
+        return date;
+    }, [viewingDate]);
+    const agendaDayMap = useMemo(
+        () => buildDayMap(events, agendaMonthStart, agendaMonthEnd),
+        [events, agendaMonthStart, agendaMonthEnd]
+    );
 
     const isEventPast = (event: EventType) => {
         const refDate = event.endDate || event.date;
@@ -2543,14 +2558,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
         const blankDays = Array.from({ length: firstDayOfMonth }, (_, i) => i);
 
-        const eventsOnSelectedDate = events.filter(e => {
-            const date = new Date(e.date);
-            return date.getDate() === selectedDate && date.getMonth() === month && date.getFullYear() === year;
-        });
+        const selectedDateKey = toYMD(new Date(year, month, selectedDate));
+        const eventsOnSelectedDate = (agendaDayMap.get(selectedDateKey) || []).map(({ event }) => event);
 
         const changeMonth = (offset: number) => {
             const newDate = new Date(year, month + offset, 1);
             setViewingDate(newDate);
+            setCalendarMonthDate(newDate);
             // If the current day exists in the new month, keep it. Otherwise, set to 1st.
             const newMonthDays = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0).getDate();
             if (selectedDate > newMonthDays) {
@@ -2567,7 +2581,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                     </p>
                     <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-0.5 gap-0.5">
                         <button
-                            onClick={() => setCalendarView('month')}
+                            onClick={() => {
+                                setCalendarMonthDate(new Date(viewingDate.getFullYear(), viewingDate.getMonth(), 1));
+                                setCalendarView('month');
+                            }}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${calendarView === 'month'
                                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -2577,7 +2594,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             Month
                         </button>
                         <button
-                            onClick={() => setCalendarView('agenda')}
+                            onClick={() => {
+                                setViewingDate(new Date(calendarMonthDate.getFullYear(), calendarMonthDate.getMonth(), 1));
+                                setCalendarView('agenda');
+                            }}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${calendarView === 'agenda'
                                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -2598,6 +2618,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         onDateSelect={(date) => {
                             // Switch to Agenda view and navigate to selected date
                             setViewingDate(new Date(date.getFullYear(), date.getMonth(), 1));
+                            setCalendarMonthDate(new Date(date.getFullYear(), date.getMonth(), 1));
                             setSelectedDate(date.getDate());
                             setCalendarView('agenda');
                         }}
@@ -2637,10 +2658,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     <div key={`blank-${blank}`} className="w-8 h-8"></div>
                                 ))}
                                 {days.map(day => {
-                                    const hasEvent = events.some(e => {
-                                        const date = new Date(e.date);
-                                        return date.getDate() === day && date.getMonth() === month && date.getFullYear() === year;
-                                    });
+                                    const hasEvent = agendaDayMap.has(toYMD(new Date(year, month, day)));
                                     const isToday = new Date().getDate() === day && new Date().getMonth() === month && new Date().getFullYear() === year;
 
                                     return (
