@@ -2502,18 +2502,24 @@ const App: React.FC = () => {
                                             </button>
                                         </div>
 
-                                        {/* Get Involved Section */}
-                                        {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && highlightedDisplayEvents.length > 0 && (
-                                            <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
-                                        )}
-
-                                        {/* 3. Popular Events Section */}
+                                        {/* Get Involved + Popular Events — side by side on desktop */}
                                         {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && (
-                                            <PopularEvents
-                                                events={getDisplayEvents}
-                                                onEventSelect={handleOpenEvent}
-                                                onViewAll={handleOpenViewAllPopular}
-                                            />
+                                            <div className="flex flex-col md:flex-row gap-6 md:gap-8 md:items-start">
+                                                {/* Left: Get Involved carousel */}
+                                                {highlightedDisplayEvents.length > 0 && (
+                                                    <div className="md:flex-[3] min-w-0">
+                                                        <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
+                                                    </div>
+                                                )}
+                                                {/* Right: Popular Events top-3 list */}
+                                                <div className={`${highlightedDisplayEvents.length > 0 ? 'md:flex-[2]' : 'w-full'} min-w-0`}>
+                                                    <PopularEvents
+                                                        events={getDisplayEvents}
+                                                        onEventSelect={handleOpenEvent}
+                                                        onViewAll={handleOpenViewAllPopular}
+                                                    />
+                                                </div>
+                                            </div>
                                         )}
 
                                         {/* 2. Active Date Filter Indicator */}

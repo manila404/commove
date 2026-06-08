@@ -37,7 +37,7 @@ const CIRCLE_LAYOUTS = [
   ],
 ];
 
-const PER_PAGE = 4;
+const PER_PAGE = 2;
 
 const EventCard: React.FC<{
   event: DisplayEventType;
@@ -206,7 +206,7 @@ const HighlightsSlider: React.FC<HighlightsSliderProps> = ({ events, onEventSele
             {Array.from({ length: totalPages }).map((_, pageIdx) => (
               <div
                 key={pageIdx}
-                className="flex-shrink-0 w-full grid grid-cols-4 gap-4"
+                className="flex-shrink-0 w-full grid grid-cols-2 gap-4"
               >
                 {highlights
                   .slice(pageIdx * PER_PAGE, (pageIdx + 1) * PER_PAGE)
