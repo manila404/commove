@@ -277,7 +277,7 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
                     <button 
                         type="submit" 
                         disabled={isLoading} 
-                        className="w-full bg-primary-600 dark:bg-[#7c3aed] text-white font-semibold py-3 px-4 rounded-full hover:bg-primary-700 dark:hover:bg-[#6d28d9] transition-all disabled:bg-gray-400 text-base active:scale-95"
+                        className="w-full bg-primary-600 dark:bg-primary-600 text-white font-semibold py-3 px-4 rounded-full hover:bg-primary-700 dark:hover:bg-primary-700 transition-all disabled:bg-gray-400 text-base active:scale-95"
                     >
                         {isLoading ? 'Signing In...' : 'Sign In'}
                     </button>

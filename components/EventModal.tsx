@@ -259,7 +259,7 @@ const EventModal: React.FC<EventModalProps> = ({
           <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
         </div>
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-          Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.organizer || 'Admin'}</span>
+          Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.leadOffice ? `${event.leadOffice} Department` : 'CICRD Department'}</span>
         </p>
       </div>
 
@@ -447,7 +447,7 @@ const EventModal: React.FC<EventModalProps> = ({
         )}
 
         {/* Participation Block */}
-        <div className="space-y-4">
+        {currentUser?.role !== 'admin' && <div className="space-y-4">
           {isEnded ? (
             <div className="p-6 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
               <div className="w-12 h-12 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
@@ -487,7 +487,7 @@ const EventModal: React.FC<EventModalProps> = ({
                       // User already has a registration — show their status
                       <div className={`p-4 rounded-xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                         userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
-                          'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
+                          'bg-white border-gray-900 text-gray-900 dark:bg-gray-800/40 dark:border-gray-400 dark:text-white'
                         }`}>
                         {userReg.status === 'pending' && (
                           <>
@@ -615,7 +615,7 @@ const EventModal: React.FC<EventModalProps> = ({
               )}
             </>
           )}
-        </div>
+        </div>}
 
         {/* Location */}
         <div className="space-y-4">
@@ -796,7 +796,7 @@ const EventModal: React.FC<EventModalProps> = ({
         </p>
         {event.creatorUsername && (
           <p className="pt-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-            Lead Office: {event.creatorUsername.replace(/^@/, '')}
+            Lead Office: <span className="font-semibold">{event.leadOffice ? `${event.leadOffice} Department` : 'CICRD Department'}</span>
           </p>
         )}
       </div>
@@ -815,7 +815,7 @@ const EventModal: React.FC<EventModalProps> = ({
       )}
 
       {/* Participation Block */}
-      <div className="space-y-3">
+      {currentUser?.role !== 'admin' && <div className="space-y-3">
         {isEnded ? (
           <div className="p-5 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
             <div className="w-10 h-10 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
@@ -853,7 +853,7 @@ const EventModal: React.FC<EventModalProps> = ({
                     // User already has a registration — show their current status
                       <div className={`p-3 rounded-xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                       userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
-                        'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
+                        'bg-white border-gray-900 text-gray-900 dark:bg-gray-800/40 dark:border-gray-400 dark:text-white'
                       }`}>
                       {userReg.status === 'pending' && (
                         <>
@@ -956,7 +956,7 @@ const EventModal: React.FC<EventModalProps> = ({
             )}
           </>
         )}
-      </div>
+      </div>}
 
       {/* Location at a Glance */}
       <div className="space-y-3">
@@ -1227,7 +1227,7 @@ const EventModal: React.FC<EventModalProps> = ({
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-white" />
           </button>
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate max-w-[55%] text-center">
-            Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.organizer || 'Admin'}</span>
+            Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.leadOffice ? `${event.leadOffice} Department` : 'CICRD Department'}</span>
           </p>
           <button
             onClick={() => onToggleLike(event.id)}
@@ -1358,7 +1358,7 @@ const EventModal: React.FC<EventModalProps> = ({
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Description</h3>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed text-sm whitespace-pre-wrap"><RichText text={event.description} /></p>
               {event.creatorUsername && (
-                <p className="pt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Lead Office: {event.creatorUsername.replace(/^@/, '')}</p>
+                <p className="pt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Lead Office: <span className="font-semibold">{event.leadOffice ? `${event.leadOffice} Department` : 'CICRD Department'}</span></p>
               )}
             </div>
 
@@ -1378,7 +1378,7 @@ const EventModal: React.FC<EventModalProps> = ({
             )}
 
             {/* Participation Block */}
-            <div className="space-y-3">
+            {currentUser?.role !== 'admin' && <div className="space-y-3">
               {isEnded ? (
                 <div className="p-5 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
@@ -1416,7 +1416,7 @@ const EventModal: React.FC<EventModalProps> = ({
                         ) : userReg ? (
                           <div className={`p-5 rounded-2xl text-center shadow-sm border-2 ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                             userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
-                              'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
+                              'bg-white border-gray-900 text-gray-900 dark:bg-gray-800/40 dark:border-gray-400 dark:text-white'
                             }`}>
                             {userReg.status === 'pending' && (
                               <>
@@ -1497,7 +1497,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   )}
                 </>
               )}
-            </div>
+            </div>}
 
             {/* Location */}
             <div className="space-y-3">

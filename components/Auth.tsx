@@ -71,27 +71,25 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
                 className={`flex md:w-[55%] bg-white dark:bg-[#111827] flex-col border-b md:border-b-0 md:border-r border-gray-100 dark:border-gray-800 relative z-0 min-h-[45vh] max-h-[50vh] md:max-h-none md:min-h-0 ${isSigningUp ? 'md:hidden' : ''}`}
             >
                 <div
-                    className="relative flex flex-1 flex-col justify-between overflow-hidden rounded-[15px] p-5 md:p-8 min-h-0 bg-cover bg-center"
-                    style={{ backgroundImage: "url('/realevent.jpg')" }}
+                    className="relative flex flex-1 flex-col overflow-hidden rounded-[15px] p-5 md:p-8 min-h-0"
                 >
-                    <div className="absolute inset-0 bg-black/35" />
-                    <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left mt-2 md:mt-10">
+                    <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left mt-2 md:mt-4">
                         {/* Mobile: logo + X on same row */}
                         <div className="w-full flex items-center justify-between md:justify-start">
                             <div className="flex items-center select-none text-3xl tracking-tighter" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
-                                <div className="relative inline-flex items-center justify-center text-white md:text-gray-900 dark:md:text-white mr-[-0.08em]">
+                                <div className="relative inline-flex items-center justify-center text-gray-900 dark:text-white mr-[-0.08em]">
                                     <svg style={{ width: '0.65em', height: '0.65em', transform: 'translateY(0.06em)' }} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="20">
                                         <path d="M 82 26 A 40 40 0 1 0 82 74" />
-                                        <circle cx="48" cy="50" r="14" fill="currentColor" stroke="none" className="text-white/40 md:text-primary-700 dark:md:text-primary-500" />
+                                        <circle cx="48" cy="50" r="14" fill="currentColor" stroke="none" className="text-primary-700 dark:text-primary-500" />
                                     </svg>
                                 </div>
-                                <span className="text-white font-semibold">om</span>
+                                <span className="text-gray-900 dark:text-white font-semibold">om</span>
                                 <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
                             </div>
                             {/* Mobile X button — aligned with logo */}
                             <button
                                 onClick={onGuestAccess}
-                                className="md:hidden p-2 text-white/80 hover:text-white transition-colors"
+                                className="md:hidden p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                                 aria-label="Close"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -99,9 +97,27 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, onShowTermsAn
                                 </svg>
                             </button>
                         </div>{/* end logo row */}
-                        <p className="hidden md:block mt-3 text-[13px] text-white/90 font-medium">
+                        <p className="hidden md:block mt-2 text-[13px] text-gray-500 dark:text-gray-400 font-medium">
                             Discover events and connect with your community.
                         </p>
+                    </div>
+                    {/* Center illustration — switches between light/dark mode */}
+                    <div className="relative z-10 flex flex-1 items-center justify-center">
+                        <img
+                            src="/commoveillustration_white.png"
+                            alt="Commove"
+                            className="block dark:hidden w-full max-w-[380px] object-contain"
+                        />
+                        <img
+                            src="/commoveillustration_dark.png"
+                            alt="Commove"
+                            className="hidden dark:block w-full max-w-[380px] object-contain"
+                        />
+                        {/* Dark mode vignette — blends image edges into modal background */}
+                        <div
+                            className="absolute inset-0 hidden dark:block pointer-events-none"
+                            style={{ background: 'radial-gradient(ellipse at center, transparent 45%, #111827 80%)' }}
+                        />
                     </div>
                 </div>
             </div>
