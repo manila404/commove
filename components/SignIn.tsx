@@ -6,6 +6,7 @@ import { EyeIcon, EyeSlashIcon, ChevronLeftIcon, CommoveLogo } from '../constant
 import Captcha, { CaptchaRef } from './Captcha';
 import OTPVerification from './OTPVerification';
 import { storeOTP, markOTPVerified, setLoginInProgress, clearLoginInProgress } from '../services/otpService';
+import { getUserProfile } from '../services/userService';
 
 interface SignInProps {
     onSwitchToSignUp: () => void;
@@ -73,6 +74,17 @@ const SignIn: React.FC<SignInProps> = ({ onSwitchToSignUp, onAuthSuccess, onGues
             } else {
                 localStorage.removeItem('savedEmail');
                 localStorage.setItem('rememberMe', 'false');
+            }
+
+            // Check if user already has a profile (already verified/registered)
+            const profile = await getUserProfile(credential.user.uid);
+            if (profile) {
+                // Already has a profile: mark OTP as verified and complete login without sending OTP
+                markOTPVerified(credential.user.uid);
+                clearLoginInProgress();
+                onAuthSuccess();
+                setIsLoading(false);
+                return;
             }
 
             // Send OTP — user stays Firebase-authenticated but app access is gated
