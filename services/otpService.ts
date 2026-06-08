@@ -18,46 +18,76 @@ export const setLoginInProgress   = ()            => sessionStorage.setItem('otp
 export const clearLoginInProgress = ()            => sessionStorage.removeItem('otp_login');
 export const isLoginInProgress    = ()            => sessionStorage.getItem('otp_login') === '1';
 
+// ─── Client-side OTP logic (no serverless functions required) ─────────────────
+// Stores OTP in Firestore via the Firebase client SDK and sends email via EmailJS.
+// This avoids the need for Firebase Admin SDK credentials in Vercel environment variables.
+
+import { db } from './firebase';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc, increment } from 'firebase/firestore';
+import { sendOTPEmail } from './emailService';
+
+const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_ATTEMPTS  = 5;
+
+export type OTPResult = 'valid' | 'invalid' | 'expired' | 'too_many_attempts' | 'not_found';
+
 export const storeOTP = async (email: string, userName: string, uid?: string): Promise<boolean> => {
     try {
-        const response = await fetch('/api/send-otp', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, userName, uid }),
+        const cleanEmail = email.trim().toLowerCase();
+        const docId = uid || `otp_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
+
+        // 1. Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // 2. Store OTP in Firestore using the client SDK
+        const otpRef = doc(db, 'otpCodes', docId);
+        await setDoc(otpRef, {
+            userId:    uid || docId,
+            email:     cleanEmail,
+            code:      otp,
+            createdAt: Date.now(),
+            expiresAt: Date.now() + OTP_EXPIRY_MS,
+            attempts:  0,
         });
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || `HTTP error ${response.status}`);
-        }
-        const data = await response.json();
-        return !!data.success;
+
+        console.info(`[OTP] Stored code securely in Firestore for ${cleanEmail}`);
+
+        // 3. Send email via EmailJS from the browser
+        const sent = await sendOTPEmail(cleanEmail, otp, userName || 'User');
+        return sent;
     } catch (err) {
-        console.error("Failed to send OTP:", err);
+        console.error('Failed to send OTP:', err);
         return false;
     }
 };
 
-export type OTPResult = 'valid' | 'invalid' | 'expired' | 'too_many_attempts' | 'not_found';
-
 export const verifyOTP = async (email: string, entered: string, uid?: string): Promise<OTPResult> => {
     try {
-        const response = await fetch('/api/verify-otp', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, enteredCode: entered, uid }),
-        });
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || `HTTP error ${response.status}`);
+        const cleanEmail = email.trim().toLowerCase();
+        const docId = uid || `otp_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
+
+        const otpRef  = doc(db, 'otpCodes', docId);
+        const snapshot = await getDoc(otpRef);
+
+        if (!snapshot.exists()) return 'not_found';
+
+        const record = snapshot.data();
+        if (!record) return 'not_found';
+
+        if (record.attempts >= MAX_ATTEMPTS) return 'too_many_attempts';
+
+        if (Date.now() > record.expiresAt) return 'expired';
+
+        if (record.code !== entered.trim()) {
+            await updateDoc(otpRef, { attempts: increment(1) });
+            return 'invalid';
         }
-        const data = await response.json();
-        return data.result as OTPResult;
+
+        // Success: delete the OTP record so it can't be reused
+        await deleteDoc(otpRef);
+        return 'valid';
     } catch (err) {
-        console.error("Failed to verify OTP:", err);
+        console.error('Failed to verify OTP:', err);
         return 'not_found';
     }
 };
