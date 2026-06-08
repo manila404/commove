@@ -11,7 +11,7 @@ import { incrementEventCounter } from './services/analyticsService';
 import { CATEGORIES, formatDisplayDate } from './constants';
 import { Tag } from 'lucide-react';
 import { smartSearchEvents } from './utils/searchUtils';
-import type { User, EventType, DisplayEventType, Reminder, AppNotification } from './types';
+import type { User, EventType, DisplayEventType, Reminder, AppNotification, UserRole } from './types';
 import { createNotification, subscribeToNotifications, hasNotification, deleteEventNotifications } from './services/notificationService';
 import { useAlert } from './contexts/AlertContext';
 import { usePermissions, isInWebView, postToNative } from './contexts/PermissionContext';
@@ -1586,7 +1586,24 @@ const App: React.FC = () => {
 
     const handleAuthSuccess = async (isNewUser: boolean) => {
         if (auth.currentUser) {
-            const profile = await getUserProfile(auth.currentUser.uid);
+            let profile = await getUserProfile(auth.currentUser.uid);
+            if (!profile) {
+                // Construct a fallback profile so the user can enter the app 
+                // even if Firestore is currently unreachable (e.g. adblocker) or the doc is missing
+                const email = auth.currentUser.email || '';
+                const role: UserRole = email === 'admincommove@gmail.com' ? 'admin' : (email === 'facilitator@commove.com' ? 'facilitator' : 'user');
+                profile = {
+                    uid: auth.currentUser.uid,
+                    name: auth.currentUser.displayName || 'User',
+                    email: email,
+                    avatarUrl: auth.currentUser.photoURL || '',
+                    role: role,
+                    isAdmin: role === 'admin' || role === 'facilitator',
+                    savedEventIds: [],
+                    viewedEventIds: [],
+                    reminders: {}
+                };
+            }
             setCurrentUser(profile);
             setOnboardingStep('completed');
             setIsGuest(false);
@@ -1600,7 +1617,7 @@ const App: React.FC = () => {
                     'system',
                     'Welcome to Commove!',
                     'We are glad you are here! Start exploring local events in Bacoor right now.'
-                );
+                ).catch(console.error);
                 handleOpenPreferences();
             }
         }
