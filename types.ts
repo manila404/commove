@@ -61,6 +61,7 @@ export interface EventType {
   agencyDocumentsUrl?: string;
   noPendingCaseUrl?: string;
   creatorUsername?: string; // Cache creator's username for branding
+  leadOffice?: string; // Originating department that passed the event to CICRD
 
   // Phase 1 Analytics counters — may be absent on old documents; treat missing as 0
   viewCount?: number;
