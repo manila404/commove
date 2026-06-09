@@ -2854,6 +2854,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
     const totalUsersCount = residents.length;
     const totalEventsCount = events.length;
+    const totalCheckInsCard = events.reduce((s, e) => s + safeNum(e.checkInCount), 0);
     const participationRate = residents.length > 0 ? Math.round((participants.length / residents.length) * 100) : 0;
     const pendingApprovalsCount = pendingRequests.length;
 
@@ -2912,7 +2913,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         {renderGrowth(participantGrowth)}
                     </div>
                     <div>
-                        <h3 className="text-base md:text-xl font-extrabold text-gray-900 dark:text-white">{canManageUsers ? totalUsersCount : participants.length}</h3>
+                        <h3 className="text-base md:text-xl font-extrabold text-gray-900 dark:text-white">{canManageUsers ? totalUsersCount : totalCheckInsCard}</h3>
                         <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{canManageUsers ? 'Total Users' : 'Event Participants'}</p>
                     </div>
                 </div>
