@@ -13,6 +13,7 @@ import Spinner from './Spinner';
 import { useAlert } from '../contexts/AlertContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { smartSearchEvents } from '../utils/searchUtils';
+import RecurringDeleteDialog from './RecurringDeleteDialog';
 
 // Local Icons
 const EditIcon = ({ className }: { className?: string }) => (
@@ -75,7 +76,7 @@ interface AdminPanelProps {
     events: EventType[];
     onEventCreated: (event: EventType) => void;
     onEventUpdated: (event: EventType) => void;
-    onEventDeleted: (eventId: string, recurrenceGroupId?: string) => Promise<boolean>;
+    onEventDeleted: (eventId: string, options?: { recurrenceGroupId?: string; mode?: 'single' | 'following' | 'series'; fromDate?: string }) => Promise<boolean>;
     onClose: () => void;
     onManageRegistrations?: (event: EventType) => void;
     externalDashboardTab?: DashboardTab;
@@ -113,6 +114,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const [userError, setUserError] = useState('');
 
     const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<EventType | null>(null);
     // Track where the edit came from to handle "Back" correctly
     const [editSource, setEditSource] = useState<'list' | 'requests'>('list');
 
@@ -534,15 +536,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         try { window.history.pushState({ view: 'admin', tab: 'dashboard' }, ''); } catch {}
     };
 
-    const handleDeleteEvent = async (eventId: string, recurrenceGroupId?: string) => {
+    const handleDeleteSuccess = (deletedEventId: string) => {
+        if (editingEvent?.id === deletedEventId) {
+            setEditingEvent(null);
+            setRequestedDashboardTab('events');
+            setActiveTab('dashboard');
+            try { window.history.pushState({ view: 'admin', tab: 'dashboard' }, ''); } catch {}
+        }
+    };
+
+    const handleDeleteEvent = async (event: EventType) => {
+        if (event.recurrenceGroupId) {
+            setDeleteTarget(event);
+            return;
+        }
+
         showConfirm('Delete Event?', 'This action cannot be undone.', async () => {
-            const success = await onEventDeleted(eventId, recurrenceGroupId);
-            if (success && editingEvent?.id === eventId) {
-                setEditingEvent(null);
-                setRequestedDashboardTab('events');
-                setActiveTab('dashboard');
-                try { window.history.pushState({ view: 'admin', tab: 'dashboard' }, ''); } catch {}
-            }
+            const success = await onEventDeleted(event.id);
+            if (success) handleDeleteSuccess(event.id);
         }, 'error');
     };
 
@@ -1190,6 +1201,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             </div>
             {approveModal}
             {rejectModal}
+            <RecurringDeleteDialog
+                open={!!deleteTarget}
+                event={deleteTarget}
+                onCancel={() => setDeleteTarget(null)}
+                onDeleteSingle={async () => {
+                    if (!deleteTarget) return;
+                    const target = deleteTarget;
+                    setDeleteTarget(null);
+                    const success = await onEventDeleted(target.id, {
+                        mode: 'single',
+                        recurrenceGroupId: target.recurrenceGroupId,
+                        fromDate: target.date,
+                    });
+                    if (success) handleDeleteSuccess(target.id);
+                }}
+                onDeleteFollowing={async () => {
+                    if (!deleteTarget?.recurrenceGroupId) return;
+                    const target = deleteTarget;
+                    setDeleteTarget(null);
+                    const success = await onEventDeleted(target.id, {
+                        mode: 'following',
+                        recurrenceGroupId: target.recurrenceGroupId,
+                        fromDate: target.date,
+                    });
+                    if (success) handleDeleteSuccess(target.id);
+                }}
+            />
             {viewingParticipantsEvent && createPortal(
                 <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', paddingTop: '20px', paddingBottom: '20px', paddingRight: '20px', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
                     <div className={`bg-white dark:bg-gray-800 w-full max-w-[480px] shadow-2xl flex flex-col ${isParticipantsClosing ? 'animate-slide-out-to-right' : 'animate-slide-in-from-right'}`} style={{ borderRadius: '15px', overflowY: 'auto' }}>

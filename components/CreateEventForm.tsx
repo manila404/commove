@@ -27,7 +27,7 @@ interface CreateEventFormProps {
   onSuccess: (event: EventType) => void;
   eventToEdit?: EventType | null;
   onCancelEdit?: () => void;
-  onDelete?: (eventId: string) => void;
+  onDelete?: (event: EventType) => void;
   currentUser: User;
   isReviewing?: boolean;
 }
@@ -200,7 +200,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
   const isAdmin = currentUser.role === 'admin';
   const isFacilitator = currentUser.role === 'facilitator';
-  const canPublishDirectly = isAdmin || isFacilitator;
+  const canPublishDirectly = isAdmin;
 
   // Populate form when editing
   useEffect(() => {
@@ -376,11 +376,18 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         publishAt: publishTimestamp,
         requestedPublishDate: publishTimestamp ? new Date(publishTimestamp).toISOString() : null,
         creatorUsername: currentUser?.username || undefined,
-        status: (mode === 'draft' ? 'draft' : (canPublishDirectly ? (isScheduled ? 'scheduled' : 'published') : 'pending')) as EventStatus,
+        status: (
+          mode === 'draft'
+            ? 'draft'
+            : isAdmin
+              ? (isScheduled ? 'scheduled' : 'published')
+              : 'pending'
+        ) as EventStatus,
         createdByAdmin: isAdmin,
         createdBy: eventToEdit?.createdBy || currentUser.uid,
         organizer: eventToEdit?.organizer || currentUser.name,
         leadOffice: formData.leadOffice || currentUser.department || '',
+        recurrenceRule: recurrenceRule ? { ...recurrenceRule, originalDate: formData.date } : undefined,
       };
 
       if (eventToEdit) {
