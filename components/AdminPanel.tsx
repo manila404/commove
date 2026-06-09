@@ -6,7 +6,7 @@ import { UserIcon, ShieldCheckIcon, ChevronLeftIcon, CalendarIcon, EnvelopeOpenI
 import CreateEventForm from './CreateEventForm';
 import AdminDashboardTabs from './AdminDashboardTabs';
 import EventModal from './EventModal';
-import { getAllUsers, subscribeToAllUsers, updateUserRole, updateUserData, subscribeToEventParticipants, rejectFacilitatorRequest, deleteUser } from '../services/userService';
+import { getAllUsers, subscribeToAllUsers, updateUserRole, updateUserData, subscribeToEventParticipants, rejectFacilitatorRequest, approveFacilitatorRequest, deleteUser } from '../services/userService';
 import { updateEventStatus } from '../services/eventService';
 import { createNotification, notifyEventUpdated, notifyEventCancelled } from '../services/notificationService';
 import Spinner from './Spinner';
@@ -436,8 +436,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const handleConfirmApproveFacilitator = async () => {
         if (!pendingApproveUserId) return;
         setIsSubmittingFacilitatorAction(true);
+        const originalUsers = [...users];
+        const updatedUsers = users.map(u =>
+            u.uid === pendingApproveUserId 
+                ? { 
+                    ...u, 
+                    role: 'facilitator' as UserRole, 
+                    isAdmin: true, 
+                    facilitatorRequestStatus: 'approved' as const,
+                    approvalStatus: 'approved',
+                    approvedAt: Date.now(),
+                    approvedBy: currentUser.uid
+                  } 
+                : u
+        );
+        setUsers(updatedUsers);
         try {
-            await handleRoleUpdate(pendingApproveUserId, 'facilitator');
+            await approveFacilitatorRequest(pendingApproveUserId, currentUser.uid);
             await createNotification(
                 pendingApproveUserId,
                 'system',
@@ -448,7 +463,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             showAlert('Approved', "User is now a facilitator.", 'success');
             setPendingApproveUserId(null);
         } catch (e) {
-            showAlert('Error', 'Failed to approve facilitator request.', 'error');
+            console.error("Error approving facilitator:", e);
+            setUsers(originalUsers);
+            showAlert('Error', 'Failed to approve facilitator request. Please try again.', 'error');
         } finally {
             setIsSubmittingFacilitatorAction(false);
         }
@@ -1032,7 +1049,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
                         <div className="min-w-0">
-                            <h2 className="text-lg font-black text-gray-900 dark:text-white">Approve Facilitator?</h2>
+                            <h2 className="text-lg font-black text-gray-900 dark:text-white">Are you sure you want to approve this facilitator request?</h2>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">This will grant facilitator access to this user.</p>
                         </div>
                     </div>
@@ -1074,7 +1091,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                             {isSubmittingFacilitatorAction ? (
                                 <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Approving...</>
                             ) : (
-                                <><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Yes, Approve</>
+                                <><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Confirm Approve</>
                             )}
                         </button>
                     </div>
