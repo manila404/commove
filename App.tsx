@@ -1573,7 +1573,13 @@ const App: React.FC = () => {
 
             const newCheckedIn = [...currentCheckedIn, eventId];
             setCurrentUser({ ...currentUser, checkedInEventIds: newCheckedIn });
-            await updateUserParticipation(currentUser.uid, 'checkedIn', newCheckedIn);
+            try {
+                await updateUserParticipation(currentUser.uid, 'checkedIn', newCheckedIn);
+            } catch (err) {
+                setCurrentUser({ ...currentUser, checkedInEventIds: currentCheckedIn });
+                showAlert("Error", "Failed to check in. Please try again.", "error");
+                return;
+            }
             // QR check-in is always a first-time action (guard above prevents duplicates)
             incrementEventCounter(eventId, 'checkInCount', 1);
             showAlert("Success!", `You have successfully joined ${event.name} as a participant.`, "success");
