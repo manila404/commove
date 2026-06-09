@@ -87,12 +87,14 @@ const NearbyView: React.FC<NearbyViewProps> = ({
     const allMapEvents: DisplayEventType[] = events
         .filter(e => {
             // A. Base publish validation
-            const isPublished = e.status === 'published' || !e.status;
+            const isPublished = e.status === 'published' || e.status === 'reviewed' || !e.status;
             const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
             if (!isPublished && !isScheduled) return false;
 
             // B. Check if ended
-            const endDateStr = e.endDate || e.date;
+            // For recurring instances, endDate may be inherited from the original occurrence
+            // and could be earlier than the instance's own date — fall back to e.date in that case.
+            const endDateStr = (e.endDate && e.endDate >= e.date) ? e.endDate : e.date;
             const endTimeStr = e.endTime || '23:59';
             const eventEnd = new Date(`${endDateStr}T${endTimeStr}`);
             const hasEnded = eventEnd < now;

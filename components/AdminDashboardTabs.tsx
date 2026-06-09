@@ -308,6 +308,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     // Role change confirmation state
     const [pendingRoleChange, setPendingRoleChange] = useState<{ user: User; newRole: 'facilitator' | 'user' } | null>(null);
     const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
+    const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number } | null>(null);
 
     const [allFeedback, setAllFeedback] = useState<EventFeedback[]>([]);
     const [viewingFeedbackEvent, setViewingFeedbackEvent] = useState<EventType | null>(null);
@@ -342,19 +343,24 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Close dropdowns when clicking outside
+    // Close action menu when clicking outside or scrolling
     useEffect(() => {
         if (!activeActionMenu) return;
 
-        const handleClickOutside = (event: globalThis.MouseEvent) => {
-            const target = event.target as Element;
-            if (target && target.closest && !target.closest('.action-menu-container')) {
+        const close = (event: globalThis.MouseEvent | Event) => {
+            const target = (event as globalThis.MouseEvent).target as Element;
+            if (event.type === 'scroll' || (target && target.closest && !target.closest('.action-menu-container'))) {
                 setActiveActionMenu(null);
+                setActionMenuPos(null);
             }
         };
 
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('mousedown', close);
+        window.addEventListener('scroll', close, true);
+        return () => {
+            document.removeEventListener('mousedown', close);
+            window.removeEventListener('scroll', close, true);
+        };
     }, [activeActionMenu]);
 
     // Respond to external tab navigation requests (e.g. from notification buttons)
@@ -2137,60 +2143,31 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                         }`}>
                                                         {event.status || 'published'}
                                                     </span>
-                                                    <div className="relative action-menu-container">
+                                                    <div className="action-menu-container">
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); setActiveActionMenu(activeActionMenu === event.id ? null : event.id); }}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (activeActionMenu === event.id) {
+                                                                    setActiveActionMenu(null);
+                                                                    setActionMenuPos(null);
+                                                                } else {
+                                                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                                                    const menuHeight = 290;
+                                                                    // Prefer below the button; clamp upward if it would overflow the bottom
+                                                                    let top = rect.bottom + 6;
+                                                                    if (top + menuHeight > window.innerHeight - 8) {
+                                                                        top = window.innerHeight - menuHeight - 8;
+                                                                    }
+                                                                    if (top < 8) top = 8;
+                                                                    setActionMenuPos({ top, right: window.innerWidth - rect.right });
+                                                                    setActiveActionMenu(event.id);
+                                                                }
+                                                            }}
                                                             className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-200 transition-all"
                                                             title="Actions"
                                                         >
                                                             <MoreVerticalIcon className="w-5 h-5" />
                                                         </button>
-
-                                                        {activeActionMenu === event.id && (
-                                                            <div className="absolute right-0 mt-2 z-50 w-64 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-2 animate-in fade-in zoom-in-95 duration-150">
-                                                                <p className="px-3 py-2 text-[12px] font-medium text-black dark:text-gray-400 text-left">Event Actions</p>
-                                                                <div className="space-y-1">
-                                                                    <button onClick={() => { setAnalyticsDrawerEvent(event); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                        <BarChart3 className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                        <span className="text-[14px] font-medium">Analytics</span>
-                                                                    </button>
-                                                                    <button onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                        <MessageSquare className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                        <span className="text-[14px] font-medium">Feedback</span>
-                                                                    </button>
-                                                                    <button onClick={() => { onViewQRCode(event); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                        <QrCode className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                        <span className="text-[14px] font-medium">QR Code</span>
-                                                                    </button>
-                                                                    {onPreviewEvent && (
-                                                                        <button onClick={() => { onPreviewEvent(event); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                            <Eye className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                            <span className="text-[14px] font-medium">Preview</span>
-                                                                        </button>
-                                                                    )}
-                                                                    <button onClick={() => { onEditEvent(event); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                        <Pencil className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                        <span className="text-[14px] font-medium">Edit</span>
-                                                                    </button>
-                                                                    {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
-                                                                        <button onClick={() => { setPendingConfirm({ type: 'notify', event }); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                            <Bell className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                            <span className="text-[14px] font-medium">Notify</span>
-                                                                        </button>
-                                                                    )}
-                                                                    {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
-                                                                        <button onClick={() => { setPendingConfirm({ type: 'cancel', event }); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                            <Ban className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                            <span className="text-[14px] font-medium">Cancel</span>
-                                                                        </button>
-                                                                    )}
-                                                                    <button onClick={() => { onDeleteEvent(event.id); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left">
-                                                                        <Trash2 className="w-4 h-4 text-red-500 shrink-0" strokeWidth={1.8} />
-                                                                        <span className="text-[14px] font-medium">Delete</span>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -3586,6 +3563,61 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>,
                 document.body
             )}
+            {/* ── Event Action Menu Portal (renders outside overflow-clipped table) ── */}
+            {activeActionMenu && actionMenuPos && (() => {
+                const event = allEvents.find(e => e.id === activeActionMenu);
+                if (!event) return null;
+                return createPortal(
+                    <div
+                        className="action-menu-container fixed z-[9999] w-52 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 p-1.5 animate-in fade-in zoom-in-95 duration-150"
+                        style={{ top: actionMenuPos.top, right: actionMenuPos.right }}
+                    >
+                        <p className="px-2.5 py-1.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Event Actions</p>
+                        <div className="space-y-0.5">
+                            <button onClick={() => { setAnalyticsDrawerEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                <BarChart3 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                <span className="text-[12px] font-medium">Analytics</span>
+                            </button>
+                            <button onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                <MessageSquare className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                <span className="text-[12px] font-medium">Feedback</span>
+                            </button>
+                            <button onClick={() => { onViewQRCode(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                <QrCode className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                <span className="text-[12px] font-medium">QR Code</span>
+                            </button>
+                            {onPreviewEvent && (
+                                <button onClick={() => { onPreviewEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                    <Eye className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                    <span className="text-[12px] font-medium">Preview</span>
+                                </button>
+                            )}
+                            <button onClick={() => { onEditEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                <Pencil className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                <span className="text-[12px] font-medium">Edit</span>
+                            </button>
+                            {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
+                                <button onClick={() => { setPendingConfirm({ type: 'notify', event }); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                    <Bell className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                    <span className="text-[12px] font-medium">Notify</span>
+                                </button>
+                            )}
+                            {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
+                                <button onClick={() => { setPendingConfirm({ type: 'cancel', event }); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                    <Ban className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                    <span className="text-[12px] font-medium">Cancel</span>
+                                </button>
+                            )}
+                            <div className="mx-2 my-1 border-t border-gray-100 dark:border-gray-800" />
+                            <button onClick={() => { onDeleteEvent(event.id); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left">
+                                <Trash2 className="w-3.5 h-3.5 text-red-500 shrink-0" strokeWidth={1.8} />
+                                <span className="text-[12px] font-medium">Delete</span>
+                            </button>
+                        </div>
+                    </div>,
+                    document.body
+                );
+            })()}
             {/* ── Confirmation Dialogs ── */}
             <ConfirmationDialog
                 open={pendingConfirm?.type === 'publish'}

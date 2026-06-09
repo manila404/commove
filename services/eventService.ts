@@ -80,14 +80,23 @@ export const addEvent = async (eventData: Omit<EventType, 'id'>, recurrenceDates
             batch.set(mainDocRef, sanitizeData(mainEvent));
 
             // Create future instances
+            const origStart = new Date(finalData.date + 'T00:00:00');
+            const origEnd = finalData.endDate ? new Date(finalData.endDate + 'T00:00:00') : null;
+            const durationMs = origEnd ? origEnd.getTime() - origStart.getTime() : 0;
+
             recurrenceDates.slice(1).forEach(dateStr => {
                 const instanceRef = doc(collection(db, 'events'));
-                const instanceData = { 
-                  ...finalData, 
-                  id: instanceRef.id, 
-                  date: dateStr, 
+                const instanceStart = new Date(dateStr + 'T00:00:00');
+                const instanceEndDate = durationMs > 0
+                    ? new Date(instanceStart.getTime() + durationMs).toISOString().slice(0, 10)
+                    : null;
+                const instanceData = {
+                  ...finalData,
+                  id: instanceRef.id,
+                  date: dateStr,
+                  ...(instanceEndDate ? { endDate: instanceEndDate } : {}),
                   recurrenceGroupId: groupId,
-                  isRecurrent: true 
+                  isRecurrent: true
                 };
                 batch.set(instanceRef, sanitizeData(instanceData));
             });

@@ -258,9 +258,11 @@ const EventModal: React.FC<EventModalProps> = ({
           <span className="text-gray-900 dark:text-white font-semibold">om</span>
           <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
         </div>
-        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-          Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.leadOffice ? `${event.leadOffice} Department` : 'CICRD Department'}</span>
-        </p>
+        {event.leadOffice && (
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.leadOffice} Department</span>
+          </p>
+        )}
       </div>
 
       {/* Header Image Carousel */}
@@ -447,7 +449,7 @@ const EventModal: React.FC<EventModalProps> = ({
         )}
 
         {/* Participation Block */}
-        {currentUser?.role !== 'admin' && <div className="space-y-4">
+        {!isFacilitatorOrAdmin && <div className="space-y-4">
           {isEnded ? (
             <div className="p-6 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
               <div className="w-12 h-12 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
@@ -794,9 +796,9 @@ const EventModal: React.FC<EventModalProps> = ({
         <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-medium text-sm md:text-base whitespace-pre-wrap">
           <RichText text={event.description} />
         </p>
-        {event.creatorUsername && (
+        {event.leadOffice && (
           <p className="pt-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-            Lead Office: <span className="font-semibold">{event.leadOffice ? `${event.leadOffice} Department` : 'CICRD Department'}</span>
+            Lead Office: <span className="font-semibold">{event.leadOffice} Department</span>
           </p>
         )}
       </div>
@@ -815,7 +817,7 @@ const EventModal: React.FC<EventModalProps> = ({
       )}
 
       {/* Participation Block */}
-      {currentUser?.role !== 'admin' && <div className="space-y-3">
+      {!isFacilitatorOrAdmin && <div className="space-y-3">
         {isEnded ? (
           <div className="p-5 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
             <div className="w-10 h-10 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
@@ -1227,7 +1229,7 @@ const EventModal: React.FC<EventModalProps> = ({
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-white" />
           </button>
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate max-w-[55%] text-center">
-            Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.leadOffice ? `${event.leadOffice} Department` : 'CICRD Department'}</span>
+            {event.leadOffice ? <>Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.leadOffice} Department</span></> : event.name}
           </p>
           <button
             onClick={() => onToggleLike(event.id)}
@@ -1357,8 +1359,8 @@ const EventModal: React.FC<EventModalProps> = ({
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Description</h3>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed text-sm whitespace-pre-wrap"><RichText text={event.description} /></p>
-              {event.creatorUsername && (
-                <p className="pt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Lead Office: <span className="font-semibold">{event.leadOffice ? `${event.leadOffice} Department` : 'CICRD Department'}</span></p>
+              {event.leadOffice && (
+                <p className="pt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Lead Office: <span className="font-semibold">{event.leadOffice} Department</span></p>
               )}
             </div>
 
