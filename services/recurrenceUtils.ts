@@ -3,7 +3,7 @@
  * Utility for generating recurring event dates based on an initial date and rule.
  */
 
-export type RecurrenceFrequency = 'weekly' | 'monthly_date' | 'monthly_day';
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly_date' | 'monthly_day';
 
 export interface RecurrenceRule {
   frequency: RecurrenceFrequency;
@@ -40,8 +40,16 @@ function getNthDayOfMonth(year: number, month: number, dayOfWeek: number, index:
  * Generates an array of date strings (YYYY-MM-DD) for a recurring series
  */
 export function generateRecurringDates(startDateStr: string, rule: RecurrenceRule): string[] {
+  const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const dates: string[] = [];
-  const start = new Date(startDateStr);
+  const [startYear, startMonth, startDay] = startDateStr.split('-').map(Number);
+  const start = new Date(startYear, startMonth - 1, startDay);
   
   // Start date is always first instance
   dates.push(startDateStr);
@@ -49,7 +57,11 @@ export function generateRecurringDates(startDateStr: string, rule: RecurrenceRul
   for (let i = 1; i < rule.count; i++) {
     let nextDate: Date | null = null;
 
-    if (rule.frequency === 'weekly') {
+    if (rule.frequency === 'daily') {
+      nextDate = new Date(start);
+      nextDate.setDate(start.getDate() + (i * rule.interval));
+    }
+    else if (rule.frequency === 'weekly') {
       nextDate = new Date(start);
       nextDate.setDate(start.getDate() + (i * rule.interval * 7));
     } 
@@ -73,7 +85,7 @@ export function generateRecurringDates(startDateStr: string, rule: RecurrenceRul
     }
 
     if (nextDate) {
-      dates.push(nextDate.toISOString().split('T')[0]);
+      dates.push(formatLocalDate(nextDate));
     }
   }
 

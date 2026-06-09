@@ -39,8 +39,9 @@ export interface EventType {
   // Recurrence Fields
   isRecurrent?: boolean;
   recurrenceGroupId?: string;
+  seriesId?: string;
   recurrenceRule?: {
-    frequency: 'weekly' | 'monthly_date' | 'monthly_day';
+    frequency: 'daily' | 'weekly' | 'monthly_date' | 'monthly_day';
     interval: number;
     count: number;
     originalDate: string;
@@ -99,6 +100,7 @@ export interface User {
   username?: string; // @username
   address?: string;
   contactNumber?: string;
+  department?: string;
   avatarUrl?: string;
   homeLat?: number;
   homeLng?: number;

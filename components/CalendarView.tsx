@@ -9,6 +9,7 @@ interface CalendarViewProps {
   onDateSelect: (date: Date) => void;
   currentMonth: Date;
   setCurrentMonth: (date: Date) => void;
+  getEventIndicator?: (event: EventType) => { label: string; className: string } | null;
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
@@ -16,6 +17,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   onDateSelect,
   currentMonth,
   setCurrentMonth,
+  getEventIndicator,
 }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -162,6 +164,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 const categories = Array.isArray(event.category)
                   ? event.category
                   : [event.category];
+                const indicator = getEventIndicator?.(event) ?? null;
                 const displayText =
                   label === 'multi-day'
                     ? event.name
@@ -178,10 +181,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     className={`text-[9px] md:text-xs px-1 md:px-1.5 py-0.5 rounded truncate font-medium ${
                       isPastDay
                         ? 'bg-gray-200 text-gray-400 dark:bg-gray-750 dark:text-gray-500 line-through opacity-75'
-                        : `bg-gradient-to-br ${categoryStyle.bg} text-white shadow-sm`
+                        : indicator
+                          ? `${indicator.className} shadow-sm border`
+                          : `bg-gradient-to-br ${categoryStyle.bg} text-white shadow-sm`
                     }`}
                   >
-                    {displayText}
+                    {indicator ? `${indicator.label} · ${displayText}` : displayText}
                   </div>
                 );
               })}

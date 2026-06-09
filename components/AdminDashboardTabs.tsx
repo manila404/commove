@@ -26,7 +26,7 @@ interface AdminDashboardTabsProps {
     onApprove: (event: EventType) => void;
     onReject: (eventId: string) => void;
     onEditEvent: (event: EventType) => void;
-    onDeleteEvent: (eventId: string) => void;
+    onDeleteEvent: (event: EventType) => void;
     onViewQRCode: (event: EventType) => void;
     onViewParticipants: (event: EventType) => void;
     onSchedule: (event: EventType) => void;
@@ -97,6 +97,22 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         if (freq === 'weekly') return 'Weekly';
         if (freq === 'monthly_date' || freq === 'monthly_day') return 'Monthly';
         return '';
+    };
+
+    const getCalendarEventIndicator = (event: EventType): { label: string; className: string; dotClassName: string; cardClassName: string } | null => {
+        if (event.status !== 'pending') return null;
+
+        const isFacilitatorView = currentUser?.role === 'facilitator';
+        return {
+            label: isFacilitatorView ? 'Awaiting Approval' : 'Pending Review',
+            className: isFacilitatorView
+                ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700/60'
+                : 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/40 dark:text-rose-200 dark:border-rose-700/60',
+            dotClassName: isFacilitatorView ? 'bg-amber-500' : 'bg-rose-500',
+            cardClassName: isFacilitatorView
+                ? 'border-amber-200 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-900/10'
+                : 'border-rose-200 dark:border-rose-800/60 bg-rose-50/40 dark:bg-rose-900/10',
+        };
     };
 
     // ── Alert chip renderer ───────────────────────────────────────────────────
@@ -187,9 +203,17 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         date.setHours(23, 59, 59, 999);
         return date;
     }, [viewingDate]);
+    const calendarEvents = useMemo(() => {
+        if (!currentUser) return allEvents;
+        if (currentUser.role === 'facilitator') {
+            return allEvents.filter(event => event.createdBy === currentUser.uid);
+        }
+        return allEvents;
+    }, [allEvents, currentUser]);
+
     const agendaDayMap = useMemo(
-        () => buildDayMap(events, agendaMonthStart, agendaMonthEnd),
-        [events, agendaMonthStart, agendaMonthEnd]
+        () => buildDayMap(calendarEvents, agendaMonthStart, agendaMonthEnd),
+        [calendarEvents, agendaMonthStart, agendaMonthEnd]
     );
 
     const isEventPast = (event: EventType) => {
@@ -1941,7 +1965,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                     Edit
                                                 </button>
                                                 <button
-                                                    onClick={() => onDeleteEvent(event.id)}
+                                                    onClick={() => onDeleteEvent(event)}
                                                     className="h-7 px-2.5 text-[11px] font-semibold rounded-md border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                                 >
                                                     Cancel
@@ -2606,9 +2630,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {/* ── Month View: Full CalendarView grid ── */}
                 {calendarView === 'month' && (
                     <CalendarView
-                        events={events}
+                        events={calendarEvents}
                         currentMonth={calendarMonthDate}
                         setCurrentMonth={setCalendarMonthDate}
+                        getEventIndicator={(event) => {
+                            const indicator = getCalendarEventIndicator(event);
+                            return indicator ? { label: indicator.label, className: indicator.className } : null;
+                        }}
                         onDateSelect={(date) => {
                             // Switch to Agenda view and navigate to selected date
                             setViewingDate(new Date(date.getFullYear(), date.getMonth(), 1));
@@ -2652,7 +2680,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     <div key={`blank-${blank}`} className="w-8 h-8"></div>
                                 ))}
                                 {days.map(day => {
-                                    const hasEvent = agendaDayMap.has(toYMD(new Date(year, month, day)));
+                                    const dayKey = toYMD(new Date(year, month, day));
+                                    const dayEntries = agendaDayMap.get(dayKey) || [];
+                                    const hasEvent = dayEntries.length > 0;
+                                    const hasPendingEvent = dayEntries.some(({ event }) => event.status === 'pending');
                                     const isToday = new Date().getDate() === day && new Date().getMonth() === month && new Date().getFullYear() === year;
 
                                     return (
@@ -2670,7 +2701,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 {day}
                                             </button>
                                             {hasEvent && (
-                                                <div className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${selectedDate === day ? 'bg-white' : 'bg-[#0052A3]'}`}></div>
+                                                <div className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 rounded-full ${hasPendingEvent ? 'w-1.5 h-1.5' : 'w-1 h-1'} ${selectedDate === day ? 'bg-white' : hasPendingEvent ? (currentUser?.role === 'facilitator' ? 'bg-amber-500' : 'bg-rose-500') : 'bg-[#0052A3]'}`}></div>
                                             )}
                                         </div>
                                     );
@@ -2697,8 +2728,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 </div>
                             ) : (
                                 <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
-                                    {eventsOnSelectedDate.map(event => (
-                                        <div key={event.id} className="group p-4 bg-white dark:bg-[#111827] rounded-2xl border border-gray-100 dark:border-gray-800/60 hover:border-blue-200 dark:hover:border-blue-900 hover:shadow-md transition-all flex items-center gap-4">
+                                    {eventsOnSelectedDate.map(event => {
+                                        const indicator = getCalendarEventIndicator(event);
+                                        return (
+                                        <div key={event.id} className={`group p-4 rounded-2xl border hover:border-blue-200 dark:hover:border-blue-900 hover:shadow-md transition-all flex items-center gap-4 ${indicator ? indicator.cardClassName : 'bg-white dark:bg-[#111827] border-gray-100 dark:border-gray-800/60'}`}>
                                             <div className="flex items-center gap-4 flex-1 min-w-0">
                                                 <div className="w-14 h-14 rounded-xl overflow-hidden shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
                                                     {event.imageUrl ? (
@@ -2712,7 +2745,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                     )}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <h4 className="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-[#0052A3] transition-colors truncate">{event.name}</h4>
+                                                    <div className="flex items-center gap-2 min-w-0 mb-1">
+                                                        {indicator && (
+                                                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${indicator.className}`}>
+                                                                {indicator.label}
+                                                            </span>
+                                                        )}
+                                                        <h4 className="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-[#0052A3] transition-colors truncate">{event.name}</h4>
+                                                    </div>
                                                     <div className="flex flex-col gap-0.5">
                                                         <div className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
                                                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" style={{ color: '#0052A3' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -2733,7 +2773,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 Edit / View
                                             </button>
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             )}
                         </div>
@@ -3692,7 +3732,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 </button>
                             )}
                             <div className="mx-2 my-1 border-t border-gray-100 dark:border-gray-800" />
-                            <button onClick={() => { onDeleteEvent(event.id); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left">
+                            <button onClick={() => { onDeleteEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left">
                                 <Trash2 className="w-3.5 h-3.5 text-red-500 shrink-0" strokeWidth={1.8} />
                                 <span className="text-[12px] font-medium">Delete</span>
                             </button>
