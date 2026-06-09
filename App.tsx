@@ -110,7 +110,7 @@ const MAIN_TAB_ORDER: MainTab[] = ['feed', 'calendar', 'notifications', 'nearby'
 // Helper to map view states to URL pathnames
 const getUrlForView = (view: string, eventId?: string, adminTab?: string): string => {
     switch (view) {
-        case 'feed': 
+        case 'feed':
             if (adminTab) return `/${adminTab}`;
             return '/';
         case 'calendar': return '/calendar';
@@ -139,7 +139,7 @@ const getInitialStateFromURL = () => {
     if (typeof window === 'undefined') return { view: 'feed' };
     try {
         const path = window.location.pathname;
-        
+
         // Handle events details /event/:id
         if (path.startsWith('/event/')) {
             const eventId = path.split('/event/')[1];
@@ -147,7 +147,7 @@ const getInitialStateFromURL = () => {
                 return { view: 'event-details', eventId };
             }
         }
-        
+
         // Handle manage registrations /manage-registrations/:id
         if (path.startsWith('/manage-registrations/')) {
             const eventId = path.split('/manage-registrations/')[1];
@@ -155,7 +155,7 @@ const getInitialStateFromURL = () => {
                 return { view: 'manageRegistrations', eventId };
             }
         }
-        
+
         // Handle normal paths
         switch (path) {
             case '/calendar':
@@ -1289,8 +1289,8 @@ const App: React.FC = () => {
 
         try {
             window.history.pushState(
-                { view: tab, adminTab: tab === 'feed' && isStaffUser ? adminActiveTab : undefined }, 
-                '', 
+                { view: tab, adminTab: tab === 'feed' && isStaffUser ? adminActiveTab : undefined },
+                '',
                 getUrlForView(tab, undefined, tab === 'feed' && isStaffUser ? adminActiveTab : undefined)
             );
         } catch (e) {
@@ -1391,8 +1391,8 @@ const App: React.FC = () => {
         try {
             // Clean the state to activeTab and update URL
             window.history.replaceState(
-                { view: activeTab, adminTab: activeTab === 'feed' && isStaffUser ? adminActiveTab : undefined }, 
-                '', 
+                { view: activeTab, adminTab: activeTab === 'feed' && isStaffUser ? adminActiveTab : undefined },
+                '',
                 getUrlForView(activeTab, undefined, activeTab === 'feed' && isStaffUser ? adminActiveTab : undefined)
             );
         } catch (e) {
@@ -1419,8 +1419,8 @@ const App: React.FC = () => {
                 prevView = 'popular-events';
             }
             window.history.replaceState(
-                { view: prevView, adminTab: prevView === 'feed' && isStaffUser ? adminActiveTab : undefined }, 
-                '', 
+                { view: prevView, adminTab: prevView === 'feed' && isStaffUser ? adminActiveTab : undefined },
+                '',
                 getUrlForView(prevView, undefined, prevView === 'feed' && isStaffUser ? adminActiveTab : undefined)
             );
         } catch (e) { }
@@ -1447,7 +1447,22 @@ const App: React.FC = () => {
 
     const handleOpenViewAllUpcoming = () => setShowViewAllUpcoming(true);
 
+    // Reset all overlay flags so only one overlay is ever active
+    const clearAllOverlays = () => {
+        setShowPermitDashboard(false);
+        setShowMyEvents(false);
+        setShowNotificationSettings(false);
+        setShowHelpSupport(false);
+        setShowTermsAndConditions(false);
+        setManagingEventRegistrations(null);
+        setShowViewAllPopular(false);
+        setShowViewAllUpcoming(false);
+        setShowPreferences(false);
+    };
+
     const handleOpenPermitDashboard = () => {
+        clearAllOverlays();
+        setShowProfilePanel(false);
         try {
             window.history.pushState({ view: 'permit' }, '', getUrlForView('permit'));
         } catch (e) { }
@@ -1455,6 +1470,8 @@ const App: React.FC = () => {
     };
 
     const handleOpenPreferences = () => {
+        clearAllOverlays();
+        setShowProfilePanel(false);
         try {
             window.history.pushState({ view: 'preferences' }, '', getUrlForView('preferences'));
         } catch (e) { }
@@ -1466,6 +1483,8 @@ const App: React.FC = () => {
             setIsGuest(false);
             return;
         }
+        clearAllOverlays();
+        setShowProfilePanel(false);
         try {
             window.history.pushState({ view: 'my-events' }, '', getUrlForView('my-events'));
         } catch (e) { }
@@ -1477,6 +1496,8 @@ const App: React.FC = () => {
             setIsGuest(false);
             return;
         }
+        clearAllOverlays();
+        setShowProfilePanel(false);
         try {
             window.history.pushState({ view: 'notification-settings' }, '', getUrlForView('notification-settings'));
         } catch (e) { }
@@ -1488,6 +1509,8 @@ const App: React.FC = () => {
             setIsGuest(false);
             return;
         }
+        clearAllOverlays();
+        setShowProfilePanel(false);
         try {
             window.history.pushState({ view: 'help' }, '', getUrlForView('help'));
         } catch (e) { }
@@ -1499,6 +1522,8 @@ const App: React.FC = () => {
             setIsGuest(false);
             return;
         }
+        clearAllOverlays();
+        setShowProfilePanel(false);
         try {
             window.history.pushState({ view: 'terms' }, '', getUrlForView('terms'));
         } catch (e) { }
@@ -2267,7 +2292,6 @@ const App: React.FC = () => {
                 onBack={activeOverlay ? handleCloseAllModals : undefined}
                 isProfileOpen={showProfilePanel}
             />
-
             {activeOverlay ? (
                 <main className="flex-1 overflow-y-auto">
                     {showPermitDashboard && <PermitDashboard onBack={handleCloseAllModals} onManageRegistrations={handleManageRegistrations} />}
@@ -2300,109 +2324,153 @@ const App: React.FC = () => {
                     )}
                 </main>
             ) : (
-                <>
-                    <div className={`flex flex-1 min-h-0 ${activeTab === 'nearby' ? 'overflow-hidden' : ''}`}>
-                        <Sidebar
-                            activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
-                            onTabChange={handleTabChange}
-                            onOpenScanner={handleOpenScanner}
-                            pendingFacilitatorCount={pendingFacilitatorCount}
-                            unreadNotificationCount={unreadNotificationCount}
-                            isStaff={isStaff}
-                            isGuest={isGuest}
-                            adminActiveTab={adminActiveTab}
-                            onAdminTabChange={(tab) => {
-                                setShowProfilePanel(false);
-                                setAdminActiveTab(tab);
-                                setActiveTabWithDirection('feed');
-                                setShowPermitDashboard(false);
-                                setShowMyEvents(false);
-                                setShowNotificationSettings(false);
-                                setShowHelpSupport(false);
-                                setShowTermsAndConditions(false);
-                                setManagingEventRegistrations(null);
-                                setSelectedEvent(null);
-                                try {
-                                    window.history.pushState({ view: 'feed', adminTab: tab }, '', getUrlForView('feed', undefined, tab));
-                                } catch (e) {
-                                    console.warn("History pushState failed", e);
-                                }
-                            }}
-                            canManageUsers={currentUser?.role === 'admin'}
-                            expanded={sidebarExpanded}
-                            onExpandedChange={setSidebarExpanded}
-                        />
-                        <main ref={outerContainerRef} className={`flex-1 min-h-0 transition-all duration-300 scroll-smooth ${activeTab === 'nearby'
-                            ? 'h-full overflow-hidden'
-                            : 'w-full px-0'
-                            } ${activeTab === 'feed' && isStaff ? '' : activeTab === 'feed' ? 'pb-24' : ''} overflow-x-hidden`}>
-                            <AnimatePresence mode="wait" initial={false} custom={mobileTabDirection}>
-                                <motion.div
-                                    key={activeTab}
-                                    custom={mobileTabDirection}
-                                    variants={mobileTabVariants}
-                                    initial={isMobileViewport ? 'enter' : false}
-                                    animate="center"
-                                    exit={isMobileViewport ? 'exit' : undefined}
-                                    transition={{ duration: isMobileViewport ? 0.28 : 0, ease: [0.22, 1, 0.36, 1] }}
-                                    className={`md:contents ${activeTab === 'nearby' || (activeTab === 'feed' && isStaff) ? 'h-full min-h-0 flex flex-col' : ''}`}
-                                >
-                            {activeTab === 'feed' && !isStaff && (
-                                <div key="feed" className="space-y-4 animate-fade-in pt-8 md:pt-10">
-                                    {currentUser?.facilitatorRequestStatus === 'rejected' && (
-                                        <div className="mx-4 md:ml-8 md:mr-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm">
-                                            <div className="flex justify-between items-start">
-                                                <div className="space-y-1">
-                                                    <h3 className="text-red-800 dark:text-red-400 font-bold text-sm">Facilitator Request Rejected</h3>
-                                                    <p className="text-red-600 dark:text-red-300 text-xs">{currentUser.facilitatorRejectionReason || "Your ID may have been blurry or invalid."}</p>
+                <div className={`flex flex-1 min-h-0 ${activeTab === 'nearby' ? 'overflow-hidden' : ''}`}>
+                    <Sidebar
+                        activeTab={activeTab as 'feed' | 'calendar' | 'nearby' | 'notifications'}
+                        onTabChange={handleTabChange}
+                        onOpenScanner={handleOpenScanner}
+                        pendingFacilitatorCount={pendingFacilitatorCount}
+                        unreadNotificationCount={unreadNotificationCount}
+                        isStaff={isStaff}
+                        isGuest={isGuest}
+                        adminActiveTab={adminActiveTab}
+                        onAdminTabChange={(tab) => {
+                            setShowProfilePanel(false);
+                            setAdminActiveTab(tab);
+                            setActiveTabWithDirection('feed');
+                            setShowPermitDashboard(false);
+                            setShowMyEvents(false);
+                            setShowNotificationSettings(false);
+                            setShowHelpSupport(false);
+                            setShowTermsAndConditions(false);
+                            setManagingEventRegistrations(null);
+                            setSelectedEvent(null);
+                            try {
+                                window.history.pushState({ view: 'feed', adminTab: tab }, '', getUrlForView('feed', undefined, tab));
+                            } catch (e) {
+                                console.warn("History pushState failed", e);
+                            }
+                        }}
+                        canManageUsers={currentUser?.role === 'admin'}
+                        expanded={sidebarExpanded}
+                        onExpandedChange={setSidebarExpanded}
+                    />
+                    <main ref={outerContainerRef} className={`flex-1 min-h-0 transition-all duration-300 scroll-smooth ${activeTab === 'nearby'
+                        ? 'h-full overflow-hidden'
+                        : 'w-full px-0'
+                        } ${activeTab === 'feed' && isStaff ? '' : activeTab === 'feed' ? 'pb-24' : ''} overflow-x-hidden`}>
+                        <AnimatePresence mode="wait" initial={false} custom={mobileTabDirection}>
+                            <motion.div
+                                key={activeTab}
+                                custom={mobileTabDirection}
+                                variants={mobileTabVariants}
+                                initial={isMobileViewport ? 'enter' : false}
+                                animate="center"
+                                exit={isMobileViewport ? 'exit' : undefined}
+                                transition={{ duration: isMobileViewport ? 0.28 : 0, ease: [0.22, 1, 0.36, 1] }}
+                                className={`md:contents ${activeTab === 'nearby' || (activeTab === 'feed' && isStaff) ? 'h-full min-h-0 flex flex-col' : ''}`}
+                            >
+                                {activeTab === 'feed' && !isStaff && (
+                                    <div key="feed" className="space-y-4 animate-fade-in pt-8 md:pt-10">
+                                        {currentUser?.facilitatorRequestStatus === 'rejected' && (
+                                            <div className="mx-4 md:ml-8 md:mr-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="space-y-1">
+                                                        <h3 className="text-red-800 dark:text-red-400 font-bold text-sm">Facilitator Request Rejected</h3>
+                                                        <p className="text-red-600 dark:text-red-300 text-xs">{currentUser.facilitatorRejectionReason || "Your ID may have been blurry or invalid."}</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setFacilitatorAuthInitialStep('request');
+                                                            setShowFacilitatorAuth(true);
+                                                        }}
+                                                        className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition-colors border-none"
+                                                    >
+                                                        Resubmit ID
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    onClick={() => {
-                                                        setFacilitatorAuthInitialStep('request');
-                                                        setShowFacilitatorAuth(true);
-                                                    }}
-                                                    className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition-colors border-none"
-                                                >
-                                                    Resubmit ID
-                                                </button>
                                             </div>
-                                        </div>
-                                    )}
-                                    {/* Mobile sticky bar — search + filters + category pills */}
-                                    <AnimatePresence>
+                                        )}
+
+                                        {/* Mobile sticky bar */}
+                                        <AnimatePresence>
+                                            {isSearchSticky && (
+                                                <motion.div
+                                                    key="mobile-sticky-bar"
+                                                    initial={{ opacity: 0, y: -14 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -14 }}
+                                                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                                                    className="md:hidden fixed left-0 right-0 z-[200] bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm"
+                                                    style={{ top: headerHeight }}
+                                                >
+                                                    <div className="flex items-center gap-2 px-3 pt-2 pb-1.5">
+                                                        <div className="flex-1">
+                                                            <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
+                                                        </div>
+                                                        <div className="flex gap-1.5 flex-shrink-0">
+                                                            <button onClick={() => setSelectedCategory('All')} className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}>All</button>
+                                                            <button onClick={() => setSelectedCategory('Happening Now')} className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse flex-shrink-0`}></span>
+                                                                Now
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <AnimatePresence>
+                                                        {isCategoriesHidden && (
+                                                            <motion.div
+                                                                key="mobile-cat-pills"
+                                                                initial={{ opacity: 0, y: -8 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                exit={{ opacity: 0, y: -8 }}
+                                                                transition={{ duration: 0.18, ease: 'easeOut' }}
+                                                                className="flex gap-2 overflow-x-auto px-3 pb-2 no-scrollbar"
+                                                            >
+                                                                {CATEGORIES.map((cat, idx) => {
+                                                                    const predefined = CATEGORY_DATA[cat];
+                                                                    const bg = predefined ? predefined.bg : CUSTOM_CATEGORY_GRADIENTS[idx % CUSTOM_CATEGORY_GRADIENTS.length];
+                                                                    const isSelected = selectedCategory === cat;
+                                                                    return (
+                                                                        <button
+                                                                            key={cat}
+                                                                            onClick={() => setSelectedCategory(cat)}
+                                                                            className={`flex-shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold transition-all bg-gradient-to-br ${bg} text-white ${isSelected ? 'ring-2 ring-offset-1 ring-white/80 scale-105' : 'opacity-80 hover:opacity-100'}`}
+                                                                        >
+                                                                            {cat}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+
+                                        {/* Desktop sticky bar */}
                                         {isSearchSticky && (
-                                            <motion.div
-                                                key="mobile-sticky-bar"
-                                                initial={{ opacity: 0, y: -14 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -14 }}
-                                                transition={{ duration: 0.22, ease: 'easeOut' }}
-                                                className="md:hidden fixed left-0 right-0 z-[200] bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm"
-                                                style={{ top: headerHeight }}
-                                            >
-                                                {/* Row 1: Search + All + Happening Now */}
-                                                <div className="flex items-center gap-2 px-3 pt-2 pb-1.5">
+                                            <div className={`hidden md:block fixed top-16 ${sidebarExpanded ? 'left-52' : 'left-20'} right-4 z-[200] bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm transition-[left] duration-300`}>
+                                                <div className="flex items-center gap-3 pl-8 pr-4 py-2.5">
                                                     <div className="flex-1">
                                                         <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
                                                     </div>
-                                                    <div className="flex gap-1.5 flex-shrink-0">
-                                                        <button onClick={() => setSelectedCategory('All')} className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}>All</button>
-                                                        <button onClick={() => setSelectedCategory('Happening Now')} className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}>
-                                                            <span className={`w-1.5 h-1.5 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse flex-shrink-0`}></span>
-                                                            Now
+                                                    <div className="flex gap-2 flex-shrink-0">
+                                                        <button onClick={() => setSelectedCategory('All')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>All</button>
+                                                        <button onClick={() => setSelectedCategory('Happening Now')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse`}></span>
+                                                            Happening Now
                                                         </button>
                                                     </div>
                                                 </div>
-                                                {/* Row 2: Category pills — only after Categories section scrolls away */}
                                                 <AnimatePresence>
                                                     {isCategoriesHidden && (
                                                         <motion.div
-                                                            key="mobile-cat-pills"
-                                                            initial={{ opacity: 0, y: -8 }}
+                                                            key="sticky-cat-pills"
+                                                            initial={{ opacity: 0, y: -12 }}
                                                             animate={{ opacity: 1, y: 0 }}
-                                                            exit={{ opacity: 0, y: -8 }}
-                                                            transition={{ duration: 0.18, ease: 'easeOut' }}
-                                                            className="flex gap-2 overflow-x-auto px-3 pb-2 no-scrollbar"
+                                                            exit={{ opacity: 0, y: -12 }}
+                                                            transition={{ duration: 0.22, ease: 'easeOut' }}
+                                                            className="flex gap-2 overflow-x-auto pl-8 pr-4 pb-2.5 no-scrollbar"
                                                         >
                                                             {CATEGORIES.map((cat, idx) => {
                                                                 const predefined = CATEGORY_DATA[cat];
@@ -2412,7 +2480,7 @@ const App: React.FC = () => {
                                                                     <button
                                                                         key={cat}
                                                                         onClick={() => setSelectedCategory(cat)}
-                                                                        className={`flex-shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold transition-all bg-gradient-to-br ${bg} text-white ${isSelected ? 'ring-2 ring-offset-1 ring-white/80 scale-105' : 'opacity-80 hover:opacity-100'}`}
+                                                                        className={`flex-shrink-0 px-3.5 py-1 rounded-full text-xs font-semibold transition-all bg-gradient-to-br ${bg} text-white ${isSelected ? 'ring-2 ring-offset-1 ring-white/80 scale-105' : 'opacity-80 hover:opacity-100'}`}
                                                                     >
                                                                         {cat}
                                                                     </button>
@@ -2421,448 +2489,288 @@ const App: React.FC = () => {
                                                         </motion.div>
                                                     )}
                                                 </AnimatePresence>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    {/* Sticky bar — desktop only, fixed below header when scrolled past heading */}
-                                    {isSearchSticky && (
-                                        <div className={`hidden md:block fixed top-16 ${sidebarExpanded ? 'left-52' : 'left-20'} right-4 z-[200] bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm transition-[left] duration-300`}>
-                                            {/* Row 1: Search + quick filters */}
-                                            <div className="flex items-center gap-3 pl-8 pr-4 py-2.5">
-                                                <div className="flex-1">
-                                                    <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
-                                                </div>
-                                                <div className="flex gap-2 flex-shrink-0">
-                                                    <button onClick={() => setSelectedCategory('All')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>All</button>
-                                                    <button onClick={() => setSelectedCategory('Happening Now')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>
-                                                        <span className={`w-1.5 h-1.5 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse`}></span>
-                                                        Happening Now
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            {/* Row 2: Category pills — slides in/out after Categories section scrolls away */}
-                                            <AnimatePresence>
-                                                {isCategoriesHidden && (
-                                                    <motion.div
-                                                        key="sticky-cat-pills"
-                                                        initial={{ opacity: 0, y: -12 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        exit={{ opacity: 0, y: -12 }}
-                                                        transition={{ duration: 0.22, ease: 'easeOut' }}
-                                                        className="flex gap-2 overflow-x-auto pl-8 pr-4 pb-2.5 no-scrollbar"
-                                                    >
-                                                        {CATEGORIES.map((cat, idx) => {
-                                                            const predefined = CATEGORY_DATA[cat];
-                                                            const bg = predefined ? predefined.bg : CUSTOM_CATEGORY_GRADIENTS[idx % CUSTOM_CATEGORY_GRADIENTS.length];
-                                                            const isSelected = selectedCategory === cat;
-                                                            return (
-                                                                <button
-                                                                    key={cat}
-                                                                    onClick={() => setSelectedCategory(cat)}
-                                                                    className={`flex-shrink-0 px-3.5 py-1 rounded-full text-xs font-semibold transition-all bg-gradient-to-br ${bg} text-white ${isSelected ? 'ring-2 ring-offset-1 ring-white/80 scale-105' : 'opacity-80 hover:opacity-100'}`}
-                                                                >
-                                                                    {cat}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </div>
-                                    )}
-
-                                    <div className="px-4 md:pl-8 md:pr-4 space-y-4">
-                                        <div className="space-y-1 mb-5 animate-fade-in-up">
-                                            <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Discover Events</h1>
-                                            <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm md:max-w-none leading-relaxed">
-                                                Explore popular events near you, browse by category, or check out some of the great community calendars.
-                                            </p>
-                                        </div>
-
-                                        <div className={isSearchSticky ? 'md:invisible md:pointer-events-none' : ''}>
-                                            <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
-                                        </div>
-
-                                        {/* Quick Filters (All & Happening Now) */}
-                                        <div className={`flex gap-2.5 ${isSearchSticky ? 'md:invisible md:pointer-events-none' : 'animate-fade-in-up'}`}>
-                                            <button
-                                                onClick={() => setSelectedCategory('All')}
-                                                className={`px-3.5 md:px-5 py-1 md:py-1.5 rounded-full text-sm font-semibold transition-all shadow-sm ${selectedCategory === 'All' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
-                                            >
-                                                All
-                                            </button>
-                                            <button
-                                                onClick={() => setSelectedCategory('Happening Now')}
-                                                className={`px-3.5 md:px-5 py-1 md:py-1.5 rounded-full text-sm font-semibold transition-all shadow-sm flex items-center gap-2 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
-                                            >
-                                                <span className={`w-2 h-2 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse`}></span>
-                                                Happening Now
-                                            </button>
-                                        </div>
-
-                                        {/* Get Involved + Popular Events — side by side on desktop */}
-                                        {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && (
-                                            <div className="flex flex-col md:flex-row gap-6 md:gap-8 md:items-start">
-                                                {/* Left: Get Involved carousel */}
-                                                {highlightedDisplayEvents.length > 0 && (
-                                                    <div className="md:flex-[3] min-w-0">
-                                                        <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
-                                                    </div>
-                                                )}
-                                                {/* Right: Popular Events top-3 list */}
-                                                <div className={`${highlightedDisplayEvents.length > 0 ? 'md:flex-[2]' : 'w-full'} min-w-0`}>
-                                                    <PopularEvents
-                                                        events={getDisplayEvents}
-                                                        onEventSelect={handleOpenEvent}
-                                                        onViewAll={handleOpenViewAllPopular}
-                                                    />
-                                                </div>
                                             </div>
                                         )}
 
-                                        {/* 2. Active Date Filter Indicator */}
-                                        {selectedDateFilter && (
-                                            <div className="flex items-center justify-between bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 p-3 rounded-xl animate-fade-in-up">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="p-1.5 bg-primary-100 dark:bg-primary-800 rounded-lg text-primary-600">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                        </svg>
-                                                    </div>
-                                                    <span className="text-sm font-semibold text-primary-800 dark:text-primary-200">
-                                                        Events on {formatDisplayDate(selectedDateFilter)}
-                                                    </span>
-                                                </div>
-                                                <button
-                                                    onClick={clearDateFilter}
-                                                    className="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-wide px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                                >
-                                                    Clear
+                                        <div className="px-4 md:pl-8 md:pr-4 space-y-4">
+                                            <div className="space-y-1 mb-5 animate-fade-in-up">
+                                                <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Discover Events</h1>
+                                                <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm md:max-w-none leading-relaxed">
+                                                    Explore popular events near you, browse by category, or check out some of the great community calendars.
+                                                </p>
+                                            </div>
+
+                                            <div className={isSearchSticky ? 'md:invisible md:pointer-events-none' : ''}>
+                                                <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
+                                            </div>
+
+                                            <div className={`flex gap-2.5 ${isSearchSticky ? 'md:invisible md:pointer-events-none' : 'animate-fade-in-up'}`}>
+                                                <button onClick={() => setSelectedCategory('All')} className={`px-3.5 md:px-5 py-1 md:py-1.5 rounded-full text-sm font-semibold transition-all transform active:scale-95 shadow-sm ${selectedCategory === 'All' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}>All</button>
+                                                <button onClick={() => setSelectedCategory('Happening Now')} className={`px-3.5 md:px-5 py-1 md:py-1.5 rounded-full text-sm font-semibold transition-all transform active:scale-95 shadow-sm flex items-center gap-2 ${selectedCategory === 'Happening Now' ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}>
+                                                    <span className={`w-2 h-2 rounded-full ${selectedCategory === 'Happening Now' ? 'bg-white' : 'bg-red-500'} animate-pulse`}></span>
+                                                    Happening Now
                                                 </button>
                                             </div>
-                                        )}
 
-                                        {/* 3. Category Cards */}
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <h2 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">Categories</h2>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => scrollCategories('left')}
-                                                        className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                                        aria-label="Scroll left"
-                                                    >
-                                                        <ChevronLeft size={18} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => scrollCategories('right')}
-                                                        className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                                        aria-label="Scroll right"
-                                                    >
-                                                        <ChevronRight size={18} />
-                                                    </button>
+                                            {selectedCategory === 'All' && !searchQuery && !selectedDateFilter && (
+                                                <div className="flex flex-col md:flex-row gap-6 md:gap-8 md:items-start">
+                                                    {highlightedDisplayEvents.length > 0 && (
+                                                        <div className="md:flex-[3] min-w-0">
+                                                            <HighlightsSlider events={highlightedDisplayEvents} onEventSelect={handleOpenEvent} />
+                                                        </div>
+                                                    )}
+                                                    <div className={`${highlightedDisplayEvents.length > 0 ? 'md:flex-[2]' : 'w-full'} min-w-0`}>
+                                                        <PopularEvents events={getDisplayEvents} onEventSelect={handleOpenEvent} onViewAll={handleOpenViewAllPopular} />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {selectedDateFilter && (
+                                                <div className="flex items-center justify-between bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 p-3 rounded-xl animate-fade-in-up">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="p-1.5 bg-primary-100 dark:bg-primary-800 rounded-lg text-primary-600">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                        </div>
+                                                        <span className="text-sm font-semibold text-primary-800 dark:text-primary-200">Events on {formatDisplayDate(selectedDateFilter)}</span>
+                                                    </div>
+                                                    <button onClick={clearDateFilter} className="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-wide px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Clear</button>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <h2 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">Categories</h2>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => scrollCategories('left')} className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" aria-label="Scroll left"><ChevronLeft size={18} /></button>
+                                                        <button onClick={() => scrollCategories('right')} className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" aria-label="Scroll right"><ChevronRight size={18} /></button>
+                                                    </div>
+                                                </div>
+                                                <div ref={categoryScrollRef} className="flex gap-4 overflow-x-auto pb-2 no-scrollbar snap-x">
+                                                    {CATEGORIES.map((cat, idx) => {
+                                                        const predefined = CATEGORY_DATA[cat];
+                                                        const customGradient = CUSTOM_CATEGORY_GRADIENTS[idx % CUSTOM_CATEGORY_GRADIENTS.length];
+                                                        const data = predefined || { bg: customGradient, subtitle: 'Custom', icon: Tag };
+                                                        const isSelected = selectedCategory === cat;
+                                                        const Icon = data.icon;
+                                                        return (
+                                                            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`relative min-w-[150px] md:min-w-[220px] h-[68px] md:h-[75px] rounded-[10px] p-3 text-left overflow-hidden transition-all transform active:scale-95 shadow-sm snap-start ${isSelected ? 'shadow-md opacity-100' : 'opacity-90 hover:opacity-100'} bg-gradient-to-br ${data.bg}`}>
+                                                                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                                                                    <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10"></div>
+                                                                    <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/10"></div>
+                                                                </div>
+                                                                <div className="relative z-10">
+                                                                    <h3 className="text-[14px] font-bold text-white leading-tight flex items-center gap-1">{cat}</h3>
+                                                                    <p className="text-[10px] text-white/80 mt-0.5 font-medium">{data.subtitle}</p>
+                                                                </div>
+                                                                <div className="absolute bottom-1.5 right-1.5 text-white z-10 drop-shadow-lg"><Icon size={32} strokeWidth={2} /></div>
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
-                                            <div
-                                                ref={categoryScrollRef}
-                                                className="flex gap-4 overflow-x-auto pb-2 no-scrollbar snap-x"
-                                            >
-                                                {CATEGORIES.map((cat, idx) => {
-                                                    const predefined = CATEGORY_DATA[cat];
-                                                    const customGradient = CUSTOM_CATEGORY_GRADIENTS[idx % CUSTOM_CATEGORY_GRADIENTS.length];
-                                                    const data = predefined || { bg: customGradient, subtitle: 'Custom', icon: Tag };
-                                                    const isSelected = selectedCategory === cat;
-                                                    const Icon = data.icon;
+                                            <div ref={categoriesSentinelRef} className="h-px" />
 
-                                                    return (
-                                                        <button
-                                                            key={cat}
-                                                            onClick={() => setSelectedCategory(cat)}
-                                                            className={`relative min-w-[150px] md:min-w-[220px] h-[68px] md:h-[75px] rounded-[10px] p-3 text-left overflow-hidden transition-all transform active:scale-95 shadow-sm snap-start ${isSelected ? 'shadow-md opacity-100' : 'opacity-90 hover:opacity-100'} bg-gradient-to-br ${data.bg}`}
-                                                        >
-                                                            {/* Background Pattern */}
-                                                            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                                                                <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10"></div>
-                                                                <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/10"></div>
-                                                            </div>
-
-                                                            <div className="relative z-10">
-                                                                <h3 className="text-[14px] font-bold text-white leading-tight flex items-center gap-1">
-                                                                    {cat}
-                                                                </h3>
-                                                                <p className="text-[10px] text-white/80 mt-0.5 font-medium">{data.subtitle}</p>
-                                                            </div>
-
-                                                            <div className="absolute bottom-1.5 right-1.5 text-white z-10 drop-shadow-lg">
-                                                                <Icon size={32} strokeWidth={2} />
-                                                            </div>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                        {/* Sentinel — category pills show in sticky bar only after this exits view */}
-                                        <div ref={categoriesSentinelRef} className="h-px" />
-
-                                        {/* Upcoming Next Week — under Highlights */}
-                                        {!searchQuery && selectedCategory === 'All' && !selectedDateFilter && (
-                                            <UpcomingNextWeek
-                                                events={getDisplayEvents}
-                                                onEventSelect={handleOpenEvent}
-                                                onViewAll={handleOpenViewAllUpcoming}
-                                            />
-                                        )}
-
-                                        {/* Recommended for You + Event List */}
-                                        <div className="space-y-4">
-                                            <h2 id="recommended-section" className="text-base md:text-lg font-semibold text-gray-900 dark:text-white pt-1">
-                                                {selectedDateFilter ? `Events on ${formatDisplayDate(selectedDateFilter)}` :
-                                                    selectedCategory === 'All' ? 'Events for You' : selectedCategory}
-                                            </h2>
-
-                                            {areEventsLoading ? (
-                                                <div className="flex justify-center py-10"><Spinner size="lg" /></div>
-                                            ) : (
-                                                <EventList
-                                                    events={finalDisplayEvents}
+                                            {/* Fixed from <Sidebar> back to <UpcomingEvents> */}
+                                            {!searchQuery && selectedCategory === 'All' && !selectedDateFilter && (
+                                                <UpcomingNextWeek
+                                                    events={getDisplayEvents}
                                                     onEventSelect={handleOpenEvent}
-                                                    onToggleSave={handleToggleSaveEvent}
-                                                    category={selectedCategory}
-                                                    onExploreUpcoming={() => {
-                                                        setSelectedCategory('All');
-                                                        setTimeout(() => {
-                                                            document.getElementById('recommended-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                        }, 50);
-                                                    }}
-                                                    onBrowse={() => setSelectedCategory('All')}
+                                                    onViewAll={handleOpenViewAllUpcoming}
                                                 />
                                             )}
+
+                                            <div className="space-y-4">
+                                                <h2 id="recommended-section" className="text-base md:text-lg font-semibold text-gray-900 dark:text-white pt-1">
+                                                    {selectedDateFilter ? `Events on ${formatDisplayDate(selectedDateFilter)}` : selectedCategory === 'All' ? 'Events for You' : selectedCategory}
+                                                </h2>
+                                                {areEventsLoading ? (
+                                                    <div className="flex justify-center py-10"><Spinner size="lg" /></div>
+                                                ) : (
+                                                    <EventList
+                                                        events={finalDisplayEvents}
+                                                        onEventSelect={handleOpenEvent}
+                                                        onToggleSave={handleToggleSaveEvent}
+                                                        category={selectedCategory}
+                                                        onExploreUpcoming={() => {
+                                                            setSelectedCategory('All');
+                                                            setTimeout(() => {
+                                                                document.getElementById('recommended-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                            }, 50);
+                                                        }}
+                                                        onBrowse={() => setSelectedCategory('All')}
+                                                    />
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* AdminPanel stays mounted so CreateEventForm state survives tab navigation */}
-                            {isStaff && currentUser && (
-                                <div
-                                    key="feed-staff"
-                                    className="h-full min-h-0 flex flex-col px-2 md:px-0"
-                                    style={{ display: activeTab === 'feed' ? 'flex' : 'none' }}
-                                >
-                                    <AdminPanel
-                                        currentUser={currentUser}
-                                        events={events}
-                                        onEventCreated={handleEventCreated}
-                                        onEventUpdated={handleEventUpdated}
-                                        onEventDeleted={handleEventDeleted}
-                                        onClose={handleCloseAllModals}
-                                        onManageRegistrations={handleManageRegistrations}
-                                        externalDashboardTab={adminActiveTab}
-                                        onExternalTabChange={setAdminActiveTab}
-                                    />
-                                </div>
-                            )}
-
-                            {activeTab === 'calendar' && (
-                                <div key="calendar" className="px-4 md:px-8 pt-8 md:pt-10 pb-28 md:pb-12 animate-fade-in">
-                                    <CalendarView
-                                        events={(() => {
-                                            const visible = events.filter(e => {
-                                                if (isStaff) {
-                                                    if (currentUser?.role === 'admin') return true;
-                                                    if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
-                                                }
-                                                const isPublished = e.status === 'published';
-                                                const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
-                                                return isPublished || isScheduled;
-                                            });
-                                            return searchQuery ? smartSearchEvents(visible, searchQuery) : visible;
-                                        })()}
-                                        currentMonth={currentMonth}
-                                        setCurrentMonth={setCurrentMonth}
-                                        onDateSelect={handleDateSelect}
-                                    />
-                                </div>
-                            )}
-
-                            {/* Calendar Events Popup */}
-                            {showCalendarEventsPopup && calendarPopupDate && (
-                                <DateEventsModal
-                                    date={calendarPopupDate}
-                                    events={(() => {
-                                        // Build a deduplicated, span-aware list for the clicked date
-                                        const clickedYMD = calendarPopupDate.toISOString().slice(0, 10);
-                                        const clickedMs = calendarPopupDate.getTime();
-
-                                        // Visibility filter (same logic as calendar)
-                                        let visible = events.filter(e => {
-                                            if (isStaff) {
-                                                if (currentUser?.role === 'admin') return true;
-                                                if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
-                                            }
-                                            const isPublished = e.status === 'published';
-                                            const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
-                                            return isPublished || isScheduled;
-                                        });
-                                        
-                                        if (searchQuery) {
-                                            visible = smartSearchEvents(visible, searchQuery);
-                                        }
-
-                                        // Check whether an event covers the clicked date
-                                        const coversDate = (e: typeof events[0]) => {
-                                            const startMs = new Date(e.date + 'T00:00:00').getTime();
-                                            const endMs = e.endDate
-                                                ? new Date(e.endDate + 'T00:00:00').getTime()
-                                                : startMs;
-                                            return startMs <= clickedMs && clickedMs <= endMs;
-                                        };
-
-                                        const matching = visible.filter(coversDate);
-
-                                        // Deduplicate recurring groups: keep only the occurrence
-                                        // whose date is closest to (≤) the clicked date
-                                        const seenGroups = new Map<string, typeof events[0]>();
-                                        const result: typeof events[0][] = [];
-                                        for (const ev of matching) {
-                                            if (!ev.recurrenceGroupId) {
-                                                result.push(ev);
-                                            } else {
-                                                const existing = seenGroups.get(ev.recurrenceGroupId);
-                                                if (!existing) {
-                                                    seenGroups.set(ev.recurrenceGroupId, ev);
-                                                } else {
-                                                    // prefer the occurrence whose date == clickedYMD
-                                                    if (ev.date === clickedYMD) {
-                                                        seenGroups.set(ev.recurrenceGroupId, ev);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        seenGroups.forEach(ev => result.push(ev));
-                                        return result;
-                                    })()}
-                                    onClose={handleCloseAllModals}
-                                    onEventClick={(event) => {
-                                        setShowCalendarEventsPopup(false);
-                                        handleOpenEvent(event);
-                                    }}
-                                    onToggleSave={handleToggleSaveEvent}
-                                    savedEventIds={currentUser?.savedEventIds || []}
-                                />
-                            )}
-
-                            {activeTab === 'notifications' && (
-                                <div key="notifications" className="px-4 md:px-8 pt-8 md:pt-10 animate-fade-in">
-                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Notifications</h2>
-                                    {currentUser ? (
-                                        <NotificationList
-                                            userId={currentUser.uid}
+                                {isStaff && currentUser && (
+                                    <div key="feed-staff" className="h-full min-h-0 flex flex-col px-2 md:px-0" style={{ display: activeTab === 'feed' ? 'flex' : 'none' }}>
+                                        <AdminPanel
+                                            currentUser={currentUser}
                                             events={events}
-                                            isStaff={currentUser.role === 'admin' || currentUser.role === 'facilitator' || currentUser.isAdmin === true}
-                                            isAdmin={currentUser.role === 'admin' || currentUser.isAdmin === true}
-                                            onEventSelect={(event, notifType) => handleOpenEvent(event, notifType)}
+                                            onEventCreated={handleEventCreated}
                                             onEventUpdated={handleEventUpdated}
-                                            onNavigateToAdmin={(event, tab, targetId) => {
-                                                setActiveTabWithDirection('feed');
-                                                setTimeout(() => {
-                                                    window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { event, tab, targetId } }));
-                                                }, 300);
-                                            }}
+                                            onEventDeleted={handleEventDeleted}
+                                            onClose={handleCloseAllModals}
                                             onManageRegistrations={handleManageRegistrations}
-                                            savedEventIds={currentUser.savedEventIds || []}
-                                            interestedEventIds={currentUser.interestedEventIds || []}
+                                            externalDashboardTab={adminActiveTab}
+                                            onExternalTabChange={setAdminActiveTab}
                                         />
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center h-64 text-center px-4">
-                                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                    </div>
+                                )}
+
+                                {activeTab === 'calendar' && (
+                                    <div key="calendar" className="px-4 md:px-8 pt-8 md:pt-10 pb-28 md:pb-12 animate-fade-in">
+                                        <CalendarView
+                                            events={(() => {
+                                                const visible = events.filter(e => {
+                                                    if (isStaff) {
+                                                        if (currentUser?.role === 'admin') return true;
+                                                        if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
+                                                    }
+                                                    const isPublished = e.status === 'published';
+                                                    const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
+                                                    return isPublished || isScheduled;
+                                                });
+                                                return searchQuery ? smartSearchEvents(visible, searchQuery) : visible;
+                                            })()}
+                                            currentMonth={currentMonth}
+                                            setCurrentMonth={setCurrentMonth}
+                                            onDateSelect={handleDateSelect}
+                                        />
+                                    </div>
+                                )}
+
+                                {activeTab === 'notifications' && (
+                                    <div key="notifications" className="px-4 md:px-8 pt-8 md:pt-10 animate-fade-in">
+                                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Notifications</h2>
+                                        {currentUser ? (
+                                            <NotificationList
+                                                userId={currentUser.uid}
+                                                events={events}
+                                                isStaff={currentUser.role === 'admin' || currentUser.role === 'facilitator' || currentUser.isAdmin === true}
+                                                isAdmin={currentUser.role === 'admin' || currentUser.isAdmin === true}
+                                                onEventSelect={(event, notifType) => handleOpenEvent(event, notifType)}
+                                                onEventUpdated={handleEventUpdated}
+                                                onNavigateToAdmin={(event, tab, targetId) => {
+                                                    setActiveTabWithDirection('feed');
+                                                    setTimeout(() => {
+                                                        window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { event, tab, targetId } }));
+                                                    }, 300);
+                                                }}
+                                                onManageRegistrations={handleManageRegistrations}
+                                                savedEventIds={currentUser.savedEventIds || []}
+                                                interestedEventIds={currentUser.interestedEventIds || []}
+                                            />
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+                                                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Sign In Required</h3>
+                                                <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xs mb-4">Sign in to receive notifications and set reminders for your favourite events.</p>
+                                                <button onClick={() => setIsGuest(false)} className="px-6 py-2.5 bg-primary-600 text-white font-bold rounded-full text-sm hover:bg-primary-700 transition-colors">Sign In</button>
                                             </div>
-                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Sign In Required</h3>
-                                            <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xs mb-4">
-                                                Sign in to receive notifications and set reminders for your favourite events.
-                                            </p>
-                                            <button
-                                                onClick={() => setIsGuest(false)}
-                                                className="px-6 py-2.5 bg-primary-600 text-white font-bold rounded-full text-sm hover:bg-primary-700 transition-colors"
-                                            >
-                                                Sign In
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                        )}
+                                    </div>
+                                )}
 
-                            {activeTab === 'nearby' && (
-                                <NearbyView
-                                    userLocation={userLocation}
-                                    isLocationLive={isLocationLive}
-                                    events={searchQuery ? smartSearchEvents(events, searchQuery) : events}
-                                    onEventSelect={handleOpenEvent}
-                                    onToggleSave={handleToggleSaveEvent}
-                                    savedEventIds={currentUser?.savedEventIds || []}
-                                    likedEventIds={currentUser?.likedEventIds || []}
-                                    interestedEventIds={currentUser?.interestedEventIds || []}
-                                    onOpenScanner={handleOpenScanner}
-                                    focusLocation={mapFocusLocation}
-                                    onFocusConsumed={() => setMapFocusLocation(null)}
-                                />
-                            )}
+                                {activeTab === 'nearby' && (
+                                    <NearbyView
+                                        userLocation={userLocation}
+                                        isLocationLive={isLocationLive}
+                                        events={searchQuery ? smartSearchEvents(events, searchQuery) : events}
+                                        onEventSelect={handleOpenEvent}
+                                        onToggleSave={handleToggleSaveEvent}
+                                        savedEventIds={currentUser?.savedEventIds || []}
+                                        likedEventIds={currentUser?.likedEventIds || []}
+                                        interestedEventIds={currentUser?.interestedEventIds || []}
+                                        onOpenScanner={handleOpenScanner}
+                                        focusLocation={mapFocusLocation}
+                                        onFocusConsumed={() => setMapFocusLocation(null)}
+                                    />
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
+                    </main>
+                </div>
+            )}
 
-                            {/* Removed activeTab === 'profile' rendering */}
-                                </motion.div>
-                            </AnimatePresence>
-                        </main>
-                    </div>
+            {/* Global Overlays and Modals */}
+            {showCalendarEventsPopup && calendarPopupDate && (
+                <DateEventsModal
+                    date={calendarPopupDate}
+                    events={(() => {
+                        const clickedYMD = calendarPopupDate.toISOString().slice(0, 10);
+                        const clickedMs = calendarPopupDate.getTime();
+                        let visible = events.filter(e => {
+                            if (isStaff) {
+                                if (currentUser?.role === 'admin') return true;
+                                if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
+                            }
+                            const isPublished = e.status === 'published';
+                            const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
+                            return isPublished || isScheduled;
+                        });
+                        if (searchQuery) visible = smartSearchEvents(visible, searchQuery);
+                        const coversDate = (e: typeof events[0]) => {
+                            const startMs = new Date(e.date + 'T00:00:00').getTime();
+                            const endMs = e.endDate ? new Date(e.endDate + 'T00:00:00').getTime() : startMs;
+                            return startMs <= clickedMs && clickedMs <= endMs;
+                        };
+                        const matching = visible.filter(coversDate);
+                        const seenGroups = new Map<string, typeof events[0]>();
+                        const result: typeof events[0][] = [];
+                        for (const ev of matching) {
+                            if (!ev.recurrenceGroupId) { result.push(ev); }
+                            else {
+                                const existing = seenGroups.get(ev.recurrenceGroupId);
+                                if (!existing || ev.date === clickedYMD) seenGroups.set(ev.recurrenceGroupId, ev);
+                            }
+                        }
+                        seenGroups.forEach(ev => result.push(ev));
+                        return result;
+                    })()}
+                    onClose={handleCloseAllModals}
+                    onEventClick={(event) => {
+                        setShowCalendarEventsPopup(false);
+                        handleOpenEvent(event);
+                    }}
+                    onToggleSave={handleToggleSaveEvent}
+                    savedEventIds={currentUser?.savedEventIds || []}
+                />
+            )}
 
-                    {/* Profile Panel */}
-                    {showProfilePanel && (
-                        <>
-                            <div
-                                className="hidden md:block fixed inset-0 z-[5005]"
-                                onClick={() => setShowProfilePanel(false)}
-                            />
-                            <div className="fixed inset-0 pt-nav-safe pb-16 bg-white dark:bg-gray-900 z-[35] md:z-[5010] md:!pt-5 md:pb-0 md:top-[60px] md:right-4 md:bottom-auto md:left-auto md:w-80 md:max-h-[calc(100vh-140px)] md:shadow-2xl md:bg-white md:dark:bg-gray-900 md:rounded-2xl md:border border-gray-200 dark:border-gray-700 overflow-y-auto">
-                                <ProfileView
-                                    user={currentUser}
-                                    onLogout={handleLogout}
-                                    onLogin={() => setIsGuest(false)}
-                                    onShowMyEvents={handleOpenMyEvents}
-                                    onEditPreferences={handleOpenPreferences}
-                                    onShowPermitDashboard={handleOpenPermitDashboard}
-                                    onShowNotificationSettings={handleOpenNotificationSettings}
-                                    onShowHelpSupport={handleOpenHelpSupport}
-                                    onShowTermsAndConditions={handleOpenTermsAndConditions}
-                                    onFacilitatorLogin={() => setShowFacilitatorAuth(true)}
-                                    theme={theme}
-                                    toggleTheme={toggleTheme}
-                                    onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
-                                    onProfileCardClick={() => {
-                                        setShowProfilePanel(false);
-                                        setShowEditProfileModal(true);
-                                    }}
-                                    onEditProfile={() => {
-                                        setShowProfilePanel(false);
-                                        setShowEditProfileModal(true);
-                                    }}
-                                    onOpenScanner={() => {
-                                        setShowProfilePanel(false);
-                                        handleOpenScanner();
-                                    }}
-                                />
-                            </div>
-                        </>
-                    )}
-
-                    {showEditProfileModal && (
-                        <EditProfileModal
+            {showProfilePanel && (
+                <>
+                    <div className="hidden md:block fixed inset-0 z-[5005]" onClick={() => setShowProfilePanel(false)} />
+                    <div className="fixed inset-0 pt-nav-safe pb-16 bg-white dark:bg-gray-900 z-[35] md:z-[5010] md:!pt-5 md:pb-0 md:top-[60px] md:right-4 md:bottom-auto md:left-auto md:w-80 md:max-h-[calc(100vh-140px)] md:shadow-2xl md:bg-white md:dark:bg-gray-900 md:rounded-2xl md:border border-gray-200 dark:border-gray-700 overflow-y-auto">
+                        <ProfileView
                             user={currentUser}
-                            onClose={() => setShowEditProfileModal(false)}
+                            onLogout={handleLogout}
+                            onLogin={() => setIsGuest(false)}
+                            onShowMyEvents={handleOpenMyEvents}
+                            onEditPreferences={handleOpenPreferences}
+                            onShowPermitDashboard={handleOpenPermitDashboard}
+                            onShowNotificationSettings={handleOpenNotificationSettings}
+                            onShowHelpSupport={handleOpenHelpSupport}
+                            onShowTermsAndConditions={handleOpenTermsAndConditions}
+                            onFacilitatorLogin={() => setShowFacilitatorAuth(true)}
+                            theme={theme}
+                            toggleTheme={toggleTheme}
                             onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
+                            onProfileCardClick={() => { setShowProfilePanel(false); setShowEditProfileModal(true); }}
+                            onEditProfile={() => { setShowProfilePanel(false); setShowEditProfileModal(true); }}
+                            onOpenScanner={() => { setShowProfilePanel(false); handleOpenScanner(); }}
                         />
-                    )}
+                    </div>
                 </>
+            )}
+
+            {showEditProfileModal && (
+                <EditProfileModal user={currentUser} onClose={() => setShowEditProfileModal(false)} onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)} />
             )}
 
             {!activeOverlay && (
@@ -2878,31 +2786,16 @@ const App: React.FC = () => {
                 />
             )}
 
-            {/* Password Reset Modal — triggered by Firebase reset link redirect */}
             {resetPasswordOobCode && (
-                <ResetPasswordModal
-                    oobCode={resetPasswordOobCode}
-                    onClose={() => setResetPasswordOobCode(null)}
-                    onSuccess={() => setResetPasswordOobCode(null)}
-                />
+                <ResetPasswordModal oobCode={resetPasswordOobCode} onClose={() => setResetPasswordOobCode(null)} onSuccess={() => setResetPasswordOobCode(null)} />
             )}
 
-            {/* Modals & Overlays */}
             {showFacilitatorAuth && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <FacilitatorAuthFlow
                         currentUser={currentUser}
-                        onAuthSuccess={async () => {
-                            // Close the facilitator modal first
-                            setShowFacilitatorAuth(false);
-                            setFacilitatorAuthInitialStep('question');
-                            // Then handle the auth state (true = new user, show preferences)
-                            await handleAuthSuccess(true);
-                        }}
-                        onClose={() => {
-                            setShowFacilitatorAuth(false);
-                            setFacilitatorAuthInitialStep('question');
-                        }}
+                        onAuthSuccess={async () => { setShowFacilitatorAuth(false); setFacilitatorAuthInitialStep('question'); await handleAuthSuccess(true); }}
+                        onClose={() => { setShowFacilitatorAuth(false); setFacilitatorAuthInitialStep('question'); }}
                         initialStep={facilitatorAuthInitialStep}
                     />
                 </div>
@@ -2923,33 +2816,18 @@ const App: React.FC = () => {
                     currentUser={currentUser}
                     isLocationLive={isLocationLive}
                     onToggleParticipation={handleToggleParticipation}
-                    onLoginRequired={() => {
-                        setSelectedEvent(null);
-                        setIsGuest(false);
-                    }}
+                    onLoginRequired={() => { setSelectedEvent(null); setIsGuest(false); }}
                     onViewOnMap={() => handleViewEventOnMap(selectedEvent)}
                 />
             )}
 
             {showFeedbackModal && currentUser && (
-                <EventFeedbackModal
-                    event={showFeedbackModal}
-                    user={currentUser}
-                    onClose={() => setShowFeedbackModal(null)}
-                />
+                <EventFeedbackModal event={showFeedbackModal} user={currentUser} onClose={() => setShowFeedbackModal(null)} />
             )}
 
-            {/* Onboarding Modals */}
             <AnimatePresence>
                 {!currentUser && !isGuest && (
-                    <motion.div
-                        key="onboarding-backdrop"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="fixed inset-0 z-[9999] flex items-center justify-center p-0 md:p-8 bg-black/60 backdrop-blur-sm"
-                    >
+                    <motion.div key="onboarding-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="fixed inset-0 z-[9999] flex items-center justify-center p-0 md:p-8 bg-black/60 backdrop-blur-sm">
                         {onboardingStep === 'auth' || onboardingStep === 'completed' ? (
                             <Auth key="auth-component" onAuthSuccess={handleAuthSuccess} onGuestAccess={onboardingStep === 'completed' ? () => setIsGuest(true) : handleOnboardingSkip} onShowTermsAndConditions={handleOpenTermsAndConditions} />
                         ) : onboardingStep === 'preferences' ? (
@@ -2959,97 +2837,51 @@ const App: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Manual Preference Modal */}
             {showPreferences && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <Preferences onSave={handleSavePreferences} onSkip={handleCloseAllModals} initialPreferences={currentUser?.preferences} />
                 </div>
             )}
 
-            {/* QR Scanner Modal */}
             {showQRScanner && (
-                <QRScannerModal
-                    onClose={handleCloseAllModals}
-                    onScanSuccess={handleScanSuccess}
-                />
+                <QRScannerModal onClose={handleCloseAllModals} onScanSuccess={handleScanSuccess} />
             )}
 
-            {/* Permission Manager */}
             {showPermissionManager && (
-                <PermissionManager 
-                    userRole={currentUser?.role}
-                    onComplete={() => {
-                        try { localStorage.setItem('hasSeenPermissionManager', 'true'); } catch (e) { }
-                        setShowPermissionManager(false);
-                    }} 
-                />
+                <PermissionManager userRole={currentUser?.role} onComplete={() => { try { localStorage.setItem('hasSeenPermissionManager', 'true'); } catch (e) { } setShowPermissionManager(false); }} />
             )}
 
-            {/* Logout Confirmation Modal */}
             {showLogoutConfirm && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm shadow-xl animate-fade-in-up">
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Confirm Logout</h3>
                         <p className="text-gray-600 dark:text-gray-300 mb-6">Are you sure you want to log out of your account?</p>
                         <div className="flex gap-3">
-                            <button
-                                onClick={() => setShowLogoutConfirm(false)}
-                                className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-semibold rounded-xl transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={confirmLogout}
-                                className="flex-1 py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition-colors shadow-sm"
-                            >
-                                Log Out
-                            </button>
+                            <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-semibold rounded-xl transition-colors">Cancel</button>
+                            <button onClick={confirmLogout} className="flex-1 py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition-colors shadow-sm">Log Out</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Embedded Floating Chatbot (Resident users only) */}
             {currentUser && !isGuest && currentUser.role === 'user' && (
                 <>
-                    {/* Floating Toggle Button */}
-                    <button
-                        onClick={() => setIsChatOpen(prev => !prev)}
-                        className="fixed bottom-[8.5rem] right-5 md:bottom-6 md:right-6 z-[4900] flex items-center justify-center w-14 h-14 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-transform overflow-hidden cursor-pointer bg-gradient-to-br from-[#0067c8] to-[#0052A3] hover:from-[#005bb2] hover:to-[#004482] text-white"
-                        title="AI Assistant"
-                    >
+                    <button onClick={() => setIsChatOpen(prev => !prev)} className="fixed bottom-[8.5rem] right-5 md:bottom-6 md:right-6 z-[4900] flex items-center justify-center w-14 h-14 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-transform overflow-hidden cursor-pointer bg-gradient-to-br from-[#0067c8] to-[#0052A3] hover:from-[#005bb2] hover:to-[#004482] text-white" title="AI Assistant">
                         {isChatOpen ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                         ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                         )}
                     </button>
-
-                    {/* Chat Panel Window */}
                     <AnimatePresence>
                         {isChatOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                                transition={{ duration: 0.2 }}
-                                className="fixed inset-0 w-full h-full md:inset-auto md:bottom-6 md:right-24 z-[5500] md:w-[430px] md:h-[540px] md:max-h-[74vh] bg-white dark:bg-gray-950 md:rounded-3xl md:border md:border-gray-100 md:dark:border-gray-800 md:shadow-2xl overflow-hidden flex flex-col"
-                            >
-                                <ChatBot
-                                    events={events}
-                                    onEventSelect={handleOpenEvent}
-                                    onClose={() => setIsChatOpen(false)}
-                                />
+                            <motion.div initial={{ opacity: 0, y: 50, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.95 }} transition={{ duration: 0.2 }} className="fixed inset-0 w-full h-full md:inset-auto md:bottom-6 md:right-24 z-[5500] md:w-[430px] md:h-[540px] md:max-h-[74vh] bg-white dark:bg-gray-950 md:rounded-3xl md:border md:border-gray-100 md:dark:border-gray-800 md:shadow-2xl overflow-hidden flex flex-col">
+                                <ChatBot events={events} onEventSelect={handleOpenEvent} onClose={() => setIsChatOpen(false)} />
                             </motion.div>
                         )}
                     </AnimatePresence>
                 </>
             )}
-
         </div>
     );
 };
