@@ -9,7 +9,7 @@ import type { EventAlert } from '../utils/eventAlerts';
 import { Star, MessageSquare, ChevronLeft, ChevronRight, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon, Search, X, Clock, Trash2, BarChart3, QrCode, Pencil, Bell, Ban } from 'lucide-react';
 import AdminReports from './AdminReports';
 import CalendarView from './CalendarView';
-import { getHighlights, setHighlights, fetchRegistrationsForEvent } from '../services/eventService';
+import { getHighlights, setHighlights } from '../services/eventService';
 import { subscribeToAllFeedback } from '../services/feedbackService';
 
 import { generateEventDecisionInsight, generateMonthlyDecisionSummary, generateAdminDecisionSummary, generateFacilitatorDecisionSummary } from '../services/analyticsInsightService';
@@ -384,9 +384,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [viewingFeedbackEvent, setViewingFeedbackEvent] = useState<EventType | null>(null);
 
     // ── Facilitator Gender Distribution Analytics ──────────────────────────────
-    const [facilitatorGenderEventId, setFacilitatorGenderEventId] = useState<string>('');
-    const [facilitatorGenderRegs, setFacilitatorGenderRegs] = useState<Registration[]>([]);
-    const [facilitatorGenderLoading, setFacilitatorGenderLoading] = useState(false);
+    const [facilitatorGenderEventId, setFacilitatorGenderEventId] = useState<string>('all');
 
     // ── Persistent insight history ────────────────────────────────────────────
     // Accumulates every insight ever detected for this user. Survives refresh.
@@ -402,21 +400,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             if (raw) setInsightHistory(JSON.parse(raw) as StoredInsight[]);
         } catch { }
     }, [currentUser?.uid]);
-
-    // Fetch registrations for the facilitator's selected event (gender analytics)
-    useEffect(() => {
-        if (!facilitatorGenderEventId || currentUser?.role === 'admin') {
-            setFacilitatorGenderRegs([]);
-            return;
-        }
-        let cancelled = false;
-        setFacilitatorGenderLoading(true);
-        fetchRegistrationsForEvent(facilitatorGenderEventId)
-            .then(regs => { if (!cancelled) setFacilitatorGenderRegs(regs); })
-            .catch(() => { if (!cancelled) setFacilitatorGenderRegs([]); })
-            .finally(() => { if (!cancelled) setFacilitatorGenderLoading(false); });
-        return () => { cancelled = true; };
-    }, [facilitatorGenderEventId, currentUser?.role]);
 
 
     // Confirmation dialog state
@@ -1639,21 +1622,35 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         .filter(e => e.createdBy === currentUser?.uid)
                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-                    // Build gender chart data from registrations
+                    const targetEventIds = facilitatorGenderEventId === 'all'
+                        ? myEvents.map(e => e.id)
+                        : [facilitatorGenderEventId];
+
                     const genderColors: Record<string, string> = {
                         Male:   '#3b82f6',
                         Female: '#ec4899',
                         'Other / Prefer not to say': '#8b5cf6',
                     };
                     const genderCounts: Record<string, number> = {};
-                    facilitatorGenderRegs.forEach(reg => {
-                        const raw = (reg.gender || '').trim();
-                        const key = raw === 'Male' ? 'Male'
-                            : raw === 'Female' ? 'Female'
-                            : raw ? 'Other / Prefer not to say'
-                            : '';
-                        if (key) genderCounts[key] = (genderCounts[key] || 0) + 1;
+
+                    // Get residents to calculate exact participant demographics
+                    const residents = users.filter(u => u.role === 'user' || (!u.role && !u.isAdmin));
+                    
+                    residents.forEach(user => {
+                        // Check if user is a participant in any of the targeted events
+                        const isParticipant = targetEventIds.some(id => 
+                            user.checkedInEventIds?.includes(id) || user.interestedEventIds?.includes(id)
+                        );
+
+                        if (isParticipant) {
+                            let s = user.sex || 'Unknown';
+                            if (s !== 'Male' && s !== 'Female') {
+                                s = 'Other / Prefer not to say';
+                            }
+                            genderCounts[s] = (genderCounts[s] || 0) + 1;
+                        }
                     });
+
                     const genderChartData = Object.entries(genderCounts)
                         .map(([name, value]) => ({ name, value, color: genderColors[name] || '#6b7280' }))
                         .sort((a, b) => b.value - a.value);
@@ -1673,10 +1670,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         onChange={e => setFacilitatorGenderEventId(e.target.value)}
                                         className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer"
                                     >
-                                        <option value="">Select Event</option>
+                                        <option value="all">Overall Events</option>
                                         {myEvents.map(ev => (
                                             <option key={ev.id} value={ev.id}>
-                                                {ev.name} — {formatDisplayDate(ev.date)}
+                                                {ev.name}
                                             </option>
                                         ))}
                                     </select>
@@ -1684,21 +1681,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 </div>
                             </div>
 
-                            {!facilitatorGenderEventId ? (
-                                /* No event selected */
-                                <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-3">
-                                        <UsersIcon className="w-6 h-6 text-blue-400" />
-                                    </div>
-                                    <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Select an event above to view gender analytics.</p>
-                                </div>
-                            ) : facilitatorGenderLoading ? (
-                                /* Loading */
-                                <div className="flex flex-col items-center justify-center py-12">
-                                    <div className="w-8 h-8 border-3 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
-                                    <p className="text-xs text-gray-400 mt-3 font-medium">Loading participant data…</p>
-                                </div>
-                            ) : totalParticipants === 0 ? (
+                            {totalParticipants === 0 ? (
                                 /* No participants */
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
                                     <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
