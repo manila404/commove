@@ -18,7 +18,7 @@ export const sendOTPEmail = async (
     }
     try {
         emailjs.init(PUBLIC_KEY);
-        await emailjs.send(
+        const response = await emailjs.send(
             SERVICE_ID,
             TEMPLATE_ID,
             {
@@ -29,13 +29,16 @@ export const sendOTPEmail = async (
             },
             PUBLIC_KEY
         );
+        console.info(`[EmailJS] OTP email sent successfully to ${toEmail} (status: ${response.status})`);
         return true;
     } catch (err: any) {
         console.error('[EmailJS] Failed to send OTP:', err);
         console.error('[EmailJS] Status:', err?.status, '| Text:', err?.text);
         console.error('[EmailJS] Service:', SERVICE_ID, '| Template:', TEMPLATE_ID);
-        // Fallback: log to console so developer/tester is never locked out of signup
-        console.info(`[OTP - FALLBACK MODE] Code for ${toEmail}: ${otpCode}`);
-        return true;
+        // Log the code for debugging, but return false so the UI shows an error
+        // instead of stranding the user on the OTP screen without a code.
+        console.info(`[OTP - SEND FAILED] Code for ${toEmail}: ${otpCode}`);
+        return false;
     }
 };
+
