@@ -89,6 +89,7 @@ export interface User {
   email: string;
   isAdmin?: boolean; // Kept for backward compat
   role?: UserRole;   // New role field
+  department?: string; // Department this facilitator belongs to (matches event leadOffice)
   facilitatorRequestStatus?: 'pending' | 'approved' | 'rejected'; // New: Facilitator approval workflow
   facilitatorRejectionReason?: string;
   idUrl?: string;    // New: Government ID for facilitator verification
