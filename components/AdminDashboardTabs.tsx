@@ -2746,13 +2746,30 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                     </div>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => onEditEvent(event)}
-                                                className="flex-shrink-0 py-2 px-4 bg-gray-50 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold transition-all border border-transparent hover:border-blue-100 dark:hover:border-blue-900/50 whitespace-nowrap"
-                                                style={{ minWidth: '80px' }}
-                                            >
-                                                Edit / View
-                                            </button>
+                                            {currentUser?.role === 'admin' && event.status === 'pending' ? (
+                                                <div className="flex-shrink-0 flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => setPendingConfirm({ type: 'publish', event })}
+                                                        className="py-2 px-3 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 rounded-xl text-xs font-semibold transition-all border border-green-200 dark:border-green-800 whitespace-nowrap"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button
+                                                        onClick={() => onReject(event.id)}
+                                                        className="py-2 px-3 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-300 rounded-xl text-xs font-semibold transition-all border border-red-200 dark:border-red-800 whitespace-nowrap"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => onEditEvent(event)}
+                                                    className="flex-shrink-0 py-2 px-4 bg-gray-50 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold transition-all border border-transparent hover:border-blue-100 dark:hover:border-blue-900/50 whitespace-nowrap"
+                                                    style={{ minWidth: '80px' }}
+                                                >
+                                                    Edit / View
+                                                </button>
+                                            )}
                                         </div>
                                     )})}
                                 </div>
