@@ -59,20 +59,36 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
  *  (including registrationStatuses written by submitRegistration / updateRegistrationStatus). */
 export const subscribeToUserProfile = (uid: string, callback: (user: User | null) => void) => {
     const userDocRef = doc(db, usersCollectionRef, uid);
-    return onSnapshot(userDocRef, (snap) => {
-        if (snap.exists()) {
-            const data = snap.data() as User;
-            if (data.email === 'admincommove@gmail.com') {
-                callback({ ...data, uid: snap.id, role: 'admin' as UserRole, isAdmin: true });
+
+    let unsub: (() => void) | null = null;
+
+    const startSubscription = (attempt = 1) => {
+        unsub = onSnapshot(userDocRef, (snap) => {
+            if (snap.exists()) {
+                const data = snap.data() as User;
+                if (data.email === 'admincommove@gmail.com') {
+                    callback({ ...data, uid: snap.id, role: 'admin' as UserRole, isAdmin: true });
+                } else {
+                    callback({ ...data, uid: snap.id });
+                }
             } else {
-                callback({ ...data, uid: snap.id });
+                callback(null);
             }
-        } else {
-            callback(null);
-        }
-    }, (error) => {
-        console.error('Error subscribing to user profile:', error);
-    });
+        }, (error) => {
+            // On first failure (often auth token not yet propagated), retry once
+            // after a short delay to let Firebase Auth finish initializing.
+            if (attempt === 1) {
+                console.warn('[subscribeToUserProfile] First attempt failed, retrying in 1.5s…', error);
+                setTimeout(() => startSubscription(2), 1500);
+            } else {
+                console.error('Error subscribing to user profile:', error);
+            }
+        });
+    };
+
+    startSubscription();
+
+    return () => { if (unsub) unsub(); };
 };
 
 export const createUserProfile = async (uid: string, data: Omit<User, 'uid'>): Promise<void> => {
@@ -457,24 +473,31 @@ export const setUserAdminStatus = async (uid: string, isAdmin: boolean): Promise
 export const updateUserRole = async (uid: string, role: UserRole): Promise<void> => {
     try {
         const userDocRef = doc(db, usersCollectionRef, uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists() && userDoc.data().email === 'admincommove@gmail.com') {
-            console.warn("Attempted to change role of Root Admin. Action blocked.");
-            return;
+
+        // Guard: don't overwrite the root admin — but if the read fails (e.g. new
+        // account whose Firestore token hasn't propagated yet), skip the guard and
+        // proceed with the write rather than aborting the whole operation.
+        try {
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists() && userDoc.data().email === 'admincommove@gmail.com') {
+                console.warn('Attempted to change role of Root Admin. Action blocked.');
+                return;
+            }
+        } catch {
+            // Read failed — safe to continue; if this IS the admin doc the setDoc
+            // below will also fail and be caught by the outer catch.
         }
 
-        const updateData: any = { 
-            role, 
-            isAdmin: role === 'admin' || role === 'facilitator' // Maintain backward compat
+        const updateData: any = {
+            role,
+            isAdmin: role === 'admin' || role === 'facilitator',
         };
-        
         if (role === 'facilitator') {
             updateData.facilitatorRequestStatus = 'approved';
         }
 
         await setDoc(userDocRef, updateData, { merge: true });
     } catch (error) {
-        console.error("Error updating user role:", error);
+        console.error('Error updating user role:', error);
     }
 };

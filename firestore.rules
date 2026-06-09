@@ -94,12 +94,19 @@ service cloud.firestore {
 
     // ─── Registrations ────────────────────────────────────────────────────────
     match /registrations/{registrationId} {
-      allow read: if isAuthenticated() &&
+      // Single-document get: own registration OR staff
+      allow get: if isAuthenticated() &&
         (resource.data.userId == request.auth.uid || isStaff());
 
+      // Collection-level list queries (e.g. getDocs where eventId == x):
+      // staff only — avoids the resource.data ambiguity that can block list queries
+      allow list: if isAuthenticated() && isStaff();
+
+      // Users can create their own registration only
       allow create: if isAuthenticated() &&
         request.resource.data.userId == request.auth.uid;
 
+      // Only staff can approve / reject
       allow update: if isStaff();
 
       allow delete: if isStaff();
@@ -124,7 +131,8 @@ service cloud.firestore {
         && resource.data.userId == request.auth.uid;
 
       // Staff can create notifications for other users.
-      // Regular users can only create notifications for themselves.
+      // Regular users can only create notifications for themselves,
+      // OR create an event_registration notification for the event creator.
       allow create: if isAuthenticated()
         && request.resource.data.keys().hasAll([
           'userId',
@@ -136,7 +144,8 @@ service cloud.firestore {
         ])
         && (
           isStaff() ||
-          request.resource.data.userId == request.auth.uid
+          request.resource.data.userId == request.auth.uid ||
+          request.resource.data.type == 'event_registration'
         );
     }
 

@@ -8,7 +8,7 @@ import InteractiveMap from './InteractiveMap';
 import { useAlert } from '../contexts/AlertContext';
 import { usePermissions } from '../contexts/PermissionContext';
 import { updateUserParticipation } from '../services/userService';
-import { submitRegistration, subscribeToEventDoc } from '../services/eventService';
+import { submitRegistration, subscribeToEventDoc, subscribeToRegistrationDoc } from '../services/eventService';
 import { createNotification } from '../services/notificationService';
 import type { Registration } from '../types';
 import Spinner from './Spinner';
@@ -64,6 +64,10 @@ const EventModal: React.FC<EventModalProps> = ({
   });
   const [userReg, setUserReg] = useState<Registration | null>(null);
   const [isLoadingReg, setIsLoadingReg] = useState(false);
+  // Holds the registration object set by a successful submit until Firestore confirms
+  // it back via subscribeToUserProfile. Prevents the useEffect below from clearing
+  // the optimistic "pending" state while the user doc cache write is in-flight.
+  const submittedRegRef = React.useRef<Registration | null>(null);
   const [liveApprovedCount, setLiveApprovedCount] = useState<number>(event.approvedCount ?? 0);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -90,31 +94,47 @@ const EventModal: React.FC<EventModalProps> = ({
     }
   }, [event.id, event.isPrivate]);
 
-  // Derive the user's registration status directly from currentUser.registrationStatuses.
-  // This requires NO Firestore collection queries — the data comes from the user document
-  // which is already loaded in app state and updates in real-time via App.tsx's user subscription.
+  // Primary real-time source for the resident's registration status: subscribe directly
+  // to the deterministic registration document `${eventId}_${userId}`.  This fires
+  // whenever the facilitator approves/rejects without needing a user-doc cache write.
+  // Falls back to currentUser.registrationStatuses for legacy random-ID registrations
+  // that existed before deterministic IDs were introduced.
   React.useEffect(() => {
-    if (!event.isPrivate || !currentUser) {
+    if (!event.isPrivate || !currentUser || currentUser.role !== 'user') {
       setUserReg(null);
       return;
     }
 
-    const saved = currentUser.registrationStatuses?.[event.id];
-    if (saved) {
-      // Build a minimal Registration object so the existing JSX works unchanged
-      setUserReg({
-        id: saved.registrationId,
-        eventId: event.id,
-        userId: currentUser.uid,
-        name: currentUser.name || '',
-        email: currentUser.email || '',
-        status: saved.status,
-        submittedAt: 0,
-      });
-    } else {
-      setUserReg(null);
-    }
-  }, [event.id, event.isPrivate, currentUser?.uid, currentUser?.registrationStatuses]);
+    const unsubscribe = subscribeToRegistrationDoc(event.id, currentUser.uid, (reg) => {
+      if (reg) {
+        // Deterministic-ID registration found — most reliable source
+        submittedRegRef.current = null;
+        setUserReg(reg);
+      } else {
+        // No deterministic-ID doc yet. Check user-doc cache for legacy random-ID registrations.
+        const saved = currentUser.registrationStatuses?.[event.id];
+        if (saved) {
+          submittedRegRef.current = null;
+          setUserReg({
+            id: saved.registrationId,
+            eventId: event.id,
+            userId: currentUser.uid,
+            name: currentUser.name || '',
+            email: currentUser.email || '',
+            status: saved.status,
+            submittedAt: 0,
+          });
+        } else if (submittedRegRef.current) {
+          // Keep optimistic state while Firestore is still syncing
+          setUserReg(submittedRegRef.current);
+        } else {
+          setUserReg(null);
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [event.id, event.isPrivate, currentUser?.uid, currentUser?.role, currentUser?.registrationStatuses]);
 
   const isInterested = currentUser?.interestedEventIds?.includes(event.id);
   const isCheckedIn = currentUser?.checkedInEventIds?.includes(event.id);
@@ -725,17 +745,18 @@ const EventModal: React.FC<EventModalProps> = ({
         gender: currentUser.sex || 'Not specified'
       });
       setUserReg(newReg);
+      submittedRegRef.current = newReg; // hold until Firestore confirms via subscribeToUserProfile
       showAlert("Registration Submitted", "Your registration is pending approval.", "success");
 
-      // Notify the event creator
+      // Fire-and-forget — notification failure must never cancel the registration
       if (event.createdBy) {
-        await createNotification(
+        createNotification(
           event.createdBy,
           'event_registration',
           'New Event Registration',
           `${currentUser.name} has registered for "${event.name}". Please review the application.`,
           event.id
-        );
+        ).catch(err => console.warn('[EventModal] Could not notify event creator:', err));
       }
     } catch (error: any) {
       showAlert("Registration Failed", error.message || "Could not submit registration.", "error");

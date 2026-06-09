@@ -147,9 +147,10 @@ export const createNotification = async (
     try {
         const docRef = await addDoc(notificationsRef, data);
         return { id: docRef.id, ...data };
-    } catch (error) {
-        console.error('Error creating notification:', error);
-        throw error;
+    } catch {
+        // Notification delivery is best-effort — silently ignore failures
+        // so the calling operation (e.g. event registration) is never aborted.
+        return null as any;
     }
 };
 
