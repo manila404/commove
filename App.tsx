@@ -1649,7 +1649,12 @@ const App: React.FC = () => {
                     'Welcome to Commove!',
                     'We are glad you are here! Start exploring local events in Bacoor right now.'
                 ).catch(console.error);
-                handleOpenPreferences();
+                // Pending facilitators have already gone through a dedicated sign-up flow
+                // (KYC + ID upload). Skip the standard preferences onboarding so they land
+                // on the feed where a "Pending Approval" status banner will be shown.
+                if (profile?.facilitatorRequestStatus !== 'pending') {
+                    handleOpenPreferences();
+                }
             }
         }
     };
@@ -2378,6 +2383,22 @@ const App: React.FC = () => {
                             >
                                 {activeTab === 'feed' && !isStaff && (
                                     <div key="feed" className="space-y-4 animate-fade-in pt-8 md:pt-10">
+                                        {currentUser?.facilitatorRequestStatus === 'pending' && (
+                                            <div className="mx-4 md:ml-8 md:mr-4 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm">
+                                                <div className="flex justify-between items-start gap-3">
+                                                    <div className="space-y-1">
+                                                        <h3 className="text-amber-800 dark:text-amber-400 font-bold text-sm flex items-center gap-1.5">
+                                                            <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                                            Facilitator Request Under Review
+                                                        </h3>
+                                                        <p className="text-amber-700 dark:text-amber-300 text-xs leading-relaxed">
+                                                            Your facilitator request has been submitted and is awaiting admin approval. You will receive a notification once reviewed (typically within 24–48 hours).
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {currentUser?.facilitatorRequestStatus === 'rejected' && (
                                             <div className="mx-4 md:ml-8 md:mr-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm">
                                                 <div className="flex justify-between items-start">
