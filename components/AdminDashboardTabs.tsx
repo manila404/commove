@@ -3562,14 +3562,28 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             {/* ── Engagement Metrics Drawer (Total Events card click) ──────────── */}
             {metricsDrawerOpen && typeof document !== 'undefined' && createPortal(
                 <>
-                    <style>{`@keyframes slideInFromRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+                    <style>{`
+                        @keyframes slideInFromRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
+                        @keyframes slideUpFromBottom{from{transform:translateY(100%)}to{transform:translateY(0)}}
+                        @media(max-width:767px){
+                            .metrics-drawer{
+                                top:auto!important;
+                                bottom:0!important;
+                                right:0!important;
+                                height:92%!important;
+                                max-width:100%!important;
+                                border-radius:20px 20px 0 0!important;
+                                animation:slideUpFromBottom 0.35s cubic-bezier(0.25,0.46,0.45,0.94) forwards!important;
+                            }
+                        }
+                    `}</style>
                     <div
                         style={{ position: 'fixed', inset: 0, zIndex: 99997, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}
                         onClick={() => setMetricsDrawerOpen(false)}
                     />
                     <div
                         style={{ position: 'fixed', top: '20px', right: '20px', height: 'calc(100% - 40px)', width: '100%', maxWidth: '480px', zIndex: 99998, animation: 'slideInFromRight 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column', borderRadius: '15px', overflow: 'hidden' }}
-                        className="bg-white dark:bg-[#0f172a] shadow-2xl"
+                        className="metrics-drawer bg-white dark:bg-[#0f172a] shadow-2xl"
                     >
                         {(() => {
                             const tv = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
@@ -3606,14 +3620,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                                     {/* Table */}
                                     <div className="flex-1 overflow-y-auto">
-                                        <table className="w-full">
+                                        <table className="w-full min-w-full table-fixed border-collapse">
                                             <thead className="sticky top-0 bg-white dark:bg-[#0f172a] z-10">
                                                 <tr className="border-b border-gray-100 dark:border-gray-800">
-                                                    <th className="text-left px-6 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-8">#</th>
-                                                    <th className="text-left px-2 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Metric</th>
-                                                    <th className="text-left px-2 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Description</th>
-                                                    <th className="text-right px-3 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Total</th>
-                                                    <th className="text-right px-6 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Status</th>
+                                                    <th className="text-left px-6 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-[8%]">#</th>
+                                                    <th className="text-left px-2 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-[22%]">Metric</th>
+                                                    <th className="text-left px-2 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-[40%]">Description</th>
+                                                    <th className="text-right px-3 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-[15%]">Total</th>
+                                                    <th className="text-right px-6 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-[15%]">Status</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
@@ -3630,7 +3644,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 ))}
                                             </tbody>
                                         </table>
-
                                     </div>
                                 </>
                             );
