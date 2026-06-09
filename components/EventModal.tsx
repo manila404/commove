@@ -171,10 +171,7 @@ const EventModal: React.FC<EventModalProps> = ({
   const isEventFull = event.maxParticipants != null && approvedCount >= event.maxParticipants;
 
   const reminderOptions = [
-    { value: '1-minute', label: '1 minute before (Test)' },
-    { value: '30-minutes', label: '30 minutes before' },
     { value: '1-hour', label: '1 hour before' },
-    { value: '2-hours', label: '2 hours before' },
     { value: '1-day', label: '1 day before' },
     { value: 'specific-time', label: 'At a preferred time...' },
   ];
@@ -907,7 +904,7 @@ const EventModal: React.FC<EventModalProps> = ({
                     <div className="flex justify-center p-4"><Spinner /></div>
                   ) : userReg ? (
                     // User already has a registration — show their current status
-                      <div className={`p-3 rounded-xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
+                    <div className={`p-3 rounded-xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                       userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
                         'bg-white border-gray-900 text-gray-900 dark:bg-gray-800/40 dark:border-gray-400 dark:text-white'
                       }`}>
