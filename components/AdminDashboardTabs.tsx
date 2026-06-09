@@ -99,6 +99,32 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         return '';
     };
 
+    const getPriorityBadge = (priority?: EventType['priority']) => {
+        if (priority === 'urgent') {
+            return { label: 'Urgent', className: 'bg-red-100 dark:bg-red-900/30 text-gray-900 dark:text-gray-100', dotClassName: 'bg-red-500' };
+        }
+        if (priority === 'high' || priority === 'average') {
+            return { label: 'High', className: 'bg-orange-100 dark:bg-orange-900/30 text-gray-900 dark:text-gray-100', dotClassName: 'bg-orange-500' };
+        }
+        if (priority === 'normal' || priority === 'less_prio') {
+            return { label: 'Normal', className: 'bg-blue-100 dark:bg-blue-900/30 text-gray-900 dark:text-gray-100', dotClassName: 'bg-blue-500' };
+        }
+        return null;
+    };
+
+    const normalizePriority = (priority?: EventType['priority']): 'normal' | 'high' | 'urgent' => {
+        if (priority === 'urgent') return 'urgent';
+        if (priority === 'high' || priority === 'average') return 'high';
+        return 'normal';
+    };
+
+    const getPriorityRank = (priority?: EventType['priority']): number => {
+        const normalized = normalizePriority(priority);
+        if (normalized === 'urgent') return 3;
+        if (normalized === 'high') return 2;
+        return 1;
+    };
+
     const getCalendarEventIndicator = (event: EventType): { label: string; className: string; dotClassName: string; cardClassName: string } | null => {
         if (event.status !== 'pending') return null;
 
@@ -233,6 +259,19 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [showSortMenu, setShowSortMenu] = useState(false);
     const [eventVisibilityFilter, setEventVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
     const [eventsPage, setEventsPage] = useState(1);
+    const sortedPendingRequests = useMemo(
+        () => [...pendingRequests].sort((a, b) => {
+            const priorityDiff = getPriorityRank(b.priority) - getPriorityRank(a.priority);
+            if (priorityDiff !== 0) return priorityDiff;
+
+            const submittedA = Number(a.submittedAt || 0);
+            const submittedB = Number(b.submittedAt || 0);
+            if (submittedB !== submittedA) return submittedB - submittedA;
+
+            return (a.name || '').localeCompare(b.name || '');
+        }),
+        [pendingRequests]
+    );
     useEffect(() => { setEventsPage(1); }, [eventFilter, eventSortOrder, eventVisibilityFilter]);
 
     // ── Events tab search bar ─────────────────────────────────────────────────
@@ -1922,8 +1961,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <h4 className="font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-none">{event.name}</h4>
-                                                {event.priority === 'urgent' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />Urgent</span>}
-                                                {event.priority === 'average' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-orange-500" />Average</span>}
+                                                {(() => {
+                                                    const badge = getPriorityBadge(event.priority);
+                                                    return badge ? <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium rounded-full flex-shrink-0 ${badge.className}`}><span className={`w-1.5 h-1.5 rounded-full ${badge.dotClassName}`} />{badge.label}</span> : null;
+                                                })()}
                                                 {event.status === 'draft' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-gray-400" />Draft</span>}
                                                 {event.status === 'pending' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Pending Approval</span>}
                                                 {event.status === 'rejected' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />Rejected</span>}
@@ -3031,7 +3072,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-[#0f172a] z-10">
                             <div>
                                 <h2 className="text-base font-bold text-gray-900 dark:text-white">Pending Approvals</h2>
-                                <p className="text-xs text-gray-400 mt-0.5">{pendingRequests.length} event{pendingRequests.length !== 1 ? 's' : ''} awaiting review</p>
+                                <p className="text-xs text-gray-400 mt-0.5">{sortedPendingRequests.length} event{sortedPendingRequests.length !== 1 ? 's' : ''} awaiting review</p>
                             </div>
                             <button onClick={() => setPendingDrawerOpen(false)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -3039,7 +3080,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </div>
                         {/* Body */}
                         <div className="flex-1 overflow-x-auto bg-white dark:bg-[#0f172a]">
-                            {pendingRequests.length === 0 ? (
+                            {sortedPendingRequests.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-center px-6">
                                     <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-3" style={{ color: '#0052A3' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -3053,12 +3094,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         <tr className="bg-gray-50/50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
                                             <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Event</th>
                                             <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Date</th>
+                                            <th className="px-4 py-4 text-left text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Status</th>
+                                            <th className="px-4 py-4 text-left text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Series</th>
                                             <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Priority</th>
                                             <th className="px-6 py-4 text-right text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50 dark:divide-gray-800 bg-white dark:bg-[#0f172a]">
-                                        {pendingRequests.map(event => (
+                                        {sortedPendingRequests.map(event => (
                                             <tr
                                                 key={event.id}
                                                 className="group transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40"
@@ -3085,21 +3128,40 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
                                                     {formatDisplayDate(event.date)}
                                                 </td>
-                                                {/* Priority & Recurrence */}
-                                                <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-300">
-                                                    <div className="flex flex-col gap-1 items-start">
-                                                        <div className="flex gap-1.5 flex-wrap">
-                                                            {event.priority === 'urgent' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />Urgent</span>}
-                                                            {event.priority === 'average' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-orange-500" />Average</span>}
-                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Pending</span>
-                                                        </div>
-                                                        {event.recurrenceGroupId && (() => {
-                                                            const seriesCount = getRecurringSeriesCount(event);
-                                                            if (seriesCount <= 1) return null;
-                                                            const freqLabel = getRecurrenceFrequencyLabel(event);
-                                                            return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" />{seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring</span>;
-                                                        })()}
-                                                    </div>
+                                                {/* Status */}
+                                                <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                        Pending
+                                                    </span>
+                                                </td>
+                                                {/* Series */}
+                                                <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                                    {event.recurrenceGroupId && (() => {
+                                                        const seriesCount = getRecurringSeriesCount(event);
+                                                        if (seriesCount <= 1) return null;
+                                                        const freqLabel = getRecurrenceFrequencyLabel(event);
+                                                        return (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                                                {seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring
+                                                            </span>
+                                                        );
+                                                    })() || <span className="text-xs text-gray-400 dark:text-gray-500">Single</span>}
+                                                </td>
+                                                {/* Priority */}
+                                                <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                                    {(() => {
+                                                        const badge = getPriorityBadge(event.priority);
+                                                        return badge ? (
+                                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-semibold rounded-full ${badge.className}`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dotClassName}`} />
+                                                                {badge.label}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400 dark:text-gray-500">Not set</span>
+                                                        );
+                                                    })()}
                                                 </td>
                                                 {/* Actions */}
                                                 <td className="py-3 px-6 text-right">

@@ -1,6 +1,7 @@
 
 export type UserRole = 'admin' | 'facilitator' | 'user';
 export type EventStatus = 'published' | 'pending' | 'reviewed' | 'rejected' | 'scheduled' | 'draft' | 'cancelled';
+export type EventPriority = 'normal' | 'high' | 'urgent';
 
 export interface EventType {
   id: string;
@@ -31,7 +32,7 @@ export interface EventType {
   approvedCount?: number; // New: Count of approved participants to avoid querying registrations
   isPrivate?: boolean; // New: Private events require registration and approval
   publishAt?: number | null; // New: Schedule when to be in public
-  priority?: 'urgent' | 'average' | 'less_prio'; // Admin urgency indicator
+  priority?: EventPriority | 'average' | 'less_prio'; // Legacy values kept for compatibility while old records are normalized in the UI
   requestedPublishDate?: string | null; // Facilitator's requested specific timeframe form string
   instructions?: string | null; // Optional attendee guidance/instructions shown in event detail
   timezone?: string; // New field for regional time tracking
@@ -100,7 +101,6 @@ export interface User {
   username?: string; // @username
   address?: string;
   contactNumber?: string;
-  department?: string;
   avatarUrl?: string;
   homeLat?: number;
   homeLng?: number;

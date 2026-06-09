@@ -102,7 +102,9 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({
         setIsVerifying(true);
         setError('');
 
+        console.info(`[OTP] Verifying code for ${email}, uid=${uid || '(none)'}`);
         const result: OTPResult = await verifyOTP(email, entered, uid);
+        console.info(`[OTP] Verification result: ${result}`);
 
         setIsVerifying(false);
 
@@ -116,12 +118,16 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({
             setError('Too many incorrect attempts. Please request a new code.');
             setDigits(Array(OTP_LENGTH).fill(''));
             focusIndex(0);
+        } else if (result === 'not_found') {
+            setError('Verification code not found. Please request a new code.');
+            setDigits(Array(OTP_LENGTH).fill(''));
+            focusIndex(0);
         } else {
             setError('Incorrect code. Please try again.');
             setDigits(Array(OTP_LENGTH).fill(''));
             focusIndex(0);
         }
-    }, [digits, email, timeLeft, onVerified]);
+    }, [digits, email, uid, timeLeft, onVerified]);
 
     const handleResend = async () => {
         if (resendCooldown > 0 || isResending) return;
