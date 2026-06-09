@@ -6,7 +6,7 @@ import { UserIcon, ShieldCheckIcon, ChevronLeftIcon, CalendarIcon, EnvelopeOpenI
 import CreateEventForm from './CreateEventForm';
 import AdminDashboardTabs from './AdminDashboardTabs';
 import EventModal from './EventModal';
-import { getAllUsers, subscribeToAllUsers, updateUserRole, getEventParticipants, rejectFacilitatorRequest, deleteUser } from '../services/userService';
+import { getAllUsers, subscribeToAllUsers, updateUserRole, updateUserData, getEventParticipants, rejectFacilitatorRequest, deleteUser } from '../services/userService';
 import { updateEventStatus } from '../services/eventService';
 import { createNotification, notifyEventUpdated, notifyEventCancelled } from '../services/notificationService';
 import Spinner from './Spinner';
@@ -817,7 +817,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
 
     const accessibleEvents = deduplicateRecurringEvents(events.filter(event => {
         if (currentUser.role === 'facilitator') {
-            return event.createdBy === currentUser.uid;
+            // Own events OR events whose leadOffice matches this facilitator's department
+            return event.createdBy === currentUser.uid
+                || (currentUser.department && event.leadOffice === currentUser.department);
         }
         return true; // Admins see everything
     }));
@@ -991,6 +993,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                 setActiveTab={setDashboardActiveTab}
                 onCancelEvent={(e) => { setCancellingEvent(e); setCancelReason(''); }}
                 onNotifyUpdate={(e) => { setUpdatingEventNotif(e); setUpdateChangeNote(''); }}
+                onUpdateUserDepartment={async (userId, department) => {
+                    await updateUserData(userId, { department } as any);
+                }}
             />
             </div>{/* end p-4 padding wrapper */}
             </div>{/* end overflow-y-auto scroll container */}
