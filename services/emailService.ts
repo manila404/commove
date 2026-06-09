@@ -1,8 +1,10 @@
 import emailjs from '@emailjs/browser';
 
-const SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  ?? '';
-const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID ?? '';
-const PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  ?? '';
+// EmailJS public keys — these run in the browser and are safe to embed.
+// Fallbacks ensure OTP emails work on Vercel where .env is gitignored.
+const SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  || 'service_uh3gaqs';
+const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_w541mo6';
+const PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || 'luAHmvcjo_tC9dBDJ';
 
 export const sendOTPEmail = async (
     toEmail:  string,
