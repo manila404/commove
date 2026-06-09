@@ -2494,7 +2494,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                             {user.facilitatorRequestStatus === 'pending' && (
                                                                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">Pending</span>
                                                             )}
-                                                            {user.role === 'facilitator' && user.department && (
+                                                            {(user.role === 'facilitator' || user.facilitatorRequestStatus === 'pending') && user.department && (
                                                                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">{user.department}</span>
                                                             )}
                                                         </div>
@@ -3027,9 +3027,15 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             <div className="w-10 h-10 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center">
                                                 {user.avatarUrl ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
                                             </div>
-                                            <div className="min-w-0 flex-1">
+                                        <div className="min-w-0 flex-1">
                                                 <p className="font-bold text-gray-900 dark:text-white text-sm">{user.name}</p>
                                                 <p className="text-xs text-gray-400">{user.email}</p>
+                                                {user.department && (
+                                                    <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">📋 {user.department}</p>
+                                                )}
+                                                {user.contactNumber && (
+                                                    <p className="text-xs text-gray-400 mt-0.5">{user.contactNumber}</p>
+                                                )}
                                             </div>
                                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200">Pending</span>
                                         </div>
