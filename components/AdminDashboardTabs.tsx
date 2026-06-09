@@ -99,6 +99,32 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         return '';
     };
 
+    const getPriorityBadge = (priority?: EventType['priority']) => {
+        if (priority === 'urgent') {
+            return { label: 'Urgent', className: 'bg-red-100 dark:bg-red-900/30 text-gray-900 dark:text-gray-100', dotClassName: 'bg-red-500' };
+        }
+        if (priority === 'high' || priority === 'average') {
+            return { label: 'High', className: 'bg-orange-100 dark:bg-orange-900/30 text-gray-900 dark:text-gray-100', dotClassName: 'bg-orange-500' };
+        }
+        if (priority === 'normal' || priority === 'less_prio') {
+            return { label: 'Normal', className: 'bg-blue-100 dark:bg-blue-900/30 text-gray-900 dark:text-gray-100', dotClassName: 'bg-blue-500' };
+        }
+        return null;
+    };
+
+    const normalizePriority = (priority?: EventType['priority']): 'normal' | 'high' | 'urgent' => {
+        if (priority === 'urgent') return 'urgent';
+        if (priority === 'high' || priority === 'average') return 'high';
+        return 'normal';
+    };
+
+    const getPriorityRank = (priority?: EventType['priority']): number => {
+        const normalized = normalizePriority(priority);
+        if (normalized === 'urgent') return 3;
+        if (normalized === 'high') return 2;
+        return 1;
+    };
+
     const getCalendarEventIndicator = (event: EventType): { label: string; className: string; dotClassName: string; cardClassName: string } | null => {
         if (event.status !== 'pending') return null;
 
@@ -233,6 +259,19 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const [showSortMenu, setShowSortMenu] = useState(false);
     const [eventVisibilityFilter, setEventVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
     const [eventsPage, setEventsPage] = useState(1);
+    const sortedPendingRequests = useMemo(
+        () => [...pendingRequests].sort((a, b) => {
+            const priorityDiff = getPriorityRank(b.priority) - getPriorityRank(a.priority);
+            if (priorityDiff !== 0) return priorityDiff;
+
+            const submittedA = Number(a.submittedAt || 0);
+            const submittedB = Number(b.submittedAt || 0);
+            if (submittedB !== submittedA) return submittedB - submittedA;
+
+            return (a.name || '').localeCompare(b.name || '');
+        }),
+        [pendingRequests]
+    );
     useEffect(() => { setEventsPage(1); }, [eventFilter, eventSortOrder, eventVisibilityFilter]);
 
     // ── Events tab search bar ─────────────────────────────────────────────────
@@ -1922,8 +1961,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <h4 className="font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-none">{event.name}</h4>
-                                                {event.priority === 'urgent' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />Urgent</span>}
-                                                {event.priority === 'average' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-orange-500" />Average</span>}
+                                                {(() => {
+                                                    const badge = getPriorityBadge(event.priority);
+                                                    return badge ? <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium rounded-full flex-shrink-0 ${badge.className}`}><span className={`w-1.5 h-1.5 rounded-full ${badge.dotClassName}`} />{badge.label}</span> : null;
+                                                })()}
                                                 {event.status === 'draft' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-gray-400" />Draft</span>}
                                                 {event.status === 'pending' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Pending Approval</span>}
                                                 {event.status === 'rejected' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full flex-shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />Rejected</span>}
@@ -2731,49 +2772,67 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     {eventsOnSelectedDate.map(event => {
                                         const indicator = getCalendarEventIndicator(event);
                                         return (
-                                        <div key={event.id} className={`group p-4 rounded-2xl border hover:border-blue-200 dark:hover:border-blue-900 hover:shadow-md transition-all flex items-center gap-4 ${indicator ? indicator.cardClassName : 'bg-white dark:bg-[#111827] border-gray-100 dark:border-gray-800/60'}`}>
-                                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                                                <div className="w-14 h-14 rounded-xl overflow-hidden shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
-                                                    {event.imageUrl ? (
-                                                        <img src={event.imageUrl} alt="" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full bg-blue-50 flex items-center justify-center" style={{ color: '#0052A3' }}>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                            </svg>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="flex items-center gap-2 min-w-0 mb-1">
-                                                        {indicator && (
-                                                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${indicator.className}`}>
-                                                                {indicator.label}
-                                                            </span>
+                                            <div key={event.id} className={`group p-4 rounded-2xl border hover:border-blue-200 dark:hover:border-blue-900 hover:shadow-md transition-all flex items-center gap-4 ${indicator ? indicator.cardClassName : 'bg-white dark:bg-[#111827] border-gray-100 dark:border-gray-800/60'}`}>
+                                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                                    <div className="w-14 h-14 rounded-xl overflow-hidden shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
+                                                        {event.imageUrl ? (
+                                                            <img src={event.imageUrl} alt="" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full bg-blue-50 flex items-center justify-center" style={{ color: '#0052A3' }}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                                </svg>
+                                                            </div>
                                                         )}
-                                                        <h4 className="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-[#0052A3] transition-colors truncate">{event.name}</h4>
                                                     </div>
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" style={{ color: '#0052A3' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                            {event.startTime} - {event.endTime}
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2 min-w-0 mb-1">
+                                                            {indicator && (
+                                                                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${indicator.className}`}>
+                                                                    {indicator.label}
+                                                                </span>
+                                                            )}
+                                                            <h4 className="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-[#0052A3] transition-colors truncate">{event.name}</h4>
                                                         </div>
-                                                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                            {event.venue || event.city}
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <div className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" style={{ color: '#0052A3' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                {event.startTime} - {event.endTime}
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                                {event.venue || event.city}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
+                                                {currentUser?.role === 'admin' && event.status === 'pending' ? (
+                                                    <div className="flex-shrink-0 flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => setPendingConfirm({ type: 'publish', event })}
+                                                            className="py-2 px-3 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 rounded-xl text-xs font-semibold transition-all border border-green-200 dark:border-green-800 whitespace-nowrap"
+                                                        >
+                                                            Approve
+                                                        </button>
+                                                        <button
+                                                            onClick={() => onReject(event.id)}
+                                                            className="py-2 px-3 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-300 rounded-xl text-xs font-semibold transition-all border border-red-200 dark:border-red-800 whitespace-nowrap"
+                                                        >
+                                                            Reject
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => onEditEvent(event)}
+                                                        className="flex-shrink-0 py-2 px-4 bg-gray-50 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold transition-all border border-transparent hover:border-blue-100 dark:hover:border-blue-900/50 whitespace-nowrap"
+                                                        style={{ minWidth: '80px' }}
+                                                    >
+                                                        Edit / View
+                                                    </button>
+                                                )}
                                             </div>
-                                            <button
-                                                onClick={() => onEditEvent(event)}
-                                                className="flex-shrink-0 py-2 px-4 bg-gray-50 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold transition-all border border-transparent hover:border-blue-100 dark:hover:border-blue-900/50 whitespace-nowrap"
-                                                style={{ minWidth: '80px' }}
-                                            >
-                                                Edit / View
-                                            </button>
-                                        </div>
-                                    )})}
+                                        )
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -2824,8 +2883,21 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
     return (
         <div className="w-full animate-fade-in-up">
+            {/* Global Chart Focus Fix */}
+            <style>{`
+            .recharts-sector:focus,
+            .recharts-pie-sector:focus,
+            .recharts-cell:focus,
+            path.recharts-sector:focus,
+            .recharts-rectangle:focus,
+            .recharts-bar-rectangle:focus,
+            .recharts-wrapper *:focus {
+                outline: none !important;
+                box-shadow: none !important;
+            }
+        `}</style>
+
             {activeTab === 'analytics' && <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-6" style={{ fontFamily: "'Inter', ui-sans-serif, sans-serif" }}>
-                {/* Total Users */}
                 <div className="bg-gradient-to-br from-white via-blue-50 to-blue-100 dark:from-[#111827] dark:via-blue-900/20 dark:to-blue-800/30 p-2.5 md:p-4 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800/40 flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="w-6 h-6 md:w-7 md:h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center" style={{ color: '#0052A3' }}>
@@ -3000,7 +3072,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-[#0f172a] z-10">
                             <div>
                                 <h2 className="text-base font-bold text-gray-900 dark:text-white">Pending Approvals</h2>
-                                <p className="text-xs text-gray-400 mt-0.5">{pendingRequests.length} event{pendingRequests.length !== 1 ? 's' : ''} awaiting review</p>
+                                <p className="text-xs text-gray-400 mt-0.5">{sortedPendingRequests.length} event{sortedPendingRequests.length !== 1 ? 's' : ''} awaiting review</p>
                             </div>
                             <button onClick={() => setPendingDrawerOpen(false)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -3008,7 +3080,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         </div>
                         {/* Body */}
                         <div className="flex-1 overflow-x-auto bg-white dark:bg-[#0f172a]">
-                            {pendingRequests.length === 0 ? (
+                            {sortedPendingRequests.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-center px-6">
                                     <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-3" style={{ color: '#0052A3' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -3022,12 +3094,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                         <tr className="bg-gray-50/50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
                                             <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Event</th>
                                             <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Date</th>
+                                            <th className="px-4 py-4 text-left text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Status</th>
+                                            <th className="px-4 py-4 text-left text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Series</th>
                                             <th className="px-6 py-4 text-left text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Priority</th>
                                             <th className="px-6 py-4 text-right text-[14px] font-semibold text-gray-900 dark:text-white capitalize">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50 dark:divide-gray-800 bg-white dark:bg-[#0f172a]">
-                                        {pendingRequests.map(event => (
+                                        {sortedPendingRequests.map(event => (
                                             <tr
                                                 key={event.id}
                                                 className="group transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40"
@@ -3054,21 +3128,40 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
                                                     {formatDisplayDate(event.date)}
                                                 </td>
-                                                {/* Priority & Recurrence */}
-                                                <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-300">
-                                                    <div className="flex flex-col gap-1 items-start">
-                                                        <div className="flex gap-1.5 flex-wrap">
-                                                            {event.priority === 'urgent' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />Urgent</span>}
-                                                            {event.priority === 'average' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-orange-500" />Average</span>}
-                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Pending</span>
-                                                        </div>
-                                                        {event.recurrenceGroupId && (() => {
-                                                            const seriesCount = getRecurringSeriesCount(event);
-                                                            if (seriesCount <= 1) return null;
-                                                            const freqLabel = getRecurrenceFrequencyLabel(event);
-                                                            return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" />{seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring</span>;
-                                                        })()}
-                                                    </div>
+                                                {/* Status */}
+                                                <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                        Pending
+                                                    </span>
+                                                </td>
+                                                {/* Series */}
+                                                <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                                    {event.recurrenceGroupId && (() => {
+                                                        const seriesCount = getRecurringSeriesCount(event);
+                                                        if (seriesCount <= 1) return null;
+                                                        const freqLabel = getRecurrenceFrequencyLabel(event);
+                                                        return (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-gray-900 dark:text-gray-100 text-[10px] font-medium rounded-full">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                                                {seriesCount}x {freqLabel ? `${freqLabel} ` : ''}Recurring
+                                                            </span>
+                                                        );
+                                                    })() || <span className="text-xs text-gray-400 dark:text-gray-500">Single</span>}
+                                                </td>
+                                                {/* Priority */}
+                                                <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                                    {(() => {
+                                                        const badge = getPriorityBadge(event.priority);
+                                                        return badge ? (
+                                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-semibold rounded-full ${badge.className}`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dotClassName}`} />
+                                                                {badge.label}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400 dark:text-gray-500">Not set</span>
+                                                        );
+                                                    })()}
                                                 </td>
                                                 {/* Actions */}
                                                 <td className="py-3 px-6 text-right">
@@ -3483,14 +3576,28 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
             {/* ── Engagement Metrics Drawer (Total Events card click) ──────────── */}
             {metricsDrawerOpen && typeof document !== 'undefined' && createPortal(
                 <>
-                    <style>{`@keyframes slideInFromRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+                    <style>{`
+                        @keyframes slideInFromRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
+                        @keyframes slideUpFromBottom{from{transform:translateY(100%)}to{transform:translateY(0)}}
+                        @media(max-width:767px){
+                            .metrics-drawer{
+                                top:auto!important;
+                                bottom:0!important;
+                                right:0!important;
+                                height:92%!important;
+                                max-width:100%!important;
+                                border-radius:20px 20px 0 0!important;
+                                animation:slideUpFromBottom 0.35s cubic-bezier(0.25,0.46,0.45,0.94) forwards!important;
+                            }
+                        }
+                    `}</style>
                     <div
                         style={{ position: 'fixed', inset: 0, zIndex: 99997, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}
                         onClick={() => setMetricsDrawerOpen(false)}
                     />
                     <div
                         style={{ position: 'fixed', top: '20px', right: '20px', height: 'calc(100% - 40px)', width: '100%', maxWidth: '480px', zIndex: 99998, animation: 'slideInFromRight 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards', display: 'flex', flexDirection: 'column', borderRadius: '15px', overflow: 'hidden' }}
-                        className="bg-white dark:bg-[#0f172a] shadow-2xl"
+                        className="metrics-drawer bg-white dark:bg-[#0f172a] shadow-2xl"
                     >
                         {(() => {
                             const tv = events.reduce((s, e) => s + safeNum(e.viewCount), 0);
@@ -3527,14 +3634,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                                     {/* Table */}
                                     <div className="flex-1 overflow-y-auto">
-                                        <table className="w-full">
+                                        <table className="w-full min-w-full table-fixed border-collapse">
                                             <thead className="sticky top-0 bg-white dark:bg-[#0f172a] z-10">
                                                 <tr className="border-b border-gray-100 dark:border-gray-800">
-                                                    <th className="text-left px-6 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-8">#</th>
-                                                    <th className="text-left px-2 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Metric</th>
-                                                    <th className="text-left px-2 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Description</th>
-                                                    <th className="text-right px-3 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Total</th>
-                                                    <th className="text-right px-6 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500">Status</th>
+                                                    <th className="text-left px-6 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-[8%]">#</th>
+                                                    <th className="text-left px-2 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-[22%]">Metric</th>
+                                                    <th className="text-left px-2 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-[40%]">Description</th>
+                                                    <th className="text-right px-3 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-[15%]">Total</th>
+                                                    <th className="text-right px-6 py-3 text-[11px] font-semibold text-gray-400 dark:text-gray-500 w-[15%]">Status</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
@@ -3551,7 +3658,6 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 ))}
                                             </tbody>
                                         </table>
-
                                     </div>
                                 </>
                             );

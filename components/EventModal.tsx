@@ -15,6 +15,31 @@ import Spinner from './Spinner';
 import { motion, AnimatePresence } from 'motion/react';
 import CustomTimePicker from './CustomTimePicker';
 
+const getPriorityDisplay = (priority?: EventType['priority']) => {
+  if (priority === 'urgent') {
+    return {
+      label: 'Urgent',
+      className: 'bg-red-50 dark:bg-red-900/30 border-red-100 text-red-700',
+    };
+  }
+
+  if (priority === 'high' || priority === 'average') {
+    return {
+      label: 'High',
+      className: 'bg-orange-50 dark:bg-orange-900/30 border-orange-100 text-orange-700',
+    };
+  }
+
+  if (priority === 'normal' || priority === 'less_prio') {
+    return {
+      label: 'Normal',
+      className: 'bg-blue-50 dark:bg-blue-900/30 border-blue-100 text-blue-700',
+    };
+  }
+
+  return null;
+};
+
 interface EventModalProps {
   event: EventType;
   onClose: () => void;
@@ -140,6 +165,7 @@ const EventModal: React.FC<EventModalProps> = ({
   const isCheckedIn = currentUser?.checkedInEventIds?.includes(event.id);
   const isResident = currentUser?.role === 'user';
   const isFacilitatorOrAdmin = currentUser?.role === 'facilitator' || currentUser?.role === 'admin';
+  const priorityDisplay = getPriorityDisplay(event.priority);
   // True when all slots are filled with APPROVED participants — blocks new registration submissions
   const approvedCount = liveApprovedCount;
   const isEventFull = event.maxParticipants != null && approvedCount >= event.maxParticipants;
@@ -393,13 +419,10 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 mt-4">
-            {isFacilitatorOrAdmin && event.priority && (
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${event.priority === 'urgent' ? 'bg-red-50 dark:bg-red-900/30 border-red-100 text-red-700' :
-                event.priority === 'average' ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-100 text-orange-700' :
-                  'bg-green-50 dark:bg-green-900/30 border-green-100 text-green-700'
-                }`}>
+            {isFacilitatorOrAdmin && priorityDisplay && (
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${priorityDisplay.className}`}>
                 <p className="text-sm font-bold uppercase tracking-wider">
-                  Priority: {event.priority}
+                  Priority: {priorityDisplay.label}
                 </p>
               </div>
             )}

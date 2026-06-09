@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, Vibration, BackHandler, ToastAndroid } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { StatusBar } from 'expo-status-bar';
@@ -124,7 +124,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" translucent={true} backgroundColor="transparent" />
+      <StatusBar hidden={true} />
       <WebView
         ref={webviewRef}
         source={{ uri: WEB_URL }}

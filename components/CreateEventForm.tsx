@@ -4,7 +4,7 @@ import {
   Globe, Lock, ChevronDown, Clock,
   CheckCircle2, AlertCircle, Eye, Save, Share2, Link as LinkIcon, ExternalLink
 } from 'lucide-react';
-import type { EventType, User, EventStatus } from '../types';
+import type { EventType, User, EventStatus, EventPriority } from '../types';
 import InteractiveMap from './InteractiveMap';
 import { addEvent, updateEvent } from '../services/eventService';
 import { getAdmins } from '../services/userService';
@@ -76,7 +76,7 @@ const initialFormData = {
   lng: 120.9442,
   maxParticipants: 100,
   isPrivate: false,
-  priority: 'average' as 'urgent' | 'average' | 'less_prio',
+  priority: 'normal' as EventPriority,
   requestedPublishDate: '',
   instructions: '',
   timezone: 'PHT',
@@ -87,6 +87,18 @@ const initialFormData = {
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 type FormErrors = Partial<Record<keyof typeof initialFormData | 'time', string>>;
+
+const PRIORITY_OPTIONS: Array<{ value: EventPriority; label: string; description: string }> = [
+  { value: 'normal', label: 'Normal', description: 'Standard timeline for routine event review.' },
+  { value: 'high', label: 'High', description: 'Needs faster admin attention than regular submissions.' },
+  { value: 'urgent', label: 'Urgent', description: 'Requires immediate review because the event is time-sensitive.' },
+];
+
+const normalizePriority = (priority?: EventType['priority']): EventPriority => {
+  if (priority === 'urgent' || priority === 'high' || priority === 'normal') return priority;
+  if (priority === 'average') return 'high';
+  return 'normal';
+};
 
 const validateForm = (formData: typeof initialFormData): FormErrors => {
   const errors: FormErrors = {};
@@ -115,6 +127,9 @@ const validateForm = (formData: typeof initialFormData): FormErrors => {
   }
   if (!formData.venue) errors.venue = 'A venue is required.';
   if (!formData.description.trim()) errors.description = 'A description is required.';
+  if (!PRIORITY_OPTIONS.some(option => option.value === formData.priority)) {
+    errors.priority = 'Select a valid event priority.';
+  }
   return errors;
 };
 
@@ -210,6 +225,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
       setFormData({
         ...initialFormData,
         ...eventToEdit,
+        priority: normalizePriority(eventToEdit.priority),
         subtitle: (eventToEdit as any).subtitle || '',
         timezone: eventToEdit.timezone || 'PHT',
         maxParticipants: eventToEdit.maxParticipants || 100,
@@ -667,6 +683,36 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                 rows={7} className={`${input} resize-none pt-3 ${formErrors.description ? 'border-red-400 ring-2 ring-red-400/20' : ''}`}
               />
               <FieldError error={formErrors.description} />
+            </div>
+
+            <div className={card}>
+              <SectionHeader title="Priority" />
+              <div className="grid gap-3">
+                {PRIORITY_OPTIONS.map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setField('priority', option.value)}
+                    className={`text-left rounded-2xl border p-4 transition-all ${
+                      formData.priority === option.value
+                        ? 'border-primary-500 bg-primary-50/60 dark:bg-primary-900/20 shadow-sm'
+                        : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{option.label}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{option.description}</p>
+                      </div>
+                      <span className={`w-4 h-4 rounded-full border-2 ${formData.priority === option.value ? 'border-primary-600 bg-primary-600' : 'border-gray-300 dark:border-gray-600'}`} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-[11px] text-gray-500 dark:text-gray-400">
+                This priority will be submitted to the admin together with your event request.
+              </p>
+              <FieldError error={formErrors.priority} />
             </div>
 
           </div>
