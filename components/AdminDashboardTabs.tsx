@@ -26,7 +26,7 @@ interface AdminDashboardTabsProps {
     onApprove: (event: EventType) => void;
     onReject: (eventId: string) => void;
     onEditEvent: (event: EventType) => void;
-    onDeleteEvent: (eventId: string) => void;
+    onDeleteEvent: (event: EventType) => void;
     onViewQRCode: (event: EventType) => void;
     onViewParticipants: (event: EventType) => void;
     onSchedule: (event: EventType) => void;
@@ -55,6 +55,7 @@ interface AdminDashboardTabsProps {
     currentUser?: import('../types').User;
     onCancelEvent?: (event: EventType) => void;
     onNotifyUpdate?: (event: EventType) => void;
+    onUpdateUserDepartment?: (userId: string, department: string) => Promise<void>;
 }
 
 
@@ -82,7 +83,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     filteredUsers, userSearchQuery, setUserSearchQuery, userFilter, setUserFilter,
     isLoadingUsers, userError, fetchUsers, handleRoleUpdate, onApproveFacilitator, onRejectFacilitator, onDeleteUser, canManageUsers,
     activeTab, setActiveTab, initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed, onManageRegistrations, currentUser,
-    onCancelEvent, onNotifyUpdate
+    onCancelEvent, onNotifyUpdate, onUpdateUserDepartment
 }) => {
     const getRecurringSeriesCount = (event: EventType): number => {
         if (!event.recurrenceGroupId) return 0;
@@ -96,6 +97,22 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         if (freq === 'weekly') return 'Weekly';
         if (freq === 'monthly_date' || freq === 'monthly_day') return 'Monthly';
         return '';
+    };
+
+    const getCalendarEventIndicator = (event: EventType): { label: string; className: string; dotClassName: string; cardClassName: string } | null => {
+        if (event.status !== 'pending') return null;
+
+        const isFacilitatorView = currentUser?.role === 'facilitator';
+        return {
+            label: isFacilitatorView ? 'Awaiting Approval' : 'Pending Review',
+            className: isFacilitatorView
+                ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700/60'
+                : 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/40 dark:text-rose-200 dark:border-rose-700/60',
+            dotClassName: isFacilitatorView ? 'bg-amber-500' : 'bg-rose-500',
+            cardClassName: isFacilitatorView
+                ? 'border-amber-200 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-900/10'
+                : 'border-rose-200 dark:border-rose-800/60 bg-rose-50/40 dark:bg-rose-900/10',
+        };
     };
 
     // ── Alert chip renderer ───────────────────────────────────────────────────
@@ -186,9 +203,17 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         date.setHours(23, 59, 59, 999);
         return date;
     }, [viewingDate]);
+    const calendarEvents = useMemo(() => {
+        if (!currentUser) return allEvents;
+        if (currentUser.role === 'facilitator') {
+            return allEvents.filter(event => event.createdBy === currentUser.uid);
+        }
+        return allEvents;
+    }, [allEvents, currentUser]);
+
     const agendaDayMap = useMemo(
-        () => buildDayMap(events, agendaMonthStart, agendaMonthEnd),
-        [events, agendaMonthStart, agendaMonthEnd]
+        () => buildDayMap(calendarEvents, agendaMonthStart, agendaMonthEnd),
+        [calendarEvents, agendaMonthStart, agendaMonthEnd]
     );
 
     const isEventPast = (event: EventType) => {
@@ -308,6 +333,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     // Role change confirmation state
     const [pendingRoleChange, setPendingRoleChange] = useState<{ user: User; newRole: 'facilitator' | 'user' } | null>(null);
     const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
+    const [actionMenuPos, setActionMenuPos] = useState<{ top: number; right: number } | null>(null);
+    const [departmentEditUserId, setDepartmentEditUserId] = useState<string | null>(null);
+    const [departmentEditValue, setDepartmentEditValue] = useState('');
+    const [isSavingDepartment, setIsSavingDepartment] = useState(false);
 
     const [allFeedback, setAllFeedback] = useState<EventFeedback[]>([]);
     const [viewingFeedbackEvent, setViewingFeedbackEvent] = useState<EventType | null>(null);
@@ -342,19 +371,24 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Close dropdowns when clicking outside
+    // Close action menu when clicking outside or scrolling
     useEffect(() => {
         if (!activeActionMenu) return;
 
-        const handleClickOutside = (event: globalThis.MouseEvent) => {
-            const target = event.target as Element;
-            if (target && target.closest && !target.closest('.action-menu-container')) {
+        const close = (event: globalThis.MouseEvent | Event) => {
+            const target = (event as globalThis.MouseEvent).target as Element;
+            if (event.type === 'scroll' || (target && target.closest && !target.closest('.action-menu-container'))) {
                 setActiveActionMenu(null);
+                setActionMenuPos(null);
             }
         };
 
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('mousedown', close);
+        window.addEventListener('scroll', close, true);
+        return () => {
+            document.removeEventListener('mousedown', close);
+            window.removeEventListener('scroll', close, true);
+        };
     }, [activeActionMenu]);
 
     // Respond to external tab navigation requests (e.g. from notification buttons)
@@ -1931,7 +1965,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                     Edit
                                                 </button>
                                                 <button
-                                                    onClick={() => onDeleteEvent(event.id)}
+                                                    onClick={() => onDeleteEvent(event)}
                                                     className="h-7 px-2.5 text-[11px] font-semibold rounded-md border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                                 >
                                                     Cancel
@@ -2137,60 +2171,31 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                         }`}>
                                                         {event.status || 'published'}
                                                     </span>
-                                                    <div className="relative action-menu-container">
+                                                    <div className="action-menu-container">
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); setActiveActionMenu(activeActionMenu === event.id ? null : event.id); }}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (activeActionMenu === event.id) {
+                                                                    setActiveActionMenu(null);
+                                                                    setActionMenuPos(null);
+                                                                } else {
+                                                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                                                    const menuHeight = 290;
+                                                                    // Prefer below the button; clamp upward if it would overflow the bottom
+                                                                    let top = rect.bottom + 6;
+                                                                    if (top + menuHeight > window.innerHeight - 8) {
+                                                                        top = window.innerHeight - menuHeight - 8;
+                                                                    }
+                                                                    if (top < 8) top = 8;
+                                                                    setActionMenuPos({ top, right: window.innerWidth - rect.right });
+                                                                    setActiveActionMenu(event.id);
+                                                                }
+                                                            }}
                                                             className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-200 transition-all"
                                                             title="Actions"
                                                         >
                                                             <MoreVerticalIcon className="w-5 h-5" />
                                                         </button>
-
-                                                        {activeActionMenu === event.id && (
-                                                            <div className="absolute right-0 mt-2 z-50 w-64 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-2 animate-in fade-in zoom-in-95 duration-150">
-                                                                <p className="px-3 py-2 text-[12px] font-medium text-black dark:text-gray-400 text-left">Event Actions</p>
-                                                                <div className="space-y-1">
-                                                                    <button onClick={() => { setAnalyticsDrawerEvent(event); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                        <BarChart3 className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                        <span className="text-[14px] font-medium">Analytics</span>
-                                                                    </button>
-                                                                    <button onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                        <MessageSquare className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                        <span className="text-[14px] font-medium">Feedback</span>
-                                                                    </button>
-                                                                    <button onClick={() => { onViewQRCode(event); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                        <QrCode className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                        <span className="text-[14px] font-medium">QR Code</span>
-                                                                    </button>
-                                                                    {onPreviewEvent && (
-                                                                        <button onClick={() => { onPreviewEvent(event); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                            <Eye className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                            <span className="text-[14px] font-medium">Preview</span>
-                                                                        </button>
-                                                                    )}
-                                                                    <button onClick={() => { onEditEvent(event); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                        <Pencil className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                        <span className="text-[14px] font-medium">Edit</span>
-                                                                    </button>
-                                                                    {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
-                                                                        <button onClick={() => { setPendingConfirm({ type: 'notify', event }); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                            <Bell className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                            <span className="text-[14px] font-medium">Notify</span>
-                                                                        </button>
-                                                                    )}
-                                                                    {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
-                                                                        <button onClick={() => { setPendingConfirm({ type: 'cancel', event }); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
-                                                                            <Ban className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
-                                                                            <span className="text-[14px] font-medium">Cancel</span>
-                                                                        </button>
-                                                                    )}
-                                                                    <button onClick={() => { onDeleteEvent(event.id); setActiveActionMenu(null); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left">
-                                                                        <Trash2 className="w-4 h-4 text-red-500 shrink-0" strokeWidth={1.8} />
-                                                                        <span className="text-[14px] font-medium">Delete</span>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -2442,6 +2447,9 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                             {user.facilitatorRequestStatus === 'pending' && (
                                                                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">Pending</span>
                                                             )}
+                                                            {user.role === 'facilitator' && user.department && (
+                                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">{user.department}</span>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     {/* 3-dot menu */}
@@ -2473,6 +2481,18 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                                                 >
                                                                                     <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
                                                                                     Set as Facilitator
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                        {user.role === 'facilitator' && onUpdateUserDepartment && (
+                                                                            <>
+                                                                                <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
+                                                                                <button
+                                                                                    onClick={() => { setDepartmentEditUserId(user.uid); setDepartmentEditValue(user.department || ''); setOpenKebabUserId(null); }}
+                                                                                    className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors flex items-center gap-2"
+                                                                                >
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                                                                    Assign Department
                                                                                 </button>
                                                                             </>
                                                                         )}
@@ -2610,9 +2630,13 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {/* ── Month View: Full CalendarView grid ── */}
                 {calendarView === 'month' && (
                     <CalendarView
-                        events={events}
+                        events={calendarEvents}
                         currentMonth={calendarMonthDate}
                         setCurrentMonth={setCalendarMonthDate}
+                        getEventIndicator={(event) => {
+                            const indicator = getCalendarEventIndicator(event);
+                            return indicator ? { label: indicator.label, className: indicator.className } : null;
+                        }}
                         onDateSelect={(date) => {
                             // Switch to Agenda view and navigate to selected date
                             setViewingDate(new Date(date.getFullYear(), date.getMonth(), 1));
@@ -2656,7 +2680,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                     <div key={`blank-${blank}`} className="w-8 h-8"></div>
                                 ))}
                                 {days.map(day => {
-                                    const hasEvent = agendaDayMap.has(toYMD(new Date(year, month, day)));
+                                    const dayKey = toYMD(new Date(year, month, day));
+                                    const dayEntries = agendaDayMap.get(dayKey) || [];
+                                    const hasEvent = dayEntries.length > 0;
+                                    const hasPendingEvent = dayEntries.some(({ event }) => event.status === 'pending');
                                     const isToday = new Date().getDate() === day && new Date().getMonth() === month && new Date().getFullYear() === year;
 
                                     return (
@@ -2674,7 +2701,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                 {day}
                                             </button>
                                             {hasEvent && (
-                                                <div className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${selectedDate === day ? 'bg-white' : 'bg-[#0052A3]'}`}></div>
+                                                <div className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 rounded-full ${hasPendingEvent ? 'w-1.5 h-1.5' : 'w-1 h-1'} ${selectedDate === day ? 'bg-white' : hasPendingEvent ? (currentUser?.role === 'facilitator' ? 'bg-amber-500' : 'bg-rose-500') : 'bg-[#0052A3]'}`}></div>
                                             )}
                                         </div>
                                     );
@@ -2701,8 +2728,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 </div>
                             ) : (
                                 <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
-                                    {eventsOnSelectedDate.map(event => (
-                                        <div key={event.id} className="group p-4 bg-white dark:bg-[#111827] rounded-2xl border border-gray-100 dark:border-gray-800/60 hover:border-blue-200 dark:hover:border-blue-900 hover:shadow-md transition-all flex items-center gap-4">
+                                    {eventsOnSelectedDate.map(event => {
+                                        const indicator = getCalendarEventIndicator(event);
+                                        return (
+                                        <div key={event.id} className={`group p-4 rounded-2xl border hover:border-blue-200 dark:hover:border-blue-900 hover:shadow-md transition-all flex items-center gap-4 ${indicator ? indicator.cardClassName : 'bg-white dark:bg-[#111827] border-gray-100 dark:border-gray-800/60'}`}>
                                             <div className="flex items-center gap-4 flex-1 min-w-0">
                                                 <div className="w-14 h-14 rounded-xl overflow-hidden shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
                                                     {event.imageUrl ? (
@@ -2716,7 +2745,14 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                     )}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <h4 className="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-[#0052A3] transition-colors truncate">{event.name}</h4>
+                                                    <div className="flex items-center gap-2 min-w-0 mb-1">
+                                                        {indicator && (
+                                                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${indicator.className}`}>
+                                                                {indicator.label}
+                                                            </span>
+                                                        )}
+                                                        <h4 className="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-[#0052A3] transition-colors truncate">{event.name}</h4>
+                                                    </div>
                                                     <div className="flex flex-col gap-0.5">
                                                         <div className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
                                                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" style={{ color: '#0052A3' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -2729,15 +2765,32 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                                     </div>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => onEditEvent(event)}
-                                                className="flex-shrink-0 py-2 px-4 bg-gray-50 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold transition-all border border-transparent hover:border-blue-100 dark:hover:border-blue-900/50 whitespace-nowrap"
-                                                style={{ minWidth: '80px' }}
-                                            >
-                                                Edit / View
-                                            </button>
+                                            {currentUser?.role === 'admin' && event.status === 'pending' ? (
+                                                <div className="flex-shrink-0 flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => setPendingConfirm({ type: 'publish', event })}
+                                                        className="py-2 px-3 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 rounded-xl text-xs font-semibold transition-all border border-green-200 dark:border-green-800 whitespace-nowrap"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button
+                                                        onClick={() => onReject(event.id)}
+                                                        className="py-2 px-3 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-300 rounded-xl text-xs font-semibold transition-all border border-red-200 dark:border-red-800 whitespace-nowrap"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => onEditEvent(event)}
+                                                    className="flex-shrink-0 py-2 px-4 bg-gray-50 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold transition-all border border-transparent hover:border-blue-100 dark:hover:border-blue-900/50 whitespace-nowrap"
+                                                    style={{ minWidth: '80px' }}
+                                                >
+                                                    Edit / View
+                                                </button>
+                                            )}
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             )}
                         </div>
@@ -3599,6 +3652,125 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </div>,
                 document.body
             )}
+            {/* ── Assign Department Modal ── */}
+            {departmentEditUserId && typeof document !== 'undefined' && createPortal(
+                <div
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                    onClick={() => setDepartmentEditUserId(null)}
+                >
+                    <div
+                        className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900 dark:text-white">Assign Department</h3>
+                                <p className="text-xs text-gray-400 mt-0.5">Events for this department will appear in the facilitator's dashboard</p>
+                            </div>
+                        </div>
+                        <select
+                            value={departmentEditValue}
+                            onChange={e => setDepartmentEditValue(e.target.value)}
+                            className="w-full px-3 py-2.5 text-sm font-medium border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:border-indigo-500 outline-none transition-all"
+                        >
+                            <option value="">— No Department —</option>
+                            <option value="CICRD">CICRD</option>
+                            <option value="CSWD">CSWD</option>
+                            <option value="LEDIPO">LEDIPO</option>
+                            <option value="SPORTS">SPORTS</option>
+                            <option value="Civil Registry">Civil Registry</option>
+                            <option value="BDRMMO">BDRMMO</option>
+                            <option value="PESO">PESO</option>
+                            <option value="BPLO">BPLO</option>
+                            <option value="TOURISM">TOURISM</option>
+                            <option value="CHO">CHO</option>
+                        </select>
+                        <div className="flex gap-2 pt-1">
+                            <button
+                                onClick={() => setDepartmentEditUserId(null)}
+                                className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                disabled={isSavingDepartment}
+                                onClick={async () => {
+                                    if (!onUpdateUserDepartment) return;
+                                    setIsSavingDepartment(true);
+                                    try {
+                                        await onUpdateUserDepartment(departmentEditUserId, departmentEditValue);
+                                    } finally {
+                                        setIsSavingDepartment(false);
+                                        setDepartmentEditUserId(null);
+                                    }
+                                }}
+                                className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors disabled:opacity-50"
+                            >
+                                {isSavingDepartment ? 'Saving…' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+            {/* ── Event Action Menu Portal (renders outside overflow-clipped table) ── */}
+            {activeActionMenu && actionMenuPos && (() => {
+                const event = allEvents.find(e => e.id === activeActionMenu);
+                if (!event) return null;
+                return createPortal(
+                    <div
+                        className="action-menu-container fixed z-[9999] w-52 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 p-1.5 animate-in fade-in zoom-in-95 duration-150"
+                        style={{ top: actionMenuPos.top, right: actionMenuPos.right }}
+                    >
+                        <p className="px-2.5 py-1.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Event Actions</p>
+                        <div className="space-y-0.5">
+                            <button onClick={() => { setAnalyticsDrawerEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                <BarChart3 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                <span className="text-[12px] font-medium">Analytics</span>
+                            </button>
+                            <button onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                <MessageSquare className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                <span className="text-[12px] font-medium">Feedback</span>
+                            </button>
+                            <button onClick={() => { onViewQRCode(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                <QrCode className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                <span className="text-[12px] font-medium">QR Code</span>
+                            </button>
+                            {onPreviewEvent && (
+                                <button onClick={() => { onPreviewEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                    <Eye className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                    <span className="text-[12px] font-medium">Preview</span>
+                                </button>
+                            )}
+                            <button onClick={() => { onEditEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                <Pencil className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                <span className="text-[12px] font-medium">Edit</span>
+                            </button>
+                            {(event.status === 'published' || event.status === 'scheduled') && onNotifyUpdate && (
+                                <button onClick={() => { setPendingConfirm({ type: 'notify', event }); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                    <Bell className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                    <span className="text-[12px] font-medium">Notify</span>
+                                </button>
+                            )}
+                            {(event.status === 'published' || event.status === 'scheduled') && onCancelEvent && (
+                                <button onClick={() => { setPendingConfirm({ type: 'cancel', event }); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                    <Ban className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                    <span className="text-[12px] font-medium">Cancel</span>
+                                </button>
+                            )}
+                            <div className="mx-2 my-1 border-t border-gray-100 dark:border-gray-800" />
+                            <button onClick={() => { onDeleteEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left">
+                                <Trash2 className="w-3.5 h-3.5 text-red-500 shrink-0" strokeWidth={1.8} />
+                                <span className="text-[12px] font-medium">Delete</span>
+                            </button>
+                        </div>
+                    </div>,
+                    document.body
+                );
+            })()}
             {/* ── Confirmation Dialogs ── */}
             <ConfirmationDialog
                 open={pendingConfirm?.type === 'publish'}

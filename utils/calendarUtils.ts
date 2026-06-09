@@ -60,15 +60,22 @@ export function buildDayMap(
           ? '↻ Monthly'
           : '↻ Recurring';
 
+    // Build a set of all occurrence dates. If an occurrence's endDate matches
+    // another occurrence's date, it's a stale series-end value inherited via
+    // object spread — not a genuine multi-day span for that occurrence.
+    const occurrenceDateSet = new Set(occurrences.map(ev => ev.date));
+
     const inView = occurrences.filter(ev => {
       const start = new Date(ev.date + 'T00:00:00');
-      const end = ev.endDate ? new Date(ev.endDate + 'T00:00:00') : start;
+      const isStaleEnd = ev.endDate && occurrenceDateSet.has(ev.endDate) && ev.endDate !== ev.date;
+      const end = (!isStaleEnd && ev.endDate) ? new Date(ev.endDate + 'T00:00:00') : start;
       return end >= visibleStart && start <= visibleEnd;
     });
 
     for (const ev of inView) {
       const start = new Date(ev.date + 'T00:00:00');
-      const end = ev.endDate ? new Date(ev.endDate + 'T00:00:00') : start;
+      const isStaleEnd = ev.endDate && occurrenceDateSet.has(ev.endDate) && ev.endDate !== ev.date;
+      const end = (!isStaleEnd && ev.endDate) ? new Date(ev.endDate + 'T00:00:00') : start;
       const loopStart = start < visibleStart ? new Date(visibleStart) : new Date(start);
       const loopEnd = end > visibleEnd ? new Date(visibleEnd) : new Date(end);
 

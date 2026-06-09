@@ -19,6 +19,14 @@ const sanitizeData = (data: any) => {
     return cleaned;
 };
 
+export type DeleteEventMode = 'single' | 'following' | 'series';
+
+export interface DeleteEventOptions {
+  mode?: DeleteEventMode;
+  recurrenceGroupId?: string;
+  fromDate?: string;
+}
+
 export const fetchEvents = async (): Promise<EventType[]> => {
   try {
     const data = await getDocs(eventsCollectionRef);
@@ -60,12 +68,15 @@ export const fetchUserRequests = async (userId: string): Promise<EventType[]> =>
 export const addEvent = async (eventData: Omit<EventType, 'id'>, recurrenceDates?: string[]): Promise<EventType> => {
     try {
         const cleanedData = sanitizeData(eventData);
-        // Default status is 'published' only if createdByAdmin is true AND no status is provided.
-        // If it's a user request, status will be 'pending' as passed from component.
+        const normalizedStatus =
+            cleanedData.status ||
+            (cleanedData.createdByAdmin ? 'published' : 'pending');
+
         const finalData = {
             ...cleanedData,
-            // Force 'pending' for non-admin submissions, unless it's a draft
-            status: cleanedData.status === 'draft' ? 'draft' : (cleanedData.createdByAdmin ? (cleanedData.status || 'published') : 'pending'),
+            // Preserve the caller-selected workflow status instead of forcing
+            // recurring facilitator events back to pending.
+            status: normalizedStatus,
             submittedAt: Date.now() // Add creation timestamp
         };
         
@@ -73,21 +84,45 @@ export const addEvent = async (eventData: Omit<EventType, 'id'>, recurrenceDates
         if (recurrenceDates && recurrenceDates.length > 1) {
             const batch = writeBatch(db);
             const groupId = crypto.randomUUID();
+            const recurrenceRule = finalData.recurrenceRule
+                ? {
+                    ...finalData.recurrenceRule,
+                    originalDate: finalData.recurrenceRule.originalDate || finalData.date,
+                  }
+                : null;
             
             // Create first event
             const mainDocRef = doc(collection(db, 'events'));
-            const mainEvent = { ...finalData, id: mainDocRef.id, recurrenceGroupId: groupId, isRecurrent: true };
+            const mainEvent = {
+                ...finalData,
+                id: mainDocRef.id,
+                recurrenceGroupId: groupId,
+                seriesId: groupId,
+                isRecurrent: true,
+                ...(recurrenceRule ? { recurrenceRule } : {}),
+            };
             batch.set(mainDocRef, sanitizeData(mainEvent));
 
             // Create future instances
+            const origStart = new Date(finalData.date + 'T00:00:00');
+            const origEnd = finalData.endDate ? new Date(finalData.endDate + 'T00:00:00') : null;
+            const durationMs = origEnd ? origEnd.getTime() - origStart.getTime() : 0;
+
             recurrenceDates.slice(1).forEach(dateStr => {
                 const instanceRef = doc(collection(db, 'events'));
-                const instanceData = { 
-                  ...finalData, 
-                  id: instanceRef.id, 
-                  date: dateStr, 
+                const instanceStart = new Date(dateStr + 'T00:00:00');
+                const instanceEndDate = durationMs > 0
+                    ? new Date(instanceStart.getTime() + durationMs).toISOString().slice(0, 10)
+                    : null;
+                const instanceData = {
+                  ...finalData,
+                  id: instanceRef.id,
+                  date: dateStr,
+                  ...(instanceEndDate ? { endDate: instanceEndDate } : {}),
                   recurrenceGroupId: groupId,
-                  isRecurrent: true 
+                  seriesId: groupId,
+                  isRecurrent: true,
+                  ...(recurrenceRule ? { recurrenceRule } : {}),
                 };
                 batch.set(instanceRef, sanitizeData(instanceData));
             });
@@ -159,8 +194,27 @@ export const updateEventStatus = async (eventId: string, status: EventStatus, re
     }
 };
 
-export const deleteEvent = async (eventId: string): Promise<void> => {
+export const deleteEvent = async (eventId: string, options?: DeleteEventOptions): Promise<void> => {
   try {
+    if (options?.mode === 'series' && options.recurrenceGroupId) {
+      const q = query(
+        eventsCollectionRef,
+        where("recurrenceGroupId", "==", options.recurrenceGroupId)
+      );
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.docs.forEach(d => {
+        batch.delete(d.ref);
+      });
+      await batch.commit();
+      return;
+    }
+
+    if (options?.mode === 'following' && options.recurrenceGroupId && options.fromDate) {
+      await deleteEventSeries(options.recurrenceGroupId, options.fromDate);
+      return;
+    }
+
     const eventDocRef = doc(db, 'events', eventId);
     await deleteDoc(eventDocRef);
   } catch (error) {
@@ -172,14 +226,16 @@ export const deleteEvent = async (eventId: string): Promise<void> => {
 export const deleteEventSeries = async (groupId: string, afterDate: string): Promise<void> => {
   try {
     const q = query(
-      eventsCollectionRef, 
-      where("recurrenceGroupId", "==", groupId),
-      where("date", ">=", afterDate)
+      eventsCollectionRef,
+      where("recurrenceGroupId", "==", groupId)
     );
     const snap = await getDocs(q);
     const batch = writeBatch(db);
     snap.docs.forEach(d => {
-      batch.delete(d.ref);
+      const data = d.data() as EventType;
+      if (data.date >= afterDate) {
+        batch.delete(d.ref);
+      }
     });
     await batch.commit();
   } catch (error) {

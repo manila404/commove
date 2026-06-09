@@ -23,9 +23,9 @@ const popularityScore = (e: DisplayEventType): number =>
   safeNum(e.viewCount)       * 0.1;
 
 const RANK_COLORS = [
-  'from-amber-400 to-orange-500',   // 🥇
-  'from-slate-400 to-slate-500',    // 🥈
-  'from-amber-700 to-amber-800',    // 🥉
+  'from-primary-500 to-primary-600',
+  'from-primary-500 to-primary-600',
+  'from-primary-500 to-primary-600',
 ];
 
 const PopularEvents: React.FC<PopularEventsProps> = ({ events, onEventSelect, onViewAll }) => {

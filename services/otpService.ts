@@ -26,7 +26,7 @@ import { db } from './firebase';
 import { doc, setDoc, getDoc, updateDoc, deleteDoc, increment } from 'firebase/firestore';
 import { sendOTPEmail } from './emailService';
 
-const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes — must match EXPIRY_SECONDS in OTPVerification.tsx
 const MAX_ATTEMPTS  = 5;
 
 export type OTPResult = 'valid' | 'invalid' | 'expired' | 'too_many_attempts' | 'not_found';

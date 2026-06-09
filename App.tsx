@@ -1936,22 +1936,21 @@ const App: React.FC = () => {
         toast.success("Event Updated", { description: `${updatedEvent.name} has been updated.` });
     };
 
-    const handleEventDeleted = async (eventId: string, recurrenceGroupId?: string) => {
+    const handleEventDeleted = async (
+        eventId: string,
+        options?: { recurrenceGroupId?: string; mode?: 'single' | 'following' | 'series'; fromDate?: string }
+    ) => {
         try {
-            if (recurrenceGroupId) {
-                // Batch delete all events in the recurrence group
-                const { collection: firestoreCollection, query: firestoreQuery, where: firestoreWhere, getDocs: firestoreGetDocs, writeBatch: firestoreWriteBatch } = await import('firebase/firestore');
-                const { db } = await import('./services/firebase');
-                const q = firestoreQuery(firestoreCollection(db, 'events'), firestoreWhere('recurrenceGroupId', '==', recurrenceGroupId));
-                const snap = await firestoreGetDocs(q);
-                const batch = firestoreWriteBatch(db);
-                snap.docs.forEach(d => batch.delete(d.ref));
-                await batch.commit();
-                setEvents(prev => prev.filter(e => e.recurrenceGroupId !== recurrenceGroupId));
-            } else {
-                await deleteEvent(eventId);
-                setEvents(prev => prev.filter(e => e.id !== eventId));
-            }
+            await deleteEvent(eventId, options);
+            setEvents(prev => prev.filter(e => {
+                if (options?.mode === 'series' && options.recurrenceGroupId) {
+                    return e.recurrenceGroupId !== options.recurrenceGroupId;
+                }
+                if (options?.mode === 'following' && options.recurrenceGroupId && options.fromDate) {
+                    return !(e.recurrenceGroupId === options.recurrenceGroupId && e.date >= options.fromDate);
+                }
+                return e.id !== eventId;
+            }));
             return true;
         } catch (e) {
             showAlert("Error", "Failed to delete event", "error");

@@ -39,8 +39,9 @@ export interface EventType {
   // Recurrence Fields
   isRecurrent?: boolean;
   recurrenceGroupId?: string;
+  seriesId?: string;
   recurrenceRule?: {
-    frequency: 'weekly' | 'monthly_date' | 'monthly_day';
+    frequency: 'daily' | 'weekly' | 'monthly_date' | 'monthly_day';
     interval: number;
     count: number;
     originalDate: string;
@@ -89,6 +90,7 @@ export interface User {
   email: string;
   isAdmin?: boolean; // Kept for backward compat
   role?: UserRole;   // New role field
+  department?: string; // Department this facilitator belongs to (matches event leadOffice)
   facilitatorRequestStatus?: 'pending' | 'approved' | 'rejected'; // New: Facilitator approval workflow
   facilitatorRejectionReason?: string;
   idUrl?: string;    // New: Government ID for facilitator verification
@@ -98,6 +100,7 @@ export interface User {
   username?: string; // @username
   address?: string;
   contactNumber?: string;
+  department?: string;
   avatarUrl?: string;
   homeLat?: number;
   homeLng?: number;

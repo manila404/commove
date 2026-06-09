@@ -27,7 +27,7 @@ interface CreateEventFormProps {
   onSuccess: (event: EventType) => void;
   eventToEdit?: EventType | null;
   onCancelEdit?: () => void;
-  onDelete?: (eventId: string) => void;
+  onDelete?: (event: EventType) => void;
   currentUser: User;
   isReviewing?: boolean;
 }
@@ -143,7 +143,10 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
   onSuccess, eventToEdit, onCancelEdit, currentUser, isReviewing,
 }) => {
   const { showAlert } = useAlert();
-  const [formData, setFormData] = useState(initialFormData);
+  const [formData, setFormData] = useState(() => ({
+    ...initialFormData,
+    leadOffice: currentUser.department || '',
+  }));
   const [isPublic, setIsPublic] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -197,6 +200,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
   const isAdmin = currentUser.role === 'admin';
   const isFacilitator = currentUser.role === 'facilitator';
+  const canPublishDirectly = isAdmin;
 
   // Populate form when editing
   useEffect(() => {
@@ -372,10 +376,18 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         publishAt: publishTimestamp,
         requestedPublishDate: publishTimestamp ? new Date(publishTimestamp).toISOString() : null,
         creatorUsername: currentUser?.username || undefined,
-        status: (mode === 'draft' ? 'draft' : (isAdmin ? (isScheduled ? 'scheduled' : 'published') : 'pending')) as EventStatus,
+        status: (
+          mode === 'draft'
+            ? 'draft'
+            : isAdmin
+              ? (isScheduled ? 'scheduled' : 'published')
+              : 'pending'
+        ) as EventStatus,
         createdByAdmin: isAdmin,
         createdBy: eventToEdit?.createdBy || currentUser.uid,
         organizer: eventToEdit?.organizer || currentUser.name,
+        leadOffice: formData.leadOffice || currentUser.department || '',
+        recurrenceRule: recurrenceRule ? { ...recurrenceRule, originalDate: formData.date } : undefined,
       };
 
       if (eventToEdit) {
@@ -408,14 +420,14 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
           }
         }
 
-        if (!isAdmin && mode === 'publish') {
+        if (!canPublishDirectly && mode === 'publish') {
           try {
             const admins = await getAdmins();
             admins.forEach(a => createNotification(a.uid, 'event_created', 'Event Update Request', `${currentUser.name} updated an event for review.`, eventToEdit.id));
             // Notify Facilitator
             await createNotification(currentUser.uid, 'event_submitted', 'Event Submitted', 'Your event update has been submitted for review.', eventToEdit.id);
           } catch (e) { console.error(e); }
-        } else if (isAdmin && mode === 'publish') {
+        } else if (canPublishDirectly && mode === 'publish') {
            try {
              const notifTitle = payload.status === 'scheduled' ? 'Event Scheduled' : 'Event Updated';
              const notifMsg = payload.status === 'scheduled'
@@ -428,14 +440,14 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         const dates = recurrenceRule ? generateRecurringDates(formData.date, recurrenceRule) : undefined;
         const newEvent = await addEvent(payload, dates);
         onSuccess(newEvent);
-        if (!isAdmin && mode === 'publish') {
+        if (!canPublishDirectly && mode === 'publish') {
           try {
             const admins = await getAdmins();
             admins.forEach(a => createNotification(a.uid, 'event_created', 'New Event Request', `${currentUser.name} submitted an event for review.`, newEvent.id));
             // Notify Facilitator
             await createNotification(currentUser.uid, 'event_submitted', 'Event Submitted', 'Your event has been submitted for review.', newEvent.id);
           } catch (e) { console.error(e); }
-        } else if (isAdmin && mode === 'publish') {
+        } else if (canPublishDirectly && mode === 'publish') {
            try {
              const notifTitle = payload.status === 'scheduled' ? 'Event Scheduled' : 'Event Published';
              const notifMsg = payload.status === 'scheduled'
