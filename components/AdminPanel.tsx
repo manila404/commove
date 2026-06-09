@@ -6,7 +6,7 @@ import { UserIcon, ShieldCheckIcon, ChevronLeftIcon, CalendarIcon, EnvelopeOpenI
 import CreateEventForm from './CreateEventForm';
 import AdminDashboardTabs from './AdminDashboardTabs';
 import EventModal from './EventModal';
-import { getAllUsers, subscribeToAllUsers, updateUserRole, updateUserData, getEventParticipants, rejectFacilitatorRequest, deleteUser } from '../services/userService';
+import { getAllUsers, subscribeToAllUsers, updateUserRole, updateUserData, subscribeToEventParticipants, rejectFacilitatorRequest, deleteUser } from '../services/userService';
 import { updateEventStatus } from '../services/eventService';
 import { createNotification, notifyEventUpdated, notifyEventCancelled } from '../services/notificationService';
 import Spinner from './Spinner';
@@ -138,6 +138,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const [isParticipantsClosing, setIsParticipantsClosing] = useState(false);
 
     const formTopRef = useRef<HTMLDivElement>(null);
+    const participantsUnsubRef = useRef<(() => void) | null>(null);
+
+    useEffect(() => {
+        participantsUnsubRef.current?.();
+        participantsUnsubRef.current = null;
+        if (!viewingParticipantsEvent) return;
+        setIsLoadingParticipants(true);
+        participantsUnsubRef.current = subscribeToEventParticipants(
+            viewingParticipantsEvent.id,
+            data => {
+                setParticipants(data);
+                setIsLoadingParticipants(false);
+            }
+        );
+        return () => {
+            participantsUnsubRef.current?.();
+            participantsUnsubRef.current = null;
+        };
+    }, [viewingParticipantsEvent?.id]);
 
     const [rejectingEventId, setRejectingEventId] = useState<string | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
@@ -722,17 +741,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     };
 
 
-    const handleViewParticipants = async (event: EventType) => {
+    const handleViewParticipants = (event: EventType) => {
+        setParticipants([]);
         setViewingParticipantsEvent(event);
-        setIsLoadingParticipants(true);
-        try {
-            const data = await getEventParticipants(event.id);
-            setParticipants(data);
-        } catch (e) {
-            showAlert('Error', "Failed to load participants.", 'error');
-        } finally {
-            setIsLoadingParticipants(false);
-        }
     };
 
     const downloadQRCode = (eventForQR?: EventType | null, svgId?: string) => {

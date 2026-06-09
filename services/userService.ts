@@ -459,6 +459,33 @@ export const getEventParticipants = async (eventId: string): Promise<{ user: Use
     }
 };
 
+export const subscribeToEventParticipants = (
+    eventId: string,
+    callback: (participants: { user: User, type: 'interested' | 'checkedIn' }[]) => void
+): (() => void) => {
+    const usersRef = collection(db, usersCollectionRef);
+    return onSnapshot(
+        usersRef,
+        snapshot => {
+            const participants: { user: User, type: 'interested' | 'checkedIn' }[] = [];
+            snapshot.docs.forEach(d => {
+                const userData = d.data() as User;
+                const user = { uid: d.id, ...userData };
+                if (userData.checkedInEventIds?.includes(eventId)) {
+                    participants.push({ user, type: 'checkedIn' });
+                } else if (userData.interestedEventIds?.includes(eventId)) {
+                    participants.push({ user, type: 'interested' });
+                }
+            });
+            callback(participants);
+        },
+        error => {
+            if (error.code === 'permission-denied') return;
+            console.error('Event participants listener error:', error);
+        }
+    );
+};
+
 export const setUserAdminStatus = async (uid: string, isAdmin: boolean): Promise<void> => {
     try {
         const userDocRef = doc(db, usersCollectionRef, uid);
