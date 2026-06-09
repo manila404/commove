@@ -9,7 +9,7 @@ import { useAlert } from '../contexts/AlertContext';
 import { usePermissions } from '../contexts/PermissionContext';
 import { updateUserParticipation } from '../services/userService';
 import { submitRegistration, subscribeToEventDoc, subscribeToRegistrationDoc } from '../services/eventService';
-import { createNotification } from '../services/notificationService';
+import { createNotification, notifyEventRegistrationToDepartment } from '../services/notificationService';
 import type { Registration } from '../types';
 import Spinner from './Spinner';
 import { motion, AnimatePresence } from 'motion/react';
@@ -771,8 +771,18 @@ const EventModal: React.FC<EventModalProps> = ({
       submittedRegRef.current = newReg; // hold until Firestore confirms via subscribeToUserProfile
       showAlert("Registration Submitted", "Your registration is pending approval.", "success");
 
-      // Fire-and-forget — notification failure must never cancel the registration
-      if (event.createdBy) {
+      // Fire-and-forget — notification failure must never cancel the registration.
+      // When a department is assigned (leadOffice set), route the notification
+      // exclusively to that department's facilitators. Only fall back to the
+      // event creator when no department is selected.
+      if (event.leadOffice) {
+        notifyEventRegistrationToDepartment(
+          event.id,
+          event.name,
+          event.leadOffice,
+          currentUser.name
+        ).catch(err => console.warn('[EventModal] Could not notify managing department:', err));
+      } else if (event.createdBy) {
         createNotification(
           event.createdBy,
           'event_registration',

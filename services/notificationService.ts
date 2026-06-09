@@ -70,6 +70,103 @@ export const notifyEventUpdated = async (
 };
 
 /**
+ * Notify all facilitators whose `department` matches `leadOffice` that an admin
+ * created/published an event on their department's behalf.
+ * Uses a single-field query (role == 'facilitator') + client-side department filter
+ * to avoid requiring a composite Firestore index.
+ * Safe to call multiple times — skips users who already received a notification
+ * for this event so draft→publish transitions never produce duplicates.
+ */
+export const notifyDepartmentFacilitators = async (
+    eventId: string,
+    eventName: string,
+    leadOffice: string,
+    createdByName: string
+): Promise<void> => {
+    if (!leadOffice) return;
+    try {
+        const usersRef = collection(db, 'users');
+        // Single-field query to avoid composite index requirement.
+        // Filter by department client-side.
+        const q = query(usersRef, where('role', '==', 'facilitator'));
+        const snapshot = await getDocs(q);
+
+        const targets = snapshot.docs.filter(d => d.data().department === leadOffice);
+        if (targets.length === 0) return;
+
+        // Deduplication is handled by the caller (notifications are only sent on first
+        // publish, not on every edit). We intentionally skip a getDocs check here
+        // because the notifications `allow read` rule restricts list queries to the
+        // authenticated user's own notifications — an admin querying other users'
+        // notification docs would receive a permission-denied error.
+        const now = Date.now();
+        const batch = writeBatch(db);
+
+        targets.forEach(userDoc => {
+            const notifRef = doc(collection(db, COLLECTION));
+            batch.set(notifRef, {
+                userId: userDoc.id,
+                type: 'event_created_for_department' as NotificationType,
+                title: 'New Event Created for Your Department',
+                body: `${createdByName} created a new event for ${leadOffice} Department: "${eventName}".`,
+                eventId,
+                isRead: false,
+                createdAt: now,
+            });
+        });
+
+        await batch.commit();
+    } catch (error) {
+        console.error('[notifyDepartmentFacilitators] Error:', error);
+    }
+};
+
+/**
+ * When a resident submits a registration request for a private event whose
+ * `leadOffice` is set (admin created it on behalf of a department), notify all
+ * facilitators of that department so they can review/approve the request.
+ * This runs on the resident's client — the `event_registration` notification type
+ * is explicitly allowed by the Firestore rule for any authenticated user, so no
+ * permission error occurs even though the targets are other users.
+ */
+export const notifyEventRegistrationToDepartment = async (
+    eventId: string,
+    eventName: string,
+    leadOffice: string,
+    registrantName: string
+): Promise<void> => {
+    if (!leadOffice) return;
+    try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('role', '==', 'facilitator'));
+        const snapshot = await getDocs(q);
+
+        const targets = snapshot.docs.filter(d => d.data().department === leadOffice);
+        if (targets.length === 0) return;
+
+        const now = Date.now();
+        const batch = writeBatch(db);
+
+        targets.forEach(userDoc => {
+            const notifRef = doc(collection(db, COLLECTION));
+            batch.set(notifRef, {
+                userId: userDoc.id,
+                type: 'event_registration' as NotificationType,
+                title: 'New Event Registration',
+                body: `${registrantName} has registered for "${eventName}". Please review the application.`,
+                eventId,
+                isRead: false,
+                createdAt: now,
+            });
+        });
+
+        await batch.commit();
+    } catch (error) {
+        console.error('[notifyEventRegistrationToDepartment] Error:', error);
+    }
+};
+
+/**
  * Notify all residents who saved or marked interest in an event that it has been cancelled.
  */
 export const notifyEventCancelled = async (

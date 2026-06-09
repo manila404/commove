@@ -161,6 +161,7 @@ export type NotificationType =
   | 'event_feedback'     // request for feedback after event ends
   | 'event_updated'      // admin updated an event's schedule/details
   | 'event_cancelled'    // admin cancelled a published event
+  | 'event_created_for_department' // admin created/published an event on behalf of a department
   | 'facilitator_request' // user applied to be a facilitator
   | 'system';        // generic system message
 

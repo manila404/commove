@@ -8,7 +8,7 @@ import type { EventType, User, EventStatus, EventPriority } from '../types';
 import InteractiveMap from './InteractiveMap';
 import { addEvent, updateEvent } from '../services/eventService';
 import { getAdmins } from '../services/userService';
-import { createNotification, notifyEventUpdated } from '../services/notificationService';
+import { createNotification, notifyEventUpdated, notifyDepartmentFacilitators } from '../services/notificationService';
 import { CATEGORIES } from '../constants';
 import { isBase64ImageUrl, resizeImage } from '../services/imageUtils';
 import { uploadEventImage } from '../services/sanityService';
@@ -451,6 +451,14 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                : 'Your event has been updated successfully.';
              await createNotification(currentUser.uid, 'event_created', notifTitle, notifMsg, eventToEdit.id);
            } catch (e) { console.error(e); }
+
+           // Notify department when a draft/pending event is published for the first time
+           const wasUnpublished = eventToEdit.status === 'draft' || eventToEdit.status === 'pending';
+           const isNowPublished = payload.status === 'published' || payload.status === 'scheduled';
+           if (wasUnpublished && isNowPublished && payload.leadOffice && payload.leadOffice !== (currentUser.department || '')) {
+             notifyDepartmentFacilitators(eventToEdit.id, payload.name || eventToEdit.name, payload.leadOffice, currentUser.name)
+               .catch(e => console.warn('[EditEvent] Failed to notify department:', e));
+           }
          }
       } else {
         const dates = recurrenceRule ? generateRecurringDates(formData.date, recurrenceRule) : undefined;
@@ -471,6 +479,12 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                : 'Your event has been published and is now visible to users.';
              await createNotification(currentUser.uid, 'event_created', notifTitle, notifMsg, newEvent.id);
            } catch (e) { console.error(e); }
+
+           // Notify the target department when the admin publishes on their behalf
+           if (payload.leadOffice && payload.leadOffice !== (currentUser.department || '')) {
+             notifyDepartmentFacilitators(newEvent.id, newEvent.name, payload.leadOffice, currentUser.name)
+               .catch(e => console.warn('[CreateEvent] Failed to notify department:', e));
+           }
          }
       }
 

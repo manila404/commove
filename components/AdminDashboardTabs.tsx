@@ -232,7 +232,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     const calendarEvents = useMemo(() => {
         if (!currentUser) return allEvents;
         if (currentUser.role === 'facilitator') {
-            return allEvents.filter(event => event.createdBy === currentUser.uid);
+            return allEvents.filter(event =>
+                event.createdBy === currentUser.uid ||
+                (currentUser.department && event.leadOffice === currentUser.department)
+            );
         }
         return allEvents;
     }, [allEvents, currentUser]);
@@ -1862,7 +1865,10 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 {/* My Private Events — Creator Management Panel */}
                 {eventVisibilityFilter === 'private' && currentUser && onManageRegistrations && (() => {
                     const myPrivateEvents = events.filter(e =>
-                        e.isPrivate && e.createdBy === currentUser.uid
+                        e.isPrivate && (
+                            e.createdBy === currentUser.uid ||
+                            (currentUser.department && e.leadOffice === currentUser.department)
+                        )
                     );
                     if (myPrivateEvents.length === 0) return null;
                     return (

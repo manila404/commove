@@ -2671,7 +2671,10 @@ const App: React.FC = () => {
                                             const visible = events.filter(e => {
                                                 if (isStaff) {
                                                     if (currentUser?.role === 'admin') return true;
-                                                    if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
+                                                    if (currentUser?.role === 'facilitator') return (
+                                                        e.createdBy === currentUser.uid ||
+                                                        (currentUser.department && e.leadOffice === currentUser.department)
+                                                    );
                                                 }
                                                 const isPublished = e.status === 'published';
                                                 const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
@@ -2699,7 +2702,10 @@ const App: React.FC = () => {
                                         let visible = events.filter(e => {
                                             if (isStaff) {
                                                 if (currentUser?.role === 'admin') return true;
-                                                if (currentUser?.role === 'facilitator') return e.createdBy === currentUser.uid;
+                                                if (currentUser?.role === 'facilitator') return (
+                                                    e.createdBy === currentUser.uid ||
+                                                    (currentUser.department && e.leadOffice === currentUser.department)
+                                                );
                                             }
                                             const isPublished = e.status === 'published';
                                             const isScheduled = e.status === 'scheduled' && e.publishAt && e.publishAt <= Date.now();
