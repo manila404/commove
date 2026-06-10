@@ -4,13 +4,12 @@ import { getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence, 
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBEKNCfxB7-vPjzIDgCLC1xlNXdBbrTNp8",
-  authDomain: "commove-ad367.firebaseapp.com",
-  projectId: "commove-ad367",
-  storageBucket: "commove-ad367.appspot.com",
-  messagingSenderId: "920145717652",
-  appId: "1:920145717652:web:fbd0ecd6f065154f150781",
-  measurementId: "G-TEHJMYVKQP"
+  apiKey: "AIzaSyAW0FmkuGN8qB2FeClympNiK6FrKQixdVU",
+  authDomain: "commove-2a2ab.firebaseapp.com",
+  projectId: "commove-2a2ab",
+  storageBucket: "commove-2a2ab.firebasestorage.app",
+  messagingSenderId: "925656900043",
+  appId: "1:925656900043:web:c4639781f9320d138e164e"
 };
 
 // Guard against duplicate initialization during Vite HMR
