@@ -127,18 +127,60 @@ export function calculateSearchScore(event: EventType, query: string): number {
 export function smartSearchEvents<T extends EventType>(events: T[], query: string): T[] {
   if (!query.trim()) return events;
 
-  // Map each event to its score
+  // Score every event
   const scoredEvents = events.map(event => ({
     event,
-    score: calculateSearchScore(event, query)
+    score: calculateSearchScore(event, query),
   }));
 
-  // Filter out events with score 0
+  // Remove zero-score events and sort best-first
   const filtered = scoredEvents.filter(se => se.score > 0);
-
-  // Sort descending by score
   filtered.sort((a, b) => b.score - a.score);
 
-  // Return just the events
-  return filtered.map(se => se.event);
+  // ── Deduplicate recurring series ──────────────────────────────────────────
+  // All occurrences of the same recurring event share a recurrenceGroupId.
+  // Keep only one occurrence per series: the nearest upcoming date, or the
+  // most recent past date when every occurrence is already in the past.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const groupBest = new Map<string, { event: T; score: number }>();
+  const nonRecurring: Array<{ event: T; score: number }> = [];
+
+  for (const se of filtered) {
+    const gid = se.event.recurrenceGroupId;
+    if (!gid) {
+      nonRecurring.push(se);
+      continue;
+    }
+
+    const existing = groupBest.get(gid);
+    if (!existing) {
+      groupBest.set(gid, se);
+      continue;
+    }
+
+    const newDate = new Date((se.event.date || '') + 'T00:00:00');
+    const exDate = new Date((existing.event.date || '') + 'T00:00:00');
+    const newIsFuture = newDate >= today;
+    const exIsFuture = exDate >= today;
+
+    if (newIsFuture && !exIsFuture) {
+      // Upcoming beats past
+      groupBest.set(gid, se);
+    } else if (newIsFuture && exIsFuture) {
+      // Both upcoming → pick the nearer one
+      if (newDate < exDate) groupBest.set(gid, se);
+    } else if (!newIsFuture && !exIsFuture) {
+      // Both past → pick the more recent one
+      if (newDate > exDate) groupBest.set(gid, se);
+    }
+    // existing is upcoming and new is past → keep existing (no-op)
+  }
+
+  // Re-merge and sort so the final list is still relevance-ordered
+  const deduped = [...nonRecurring, ...Array.from(groupBest.values())];
+  deduped.sort((a, b) => b.score - a.score);
+
+  return deduped.map(se => se.event);
 }

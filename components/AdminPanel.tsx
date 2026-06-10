@@ -6,13 +6,14 @@ import { UserIcon, ShieldCheckIcon, ChevronLeftIcon, CalendarIcon, EnvelopeOpenI
 import CreateEventForm from './CreateEventForm';
 import AdminDashboardTabs from './AdminDashboardTabs';
 import EventModal from './EventModal';
-import { getAllUsers, subscribeToAllUsers, updateUserRole, getEventParticipants, rejectFacilitatorRequest, deleteUser } from '../services/userService';
+import { getAllUsers, subscribeToAllUsers, updateUserRole, updateUserData, subscribeToEventParticipants, rejectFacilitatorRequest, approveFacilitatorRequest, deleteUser } from '../services/userService';
 import { updateEventStatus } from '../services/eventService';
 import { createNotification, notifyEventUpdated, notifyEventCancelled } from '../services/notificationService';
 import Spinner from './Spinner';
 import { useAlert } from '../contexts/AlertContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { smartSearchEvents } from '../utils/searchUtils';
+import RecurringDeleteDialog from './RecurringDeleteDialog';
 
 // Local Icons
 const EditIcon = ({ className }: { className?: string }) => (
@@ -75,7 +76,7 @@ interface AdminPanelProps {
     events: EventType[];
     onEventCreated: (event: EventType) => void;
     onEventUpdated: (event: EventType) => void;
-    onEventDeleted: (eventId: string, recurrenceGroupId?: string) => Promise<boolean>;
+    onEventDeleted: (eventId: string, options?: { recurrenceGroupId?: string; mode?: 'single' | 'following' | 'series'; fromDate?: string }) => Promise<boolean>;
     onClose: () => void;
     onManageRegistrations?: (event: EventType) => void;
     externalDashboardTab?: DashboardTab;
@@ -113,6 +114,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const [userError, setUserError] = useState('');
 
     const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<EventType | null>(null);
     // Track where the edit came from to handle "Back" correctly
     const [editSource, setEditSource] = useState<'list' | 'requests'>('list');
 
@@ -136,6 +138,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const [isParticipantsClosing, setIsParticipantsClosing] = useState(false);
 
     const formTopRef = useRef<HTMLDivElement>(null);
+    const participantsUnsubRef = useRef<(() => void) | null>(null);
+
+    useEffect(() => {
+        participantsUnsubRef.current?.();
+        participantsUnsubRef.current = null;
+        if (!viewingParticipantsEvent) return;
+        setIsLoadingParticipants(true);
+        participantsUnsubRef.current = subscribeToEventParticipants(
+            viewingParticipantsEvent.id,
+            data => {
+                setParticipants(data);
+                setIsLoadingParticipants(false);
+            }
+        );
+        return () => {
+            participantsUnsubRef.current?.();
+            participantsUnsubRef.current = null;
+        };
+    }, [viewingParticipantsEvent?.id]);
 
     const [rejectingEventId, setRejectingEventId] = useState<string | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
@@ -415,8 +436,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     const handleConfirmApproveFacilitator = async () => {
         if (!pendingApproveUserId) return;
         setIsSubmittingFacilitatorAction(true);
+        const originalUsers = [...users];
+        const updatedUsers = users.map(u =>
+            u.uid === pendingApproveUserId 
+                ? { 
+                    ...u, 
+                    role: 'facilitator' as UserRole, 
+                    isAdmin: true, 
+                    facilitatorRequestStatus: 'approved' as const,
+                    approvalStatus: 'approved',
+                    approvedAt: Date.now(),
+                    approvedBy: currentUser.uid
+                  } 
+                : u
+        );
+        setUsers(updatedUsers);
         try {
-            await handleRoleUpdate(pendingApproveUserId, 'facilitator');
+            await approveFacilitatorRequest(pendingApproveUserId, currentUser.uid);
             await createNotification(
                 pendingApproveUserId,
                 'system',
@@ -427,7 +463,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             showAlert('Approved', "User is now a facilitator.", 'success');
             setPendingApproveUserId(null);
         } catch (e) {
-            showAlert('Error', 'Failed to approve facilitator request.', 'error');
+            console.error("Error approving facilitator:", e);
+            setUsers(originalUsers);
+            showAlert('Error', 'Failed to approve facilitator request. Please try again.', 'error');
         } finally {
             setIsSubmittingFacilitatorAction(false);
         }
@@ -534,15 +572,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
         try { window.history.pushState({ view: 'admin', tab: 'dashboard' }, ''); } catch {}
     };
 
-    const handleDeleteEvent = async (eventId: string, recurrenceGroupId?: string) => {
+    const handleDeleteSuccess = (deletedEventId: string) => {
+        if (editingEvent?.id === deletedEventId) {
+            setEditingEvent(null);
+            setRequestedDashboardTab('events');
+            setActiveTab('dashboard');
+            try { window.history.pushState({ view: 'admin', tab: 'dashboard' }, ''); } catch {}
+        }
+    };
+
+    const handleDeleteEvent = async (event: EventType) => {
+        if (event.recurrenceGroupId) {
+            setDeleteTarget(event);
+            return;
+        }
+
         showConfirm('Delete Event?', 'This action cannot be undone.', async () => {
-            const success = await onEventDeleted(eventId, recurrenceGroupId);
-            if (success && editingEvent?.id === eventId) {
-                setEditingEvent(null);
-                setRequestedDashboardTab('events');
-                setActiveTab('dashboard');
-                try { window.history.pushState({ view: 'admin', tab: 'dashboard' }, ''); } catch {}
-            }
+            const success = await onEventDeleted(event.id);
+            if (success) handleDeleteSuccess(event.id);
         }, 'error');
     };
 
@@ -711,17 +758,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
     };
 
 
-    const handleViewParticipants = async (event: EventType) => {
+    const handleViewParticipants = (event: EventType) => {
+        setParticipants([]);
         setViewingParticipantsEvent(event);
-        setIsLoadingParticipants(true);
-        try {
-            const data = await getEventParticipants(event.id);
-            setParticipants(data);
-        } catch (e) {
-            showAlert('Error', "Failed to load participants.", 'error');
-        } finally {
-            setIsLoadingParticipants(false);
-        }
     };
 
     const downloadQRCode = (eventForQR?: EventType | null, svgId?: string) => {
@@ -806,7 +845,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
 
     const accessibleEvents = deduplicateRecurringEvents(events.filter(event => {
         if (currentUser.role === 'facilitator') {
-            return event.createdBy === currentUser.uid;
+            // Own events OR events whose leadOffice matches this facilitator's department
+            return event.createdBy === currentUser.uid
+                || (currentUser.department && event.leadOffice === currentUser.department);
         }
         return true; // Admins see everything
     }));
@@ -980,6 +1021,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                 setActiveTab={setDashboardActiveTab}
                 onCancelEvent={(e) => { setCancellingEvent(e); setCancelReason(''); }}
                 onNotifyUpdate={(e) => { setUpdatingEventNotif(e); setUpdateChangeNote(''); }}
+                onUpdateUserDepartment={async (userId, department) => {
+                    await updateUserData(userId, { department } as any);
+                }}
             />
             </div>{/* end p-4 padding wrapper */}
             </div>{/* end overflow-y-auto scroll container */}
@@ -1005,7 +1049,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
                         <div className="min-w-0">
-                            <h2 className="text-lg font-black text-gray-900 dark:text-white">Approve Facilitator?</h2>
+                            <h2 className="text-lg font-black text-gray-900 dark:text-white">Are you sure you want to approve this facilitator request?</h2>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">This will grant facilitator access to this user.</p>
                         </div>
                     </div>
@@ -1047,7 +1091,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                             {isSubmittingFacilitatorAction ? (
                                 <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Approving...</>
                             ) : (
-                                <><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Yes, Approve</>
+                                <><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Confirm Approve</>
                             )}
                         </button>
                     </div>
@@ -1190,6 +1234,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             </div>
             {approveModal}
             {rejectModal}
+            <RecurringDeleteDialog
+                open={!!deleteTarget}
+                event={deleteTarget}
+                onCancel={() => setDeleteTarget(null)}
+                onDeleteSingle={async () => {
+                    if (!deleteTarget) return;
+                    const target = deleteTarget;
+                    setDeleteTarget(null);
+                    const success = await onEventDeleted(target.id, {
+                        mode: 'single',
+                        recurrenceGroupId: target.recurrenceGroupId,
+                        fromDate: target.date,
+                    });
+                    if (success) handleDeleteSuccess(target.id);
+                }}
+                onDeleteFollowing={async () => {
+                    if (!deleteTarget?.recurrenceGroupId) return;
+                    const target = deleteTarget;
+                    setDeleteTarget(null);
+                    const success = await onEventDeleted(target.id, {
+                        mode: 'following',
+                        recurrenceGroupId: target.recurrenceGroupId,
+                        fromDate: target.date,
+                    });
+                    if (success) handleDeleteSuccess(target.id);
+                }}
+            />
             {viewingParticipantsEvent && createPortal(
                 <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', paddingTop: '20px', paddingBottom: '20px', paddingRight: '20px', backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
                     <div className={`bg-white dark:bg-gray-800 w-full max-w-[480px] shadow-2xl flex flex-col ${isParticipantsClosing ? 'animate-slide-out-to-right' : 'animate-slide-in-from-right'}`} style={{ borderRadius: '15px', overflowY: 'auto' }}>

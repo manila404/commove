@@ -1,6 +1,7 @@
 
 export type UserRole = 'admin' | 'facilitator' | 'user';
 export type EventStatus = 'published' | 'pending' | 'reviewed' | 'rejected' | 'scheduled' | 'draft' | 'cancelled';
+export type EventPriority = 'normal' | 'high' | 'urgent';
 
 export interface EventType {
   id: string;
@@ -31,7 +32,7 @@ export interface EventType {
   approvedCount?: number; // New: Count of approved participants to avoid querying registrations
   isPrivate?: boolean; // New: Private events require registration and approval
   publishAt?: number | null; // New: Schedule when to be in public
-  priority?: 'urgent' | 'average' | 'less_prio'; // Admin urgency indicator
+  priority?: EventPriority | 'average' | 'less_prio'; // Legacy values kept for compatibility while old records are normalized in the UI
   requestedPublishDate?: string | null; // Facilitator's requested specific timeframe form string
   instructions?: string | null; // Optional attendee guidance/instructions shown in event detail
   timezone?: string; // New field for regional time tracking
@@ -39,8 +40,9 @@ export interface EventType {
   // Recurrence Fields
   isRecurrent?: boolean;
   recurrenceGroupId?: string;
+  seriesId?: string;
   recurrenceRule?: {
-    frequency: 'weekly' | 'monthly_date' | 'monthly_day';
+    frequency: 'daily' | 'weekly' | 'monthly_date' | 'monthly_day';
     interval: number;
     count: number;
     originalDate: string;
@@ -61,6 +63,7 @@ export interface EventType {
   agencyDocumentsUrl?: string;
   noPendingCaseUrl?: string;
   creatorUsername?: string; // Cache creator's username for branding
+  leadOffice?: string; // Originating department that passed the event to CICRD
 
   // Phase 1 Analytics counters — may be absent on old documents; treat missing as 0
   viewCount?: number;
@@ -88,6 +91,7 @@ export interface User {
   email: string;
   isAdmin?: boolean; // Kept for backward compat
   role?: UserRole;   // New role field
+  department?: string; // Department this facilitator belongs to (matches event leadOffice)
   facilitatorRequestStatus?: 'pending' | 'approved' | 'rejected'; // New: Facilitator approval workflow
   facilitatorRejectionReason?: string;
   idUrl?: string;    // New: Government ID for facilitator verification
@@ -157,6 +161,7 @@ export type NotificationType =
   | 'event_feedback'     // request for feedback after event ends
   | 'event_updated'      // admin updated an event's schedule/details
   | 'event_cancelled'    // admin cancelled a published event
+  | 'event_created_for_department' // admin created/published an event on behalf of a department
   | 'facilitator_request' // user applied to be a facilitator
   | 'system';        // generic system message
 

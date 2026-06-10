@@ -28,6 +28,45 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* ── Global scrollbar styling (light + dark) ── */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+}
+.dark *,
+:where(.dark, .dark *) {
+  scrollbar-color: rgba(55, 65, 81, 0.6) transparent;
+}
+
+/* WebKit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.6);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Dark mode scrollbar overrides */
+:where(.dark, .dark *)::-webkit-scrollbar-thumb {
+  background: rgba(55, 65, 81, 0.6);
+}
+:where(.dark, .dark *)::-webkit-scrollbar-thumb:hover {
+  background: rgba(75, 85, 99, 0.8);
+}
+
 .custom-div-icon {
   background: transparent;
   border: none;

@@ -1,130 +1,23 @@
-
 import React, { useMemo } from 'react';
 import type { EventType } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon } from '../constants';
 import { getCategoryStyle } from '../utils/categoryStyles';
+import { buildDayMap, toYMD } from '../utils/calendarUtils';
 
 interface CalendarViewProps {
   events: EventType[];
   onDateSelect: (date: Date) => void;
   currentMonth: Date;
   setCurrentMonth: (date: Date) => void;
+  getEventIndicator?: (event: EventType) => { label: string; className: string } | null;
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Return "YYYY-MM-DD" for a Date object without timezone shift */
-const toYMD = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-/**
- * Build the set of calendar events that should appear on each visible day.
- *
- * Rules
- * ─────
- * 1. Multi-day events  → appear on every day from `date` through `endDate`.
- * 2. Recurring events  → for each recurrenceGroupId, only ONE occurrence is
- *    shown per calendar month:
- *      • the occurrence whose `date` falls inside the visible month, OR
- *      • if none exist in the visible month, nothing is shown
- *    This avoids flooding the calendar with all future weekly/monthly copies.
- * 3. Non-recurring, single-day events → appear only on their `date`.
- */
-function buildDayMap(
-  events: EventType[],
-  visibleStart: Date,
-  visibleEnd: Date
-): Map<string, { event: EventType; label?: string }[]> {
-  const map = new Map<string, { event: EventType; label?: string }[]>();
-
-  const addToDay = (ymd: string, event: EventType, label?: string) => {
-    if (!map.has(ymd)) map.set(ymd, []);
-    map.get(ymd)!.push({ event, label });
-  };
-
-  // ── Step 1: Separate recurring from non-recurring ──
-  const recurringGroups = new Map<string, EventType[]>();
-  const nonRecurring: EventType[] = [];
-
-  for (const ev of events) {
-    if (ev.recurrenceGroupId) {
-      if (!recurringGroups.has(ev.recurrenceGroupId)) {
-        recurringGroups.set(ev.recurrenceGroupId, []);
-      }
-      recurringGroups.get(ev.recurrenceGroupId)!.push(ev);
-    } else {
-      nonRecurring.push(ev);
-    }
-  }
-
-  // ── Step 2: Non-recurring events ──
-  for (const ev of nonRecurring) {
-    const start = new Date(ev.date + 'T00:00:00');
-    const end = ev.endDate ? new Date(ev.endDate + 'T00:00:00') : start;
-
-    // Clamp to visible range
-    const loopStart = start < visibleStart ? new Date(visibleStart) : new Date(start);
-    const loopEnd = end > visibleEnd ? new Date(visibleEnd) : new Date(end);
-
-    // Multi-day: span all days
-    const cur = new Date(loopStart);
-    while (cur <= loopEnd) {
-      const ymd = toYMD(cur);
-      const isSpan = ev.endDate && ev.date !== ev.endDate;
-      addToDay(ymd, ev, isSpan ? 'multi-day' : undefined);
-      cur.setDate(cur.getDate() + 1);
-    }
-  }
-
-  // ── Step 3: Recurring events — show all occurrences ──
-  for (const [, occurrences] of recurringGroups) {
-    if (occurrences.length === 0) continue;
-
-    const freq = occurrences[0].recurrenceRule?.frequency;
-    const label =
-      freq === 'weekly' ? '↻ Weekly'
-      : freq === 'monthly_date' || freq === 'monthly_day' ? '↻ Monthly'
-      : '↻ Recurring';
-
-    // Find occurrences that fall inside or overlap the visible grid range
-    const inView = occurrences.filter(ev => {
-      const start = new Date(ev.date + 'T00:00:00');
-      const end = ev.endDate ? new Date(ev.endDate + 'T00:00:00') : start;
-      return end >= visibleStart && start <= visibleEnd;
-    });
-
-    for (const ev of inView) {
-      const start = new Date(ev.date + 'T00:00:00');
-      const end = ev.endDate ? new Date(ev.endDate + 'T00:00:00') : start;
-
-      // Clamp to visible range
-      const loopStart = start < visibleStart ? new Date(visibleStart) : new Date(start);
-      const loopEnd = end > visibleEnd ? new Date(visibleEnd) : new Date(end);
-
-      // Span all days of the occurrence
-      const cur = new Date(loopStart);
-      while (cur <= loopEnd) {
-        const ymd = toYMD(cur);
-        addToDay(ymd, ev, label);
-        cur.setDate(cur.getDate() + 1);
-      }
-    }
-  }
-
-  return map;
-}
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 const CalendarView: React.FC<CalendarViewProps> = ({
   events,
   onDateSelect,
   currentMonth,
   setCurrentMonth,
+  getEventIndicator,
 }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -140,7 +33,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   const goToToday = () => setCurrentMonth(new Date());
 
-  // Visible grid bounds (Sun before month-start … Sat after month-end)
   const { gridStart, gridEnd } = useMemo(() => {
     const monthStart = new Date(
       currentMonth.getFullYear(),
@@ -161,7 +53,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     return { gridStart: gs, gridEnd: ge };
   }, [currentMonth]);
 
-  // Pre-compute the event map for the visible grid
   const dayMap = useMemo(
     () => buildDayMap(events, gridStart, gridEnd),
     [events, gridStart, gridEnd]
@@ -249,7 +140,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               .join(' ')}
             onClick={() => onDateSelect(cloneDay)}
           >
-            {/* Date number */}
             <div className="flex justify-end p-1">
               <span
                 className={[
@@ -257,8 +147,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                   isToday
                     ? 'text-white shadow-md'
                     : isPastDay && isCurrentMonth
-                    ? 'text-gray-400 dark:text-gray-500'
-                    : 'text-gray-700 dark:text-gray-300 group-hover:bg-gray-200 dark:group-hover:bg-gray-600',
+                      ? 'text-gray-400 dark:text-gray-500'
+                      : 'text-gray-700 dark:text-gray-300 group-hover:bg-gray-200 dark:group-hover:bg-gray-600',
                   !isCurrentMonth ? 'opacity-50' : '',
                 ]
                   .filter(Boolean)
@@ -269,19 +159,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               </span>
             </div>
 
-            {/* Event pills */}
             <div className="flex-1 flex flex-col gap-1 overflow-hidden">
               {dayEntries.slice(0, 3).map(({ event, label }) => {
                 const categories = Array.isArray(event.category)
                   ? event.category
                   : [event.category];
-                // Build display text: prepend label if recurring/multi-day
+                const indicator = getEventIndicator?.(event) ?? null;
                 const displayText =
                   label === 'multi-day'
                     ? event.name
                     : label
-                    ? `${label} · ${event.name}`
-                    : event.name;
+                      ? `${label} · ${event.name}`
+                      : event.name;
 
                 const categoryStyle = getCategoryStyle(categories);
 
@@ -292,10 +181,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     className={`text-[9px] md:text-xs px-1 md:px-1.5 py-0.5 rounded truncate font-medium ${
                       isPastDay
                         ? 'bg-gray-200 text-gray-400 dark:bg-gray-750 dark:text-gray-500 line-through opacity-75'
-                        : `bg-gradient-to-br ${categoryStyle.bg} text-white shadow-sm`
+                        : indicator
+                          ? `${indicator.className} shadow-sm border`
+                          : `bg-gradient-to-br ${categoryStyle.bg} text-white shadow-sm`
                     }`}
                   >
-                    {displayText}
+                    {indicator ? `${indicator.label} · ${displayText}` : displayText}
                   </div>
                 );
               })}

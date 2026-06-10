@@ -1,6 +1,6 @@
 
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, query, where, getDoc, setDoc, writeBatch, increment, runTransaction, onSnapshot } from 'firebase/firestore';
-import { db } from './firebase';
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, query, where, getDoc, writeBatch, increment, runTransaction, onSnapshot } from 'firebase/firestore';
+import { db, auth } from './firebase';
 import type { EventType, EventStatus, Registration, RegistrationStatus } from '../types';
 
 const eventsCollectionRef = collection(db, 'events');
@@ -18,6 +18,14 @@ const sanitizeData = (data: any) => {
     });
     return cleaned;
 };
+
+export type DeleteEventMode = 'single' | 'following' | 'series';
+
+export interface DeleteEventOptions {
+  mode?: DeleteEventMode;
+  recurrenceGroupId?: string;
+  fromDate?: string;
+}
 
 export const fetchEvents = async (): Promise<EventType[]> => {
   try {
@@ -60,34 +68,65 @@ export const fetchUserRequests = async (userId: string): Promise<EventType[]> =>
 export const addEvent = async (eventData: Omit<EventType, 'id'>, recurrenceDates?: string[]): Promise<EventType> => {
     try {
         const cleanedData = sanitizeData(eventData);
-        // Default status is 'published' only if createdByAdmin is true AND no status is provided.
-        // If it's a user request, status will be 'pending' as passed from component.
+        const normalizedStatus =
+            cleanedData.status ||
+            (cleanedData.createdByAdmin ? 'published' : 'pending');
+
         const finalData = {
             ...cleanedData,
-            // Force 'pending' for non-admin submissions, unless it's a draft
-            status: cleanedData.status === 'draft' ? 'draft' : (cleanedData.createdByAdmin ? (cleanedData.status || 'published') : 'pending'),
-            submittedAt: Date.now() // Add creation timestamp
+            // Preserve the caller-selected workflow status instead of forcing
+            // recurring facilitator events back to pending.
+            status: normalizedStatus,
+            submittedAt: Date.now(),
+            // Ensure approvedCount starts at 0 for private events so slot math
+            // is correct from the first approval without relying on Firestore
+            // increment-from-undefined behavior.
+            ...(cleanedData.isPrivate ? { approvedCount: cleanedData.approvedCount ?? 0 } : {}),
         };
         
         // Handle recurrence
         if (recurrenceDates && recurrenceDates.length > 1) {
             const batch = writeBatch(db);
             const groupId = crypto.randomUUID();
+            const recurrenceRule = finalData.recurrenceRule
+                ? {
+                    ...finalData.recurrenceRule,
+                    originalDate: finalData.recurrenceRule.originalDate || finalData.date,
+                  }
+                : null;
             
             // Create first event
             const mainDocRef = doc(collection(db, 'events'));
-            const mainEvent = { ...finalData, id: mainDocRef.id, recurrenceGroupId: groupId, isRecurrent: true };
+            const mainEvent = {
+                ...finalData,
+                id: mainDocRef.id,
+                recurrenceGroupId: groupId,
+                seriesId: groupId,
+                isRecurrent: true,
+                ...(recurrenceRule ? { recurrenceRule } : {}),
+            };
             batch.set(mainDocRef, sanitizeData(mainEvent));
 
             // Create future instances
+            const origStart = new Date(finalData.date + 'T00:00:00');
+            const origEnd = finalData.endDate ? new Date(finalData.endDate + 'T00:00:00') : null;
+            const durationMs = origEnd ? origEnd.getTime() - origStart.getTime() : 0;
+
             recurrenceDates.slice(1).forEach(dateStr => {
                 const instanceRef = doc(collection(db, 'events'));
-                const instanceData = { 
-                  ...finalData, 
-                  id: instanceRef.id, 
-                  date: dateStr, 
+                const instanceStart = new Date(dateStr + 'T00:00:00');
+                const instanceEndDate = durationMs > 0
+                    ? new Date(instanceStart.getTime() + durationMs).toISOString().slice(0, 10)
+                    : null;
+                const instanceData = {
+                  ...finalData,
+                  id: instanceRef.id,
+                  date: dateStr,
+                  ...(instanceEndDate ? { endDate: instanceEndDate } : {}),
                   recurrenceGroupId: groupId,
-                  isRecurrent: true 
+                  seriesId: groupId,
+                  isRecurrent: true,
+                  ...(recurrenceRule ? { recurrenceRule } : {}),
                 };
                 batch.set(instanceRef, sanitizeData(instanceData));
             });
@@ -159,8 +198,27 @@ export const updateEventStatus = async (eventId: string, status: EventStatus, re
     }
 };
 
-export const deleteEvent = async (eventId: string): Promise<void> => {
+export const deleteEvent = async (eventId: string, options?: DeleteEventOptions): Promise<void> => {
   try {
+    if (options?.mode === 'series' && options.recurrenceGroupId) {
+      const q = query(
+        eventsCollectionRef,
+        where("recurrenceGroupId", "==", options.recurrenceGroupId)
+      );
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.docs.forEach(d => {
+        batch.delete(d.ref);
+      });
+      await batch.commit();
+      return;
+    }
+
+    if (options?.mode === 'following' && options.recurrenceGroupId && options.fromDate) {
+      await deleteEventSeries(options.recurrenceGroupId, options.fromDate);
+      return;
+    }
+
     const eventDocRef = doc(db, 'events', eventId);
     await deleteDoc(eventDocRef);
   } catch (error) {
@@ -172,14 +230,16 @@ export const deleteEvent = async (eventId: string): Promise<void> => {
 export const deleteEventSeries = async (groupId: string, afterDate: string): Promise<void> => {
   try {
     const q = query(
-      eventsCollectionRef, 
-      where("recurrenceGroupId", "==", groupId),
-      where("date", ">=", afterDate)
+      eventsCollectionRef,
+      where("recurrenceGroupId", "==", groupId)
     );
     const snap = await getDocs(q);
     const batch = writeBatch(db);
     snap.docs.forEach(d => {
-      batch.delete(d.ref);
+      const data = d.data() as EventType;
+      if (data.date >= afterDate) {
+        batch.delete(d.ref);
+      }
     });
     await batch.commit();
   } catch (error) {
@@ -216,33 +276,53 @@ export const updateEventSeries = async (groupId: string, fromDate: string, updat
 };
 
 export const submitRegistration = async (registrationData: Omit<Registration, 'id' | 'submittedAt'>): Promise<Registration> => {
+    const firebaseUid = auth.currentUser?.uid;
+    if (!firebaseUid) {
+        throw new Error('You must be logged in to register for events.');
+    }
+
+    const sanitizedData = sanitizeData({ ...registrationData, userId: firebaseUid });
+    const submittedAt = Date.now();
+
+    // Deterministic doc ID: one registration per resident per event, forever.
+    // Using setDoc instead of addDoc means the same user can never accidentally
+    // create two registration documents for the same event.
+    const registrationId = `${sanitizedData.eventId}_${firebaseUid}`;
+    const registrationDocRef = doc(db, 'registrations', registrationId);
+
+    // Step 1 — idempotent create (critical)
     try {
-        const sanitizedData = sanitizeData(registrationData);
-        const submittedAt = Date.now();
-        const docRef = await addDoc(registrationsCollectionRef, {
-            ...sanitizedData,
-            submittedAt
-        });
-
-        // Write registration status to the user's own document so EventModal
-        // can read it directly from currentUser state without a collection query.
-        const userDocRef = doc(db, 'users', sanitizedData.userId);
-        await updateDoc(userDocRef, {
-            [`registrationStatuses.${sanitizedData.eventId}`]: {
-                status: 'pending',
-                registrationId: docRef.id,
-            }
-        });
-
-        return {
-            id: docRef.id,
-            ...sanitizedData,
-            submittedAt
-        } as Registration;
+        const existing = await getDoc(registrationDocRef);
+        if (existing.exists()) {
+            // Already registered — return the existing record so the caller can
+            // update the UI without creating a duplicate document.
+            return { id: existing.id, ...existing.data() } as Registration;
+        }
+        await setDoc(registrationDocRef, { ...sanitizedData, submittedAt });
     } catch (error) {
-        console.error("Error submitting registration:", error);
+        console.error('Error submitting registration:', error);
         throw error;
     }
+
+    // Step 2 — cache status on user doc for instant UI updates (best-effort).
+    // IMPORTANT: data must use a nested object, NOT a dotted string key.
+    // setDoc does not interpret dotted keys as field paths (only updateDoc does);
+    // using a dotted key causes a "field in mask but missing from data" SDK error.
+    try {
+        const userDocRef = doc(db, 'users', firebaseUid);
+        await setDoc(userDocRef, {
+            registrationStatuses: {
+                [sanitizedData.eventId]: {
+                    status: 'pending',
+                    registrationId,
+                },
+            }
+        }, { mergeFields: [`registrationStatuses.${sanitizedData.eventId}`] });
+    } catch {
+        // Best-effort cache update — registration is already committed above.
+    }
+
+    return { id: registrationId, ...sanitizedData, submittedAt } as Registration;
 };
 
 export const fetchRegistrationsForEvent = async (eventId: string): Promise<Registration[]> => {
@@ -269,6 +349,28 @@ export const subscribeToEventDoc = (eventId: string, callback: (event: EventType
         }
     }, (error) => {
         console.error('Error subscribing to event doc:', error);
+        callback(null);
+    });
+};
+
+// Subscribe to the resident's own registration document using the deterministic ID
+// `${eventId}_${userId}`. Fires immediately with null when the doc doesn't exist,
+// and fires again with Registration data once the resident submits (or the facilitator
+// approves/rejects). This is the primary real-time source for EventModal's userReg state.
+export const subscribeToRegistrationDoc = (
+    eventId: string,
+    userId: string,
+    callback: (reg: Registration | null) => void
+) => {
+    const registrationRef = doc(db, 'registrations', `${eventId}_${userId}`);
+    return onSnapshot(registrationRef, (snap) => {
+        if (snap.exists()) {
+            callback({ id: snap.id, ...snap.data() } as Registration);
+        } else {
+            callback(null);
+        }
+    }, (error) => {
+        console.warn('subscribeToRegistrationDoc error:', error);
         callback(null);
     });
 };
@@ -300,42 +402,53 @@ export const subscribeToEventRegistrations = (eventId: string, callback: (regs: 
 };
 
 export const updateRegistrationStatus = async (registrationId: string, status: RegistrationStatus): Promise<void> => {
+    const regDocRef = doc(db, 'registrations', registrationId);
+    let cachedEventId = '';
+    let cachedUserId = '';
+
     try {
-        const regDocRef = doc(db, 'registrations', registrationId);
-        
         await runTransaction(db, async (transaction) => {
             const regDoc = await transaction.get(regDocRef);
-            if (!regDoc.exists()) {
-                throw new Error("Registration does not exist!");
-            }
-            
-            const data = regDoc.data() as Registration;
-            const previousStatus = data.status;
-            
-            if (previousStatus === status) return;
+            if (!regDoc.exists()) throw new Error("Registration does not exist!");
 
-            // Update registration document
+            const data = regDoc.data() as Registration;
+            if (data.status === status) return;
+
+            cachedEventId = data.eventId;
+            cachedUserId = data.userId;
+
             transaction.update(regDocRef, { status });
 
-            // Keep approvedCount on the event document in sync
-            if (status === 'approved' || previousStatus === 'approved') {
+            if (status === 'approved' || data.status === 'approved') {
                 const eventDocRef = doc(db, 'events', data.eventId);
-                const incrementAmount = status === 'approved' ? 1 : -1;
-                transaction.update(eventDocRef, { approvedCount: increment(incrementAmount) });
+                transaction.update(eventDocRef, { approvedCount: increment(status === 'approved' ? 1 : -1) });
             }
-
-            // Keep registrationStatuses on the user document in sync
-            const userDocRef = doc(db, 'users', data.userId);
-            transaction.update(userDocRef, {
-                [`registrationStatuses.${data.eventId}`]: {
-                    status,
-                    registrationId,
-                }
-            });
+            // User-doc cache is updated OUTSIDE the transaction (see below) to avoid the
+            // "allow create: isOwner" block when the resident's user doc doesn't yet exist.
         });
     } catch (error) {
         console.error("Error updating registration status:", error);
         throw error;
+    }
+
+    // Best-effort: mirror the new status on the resident's user doc so
+    // subscribeToUserProfile reflects it immediately. updateDoc is used (not
+    // setDoc+mergeFields) because we only write when the doc already exists —
+    // creation is the resident's own responsibility. updateDoc with a dotted-key
+    // correctly targets the nested registrationStatuses.<eventId> field path.
+    if (cachedEventId && cachedUserId) {
+        try {
+            const userDocRef = doc(db, 'users', cachedUserId);
+            const userSnap = await getDoc(userDocRef);
+            if (userSnap.exists()) {
+                await updateDoc(userDocRef, {
+                    [`registrationStatuses.${cachedEventId}`]: { status, registrationId },
+                });
+            }
+        } catch {
+            // Non-critical — EventModal's onSnapshot subscription to the registration
+            // doc provides real-time status updates even if this cache write fails.
+        }
     }
 };
 

@@ -490,6 +490,10 @@ const NotificationList: React.FC<NotificationListProps> = ({ userId, events, onE
         if (!notif.id.startsWith('pending-facilitator-') && !notif.isRead) {
             await markNotificationRead(notif.id);
         }
+        if (notif.type === 'facilitator_request' && isAdmin && onNavigateToAdmin) {
+            onNavigateToAdmin(undefined, 'users', notif.eventId);
+            return;
+        }
         setExpandedId(prev => prev === notif.id ? null : notif.id);
     };
 

@@ -8,12 +8,37 @@ import InteractiveMap from './InteractiveMap';
 import { useAlert } from '../contexts/AlertContext';
 import { usePermissions } from '../contexts/PermissionContext';
 import { updateUserParticipation } from '../services/userService';
-import { submitRegistration, subscribeToEventDoc } from '../services/eventService';
-import { createNotification } from '../services/notificationService';
+import { submitRegistration, subscribeToEventDoc, subscribeToRegistrationDoc } from '../services/eventService';
+import { createNotification, notifyEventRegistrationToDepartment } from '../services/notificationService';
 import type { Registration } from '../types';
 import Spinner from './Spinner';
 import { motion, AnimatePresence } from 'motion/react';
 import CustomTimePicker from './CustomTimePicker';
+
+const getPriorityDisplay = (priority?: EventType['priority']) => {
+  if (priority === 'urgent') {
+    return {
+      label: 'Urgent',
+      className: 'bg-red-50 dark:bg-red-900/30 border-red-100 text-red-700',
+    };
+  }
+
+  if (priority === 'high' || priority === 'average') {
+    return {
+      label: 'High',
+      className: 'bg-orange-50 dark:bg-orange-900/30 border-orange-100 text-orange-700',
+    };
+  }
+
+  if (priority === 'normal' || priority === 'less_prio') {
+    return {
+      label: 'Normal',
+      className: 'bg-blue-50 dark:bg-blue-900/30 border-blue-100 text-blue-700',
+    };
+  }
+
+  return null;
+};
 
 interface EventModalProps {
   event: EventType;
@@ -64,6 +89,10 @@ const EventModal: React.FC<EventModalProps> = ({
   });
   const [userReg, setUserReg] = useState<Registration | null>(null);
   const [isLoadingReg, setIsLoadingReg] = useState(false);
+  // Holds the registration object set by a successful submit until Firestore confirms
+  // it back via subscribeToUserProfile. Prevents the useEffect below from clearing
+  // the optimistic "pending" state while the user doc cache write is in-flight.
+  const submittedRegRef = React.useRef<Registration | null>(null);
   const [liveApprovedCount, setLiveApprovedCount] = useState<number>(event.approvedCount ?? 0);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -90,45 +119,59 @@ const EventModal: React.FC<EventModalProps> = ({
     }
   }, [event.id, event.isPrivate]);
 
-  // Derive the user's registration status directly from currentUser.registrationStatuses.
-  // This requires NO Firestore collection queries — the data comes from the user document
-  // which is already loaded in app state and updates in real-time via App.tsx's user subscription.
+  // Primary real-time source for the resident's registration status: subscribe directly
+  // to the deterministic registration document `${eventId}_${userId}`.  This fires
+  // whenever the facilitator approves/rejects without needing a user-doc cache write.
+  // Falls back to currentUser.registrationStatuses for legacy random-ID registrations
+  // that existed before deterministic IDs were introduced.
   React.useEffect(() => {
-    if (!event.isPrivate || !currentUser) {
+    if (!event.isPrivate || !currentUser || currentUser.role !== 'user') {
       setUserReg(null);
       return;
     }
 
-    const saved = currentUser.registrationStatuses?.[event.id];
-    if (saved) {
-      // Build a minimal Registration object so the existing JSX works unchanged
-      setUserReg({
-        id: saved.registrationId,
-        eventId: event.id,
-        userId: currentUser.uid,
-        name: currentUser.name || '',
-        email: currentUser.email || '',
-        status: saved.status,
-        submittedAt: 0,
-      });
-    } else {
-      setUserReg(null);
-    }
-  }, [event.id, event.isPrivate, currentUser?.uid, currentUser?.registrationStatuses]);
+    const unsubscribe = subscribeToRegistrationDoc(event.id, currentUser.uid, (reg) => {
+      if (reg) {
+        // Deterministic-ID registration found — most reliable source
+        submittedRegRef.current = null;
+        setUserReg(reg);
+      } else {
+        // No deterministic-ID doc yet. Check user-doc cache for legacy random-ID registrations.
+        const saved = currentUser.registrationStatuses?.[event.id];
+        if (saved) {
+          submittedRegRef.current = null;
+          setUserReg({
+            id: saved.registrationId,
+            eventId: event.id,
+            userId: currentUser.uid,
+            name: currentUser.name || '',
+            email: currentUser.email || '',
+            status: saved.status,
+            submittedAt: 0,
+          });
+        } else if (submittedRegRef.current) {
+          // Keep optimistic state while Firestore is still syncing
+          setUserReg(submittedRegRef.current);
+        } else {
+          setUserReg(null);
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [event.id, event.isPrivate, currentUser?.uid, currentUser?.role, currentUser?.registrationStatuses]);
 
   const isInterested = currentUser?.interestedEventIds?.includes(event.id);
   const isCheckedIn = currentUser?.checkedInEventIds?.includes(event.id);
   const isResident = currentUser?.role === 'user';
   const isFacilitatorOrAdmin = currentUser?.role === 'facilitator' || currentUser?.role === 'admin';
+  const priorityDisplay = getPriorityDisplay(event.priority);
   // True when all slots are filled with APPROVED participants — blocks new registration submissions
   const approvedCount = liveApprovedCount;
   const isEventFull = event.maxParticipants != null && approvedCount >= event.maxParticipants;
 
   const reminderOptions = [
-    { value: '1-minute', label: '1 minute before (Test)' },
-    { value: '30-minutes', label: '30 minutes before' },
     { value: '1-hour', label: '1 hour before' },
-    { value: '2-hours', label: '2 hours before' },
     { value: '1-day', label: '1 day before' },
     { value: 'specific-time', label: 'At a preferred time...' },
   ];
@@ -258,9 +301,11 @@ const EventModal: React.FC<EventModalProps> = ({
           <span className="text-gray-900 dark:text-white font-semibold">om</span>
           <span className="font-normal" style={{ color: '#0052A3' }}>move</span>
         </div>
-        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-          Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.organizer || 'Admin'}</span>
-        </p>
+        {event.leadOffice && (
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.leadOffice} Department</span>
+          </p>
+        )}
       </div>
 
       {/* Header Image Carousel */}
@@ -371,13 +416,10 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 mt-4">
-            {isFacilitatorOrAdmin && event.priority && (
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${event.priority === 'urgent' ? 'bg-red-50 dark:bg-red-900/30 border-red-100 text-red-700' :
-                event.priority === 'average' ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-100 text-orange-700' :
-                  'bg-green-50 dark:bg-green-900/30 border-green-100 text-green-700'
-                }`}>
+            {isFacilitatorOrAdmin && priorityDisplay && (
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${priorityDisplay.className}`}>
                 <p className="text-sm font-bold uppercase tracking-wider">
-                  Priority: {event.priority}
+                  Priority: {priorityDisplay.label}
                 </p>
               </div>
             )}
@@ -447,7 +489,7 @@ const EventModal: React.FC<EventModalProps> = ({
         )}
 
         {/* Participation Block */}
-        <div className="space-y-4">
+        {!isFacilitatorOrAdmin && <div className="space-y-4">
           {isEnded ? (
             <div className="p-6 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
               <div className="w-12 h-12 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
@@ -487,7 +529,7 @@ const EventModal: React.FC<EventModalProps> = ({
                       // User already has a registration — show their status
                       <div className={`p-4 rounded-xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                         userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
-                          'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
+                          'bg-white border-gray-900 text-gray-900 dark:bg-gray-800/40 dark:border-gray-400 dark:text-white'
                         }`}>
                         {userReg.status === 'pending' && (
                           <>
@@ -615,7 +657,7 @@ const EventModal: React.FC<EventModalProps> = ({
               )}
             </>
           )}
-        </div>
+        </div>}
 
         {/* Location */}
         <div className="space-y-4">
@@ -723,17 +765,28 @@ const EventModal: React.FC<EventModalProps> = ({
         gender: currentUser.sex || 'Not specified'
       });
       setUserReg(newReg);
+      submittedRegRef.current = newReg; // hold until Firestore confirms via subscribeToUserProfile
       showAlert("Registration Submitted", "Your registration is pending approval.", "success");
 
-      // Notify the event creator
-      if (event.createdBy) {
-        await createNotification(
+      // Fire-and-forget — notification failure must never cancel the registration.
+      // When a department is assigned (leadOffice set), route the notification
+      // exclusively to that department's facilitators. Only fall back to the
+      // event creator when no department is selected.
+      if (event.leadOffice) {
+        notifyEventRegistrationToDepartment(
+          event.id,
+          event.name,
+          event.leadOffice,
+          currentUser.name
+        ).catch(err => console.warn('[EventModal] Could not notify managing department:', err));
+      } else if (event.createdBy) {
+        createNotification(
           event.createdBy,
           'event_registration',
           'New Event Registration',
           `${currentUser.name} has registered for "${event.name}". Please review the application.`,
           event.id
-        );
+        ).catch(err => console.warn('[EventModal] Could not notify event creator:', err));
       }
     } catch (error: any) {
       showAlert("Registration Failed", error.message || "Could not submit registration.", "error");
@@ -794,9 +847,9 @@ const EventModal: React.FC<EventModalProps> = ({
         <p className="text-gray-500 dark:text-gray-400 leading-relaxed font-medium text-sm md:text-base whitespace-pre-wrap">
           <RichText text={event.description} />
         </p>
-        {event.creatorUsername && (
+        {event.leadOffice && (
           <p className="pt-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-            Lead Office: {event.creatorUsername.replace(/^@/, '')}
+            Lead Office: <span className="font-semibold">{event.leadOffice} Department</span>
           </p>
         )}
       </div>
@@ -815,7 +868,7 @@ const EventModal: React.FC<EventModalProps> = ({
       )}
 
       {/* Participation Block */}
-      <div className="space-y-3">
+      {!isFacilitatorOrAdmin && <div className="space-y-3">
         {isEnded ? (
           <div className="p-5 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
             <div className="w-10 h-10 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
@@ -851,9 +904,9 @@ const EventModal: React.FC<EventModalProps> = ({
                     <div className="flex justify-center p-4"><Spinner /></div>
                   ) : userReg ? (
                     // User already has a registration — show their current status
-                      <div className={`p-3 rounded-xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
+                    <div className={`p-3 rounded-xl text-center shadow-sm border ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                       userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
-                        'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
+                        'bg-white border-gray-900 text-gray-900 dark:bg-gray-800/40 dark:border-gray-400 dark:text-white'
                       }`}>
                       {userReg.status === 'pending' && (
                         <>
@@ -956,7 +1009,7 @@ const EventModal: React.FC<EventModalProps> = ({
             )}
           </>
         )}
-      </div>
+      </div>}
 
       {/* Location at a Glance */}
       <div className="space-y-3">
@@ -1227,7 +1280,7 @@ const EventModal: React.FC<EventModalProps> = ({
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-white" />
           </button>
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate max-w-[55%] text-center">
-            Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.organizer || 'Admin'}</span>
+            {event.leadOffice ? <>Lead Office: <span className="font-semibold text-gray-700 dark:text-gray-200">{event.leadOffice} Department</span></> : event.name}
           </p>
           <button
             onClick={() => onToggleLike(event.id)}
@@ -1357,8 +1410,8 @@ const EventModal: React.FC<EventModalProps> = ({
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Description</h3>
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed text-sm whitespace-pre-wrap"><RichText text={event.description} /></p>
-              {event.creatorUsername && (
-                <p className="pt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Lead Office: {event.creatorUsername.replace(/^@/, '')}</p>
+              {event.leadOffice && (
+                <p className="pt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Lead Office: <span className="font-semibold">{event.leadOffice} Department</span></p>
               )}
             </div>
 
@@ -1378,7 +1431,7 @@ const EventModal: React.FC<EventModalProps> = ({
             )}
 
             {/* Participation Block */}
-            <div className="space-y-3">
+            {currentUser?.role !== 'admin' && <div className="space-y-3">
               {isEnded ? (
                 <div className="p-5 bg-gray-100 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-700 text-center space-y-2">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
@@ -1416,7 +1469,7 @@ const EventModal: React.FC<EventModalProps> = ({
                         ) : userReg ? (
                           <div className={`p-5 rounded-2xl text-center shadow-sm border-2 ${userReg.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300' :
                             userReg.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300' :
-                              'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300'
+                              'bg-white border-gray-900 text-gray-900 dark:bg-gray-800/40 dark:border-gray-400 dark:text-white'
                             }`}>
                             {userReg.status === 'pending' && (
                               <>
@@ -1497,7 +1550,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   )}
                 </>
               )}
-            </div>
+            </div>}
 
             {/* Location */}
             <div className="space-y-3">

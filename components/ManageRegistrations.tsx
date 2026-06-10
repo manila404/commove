@@ -41,15 +41,33 @@ const ManageRegistrations: React.FC<ManageRegistrationsProps> = ({ event, onBack
   const loadRegs = async () => {
     setIsLoading(true);
     const data = await fetchRegistrationsForEvent(event.id);
-    // Sort: pending first, then approved, then rejected
-    data.sort((a, b) => {
+
+    // Deduplicate: keep one registration per user, preferring approved > pending > rejected.
+    // Old random-ID registrations may coexist with newer deterministic-ID ones for the same user.
+    const statusPriority: Record<string, number> = { approved: 0, pending: 1, rejected: 2 };
+    const byUser = new Map<string, Registration>();
+    for (const reg of data) {
+      const existing = byUser.get(reg.userId);
+      if (!existing) {
+        byUser.set(reg.userId, reg);
+      } else {
+        const existP = statusPriority[existing.status] ?? 3;
+        const newP = statusPriority[reg.status] ?? 3;
+        if (newP < existP || (newP === existP && reg.submittedAt > existing.submittedAt)) {
+          byUser.set(reg.userId, reg);
+        }
+      }
+    }
+
+    const deduped = Array.from(byUser.values());
+    deduped.sort((a, b) => {
       const order = { pending: 0, approved: 1, rejected: 2 };
       return order[a.status] - order[b.status];
     });
-    setRegistrations(data);
+    setRegistrations(deduped);
     setIsLoading(false);
     // Sync approvedCount on the event document so old events get the correct count
-    await syncEventApprovedCount(event.id, data);
+    await syncEventApprovedCount(event.id, deduped);
   };
 
   useEffect(() => {
@@ -85,6 +103,23 @@ const ManageRegistrations: React.FC<ManageRegistrationsProps> = ({ event, onBack
           `Your registration for "${event.name}" has been approved. You are now a confirmed participant!`,
           event.id
         );
+
+        // If the event is happening within 48 hours, send an immediate reminder
+        const hoursUntil = (new Date(event.date + 'T00:00:00').getTime() - Date.now()) / 3_600_000;
+        if (hoursUntil >= -2 && hoursUntil <= 48) {
+          const timeLabel = hoursUntil < 0 ? 'is currently happening'
+            : hoursUntil < 2 ? 'is starting very soon'
+            : hoursUntil < 24 ? 'is happening today'
+            : 'is happening tomorrow';
+          createNotification(
+            reg.userId,
+            'reminder',
+            `⏰ Reminder: ${event.name}`,
+            `Your approved event "${event.name}" ${timeLabel}! Venue: ${event.venue}.`,
+            event.id
+          );
+        }
+
         showAlert('Approved', `${reg.name}'s registration has been approved and they have been notified.`, 'success');
       } else {
         await createNotification(

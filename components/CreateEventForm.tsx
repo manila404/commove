@@ -4,11 +4,11 @@ import {
   Globe, Lock, ChevronDown, Clock,
   CheckCircle2, AlertCircle, Eye, Save, Share2, Link as LinkIcon, ExternalLink
 } from 'lucide-react';
-import type { EventType, User, EventStatus } from '../types';
+import type { EventType, User, EventStatus, EventPriority } from '../types';
 import InteractiveMap from './InteractiveMap';
 import { addEvent, updateEvent } from '../services/eventService';
 import { getAdmins } from '../services/userService';
-import { createNotification, notifyEventUpdated } from '../services/notificationService';
+import { createNotification, notifyEventUpdated, notifyDepartmentFacilitators } from '../services/notificationService';
 import { CATEGORIES } from '../constants';
 import { isBase64ImageUrl, resizeImage } from '../services/imageUtils';
 import { uploadEventImage } from '../services/sanityService';
@@ -19,6 +19,7 @@ import { useAlert } from '../contexts/AlertContext';
 import RecurrenceSelector from './RecurrenceSelector';
 import { generateRecurringDates, type RecurrenceRule } from '../services/recurrenceUtils';
 import EventCard from './EventCard';
+import EventModal from './EventModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationDialog from './ConfirmationDialog';
 
@@ -26,7 +27,7 @@ interface CreateEventFormProps {
   onSuccess: (event: EventType) => void;
   eventToEdit?: EventType | null;
   onCancelEdit?: () => void;
-  onDelete?: (eventId: string) => void;
+  onDelete?: (event: EventType) => void;
   currentUser: User;
   isReviewing?: boolean;
 }
@@ -75,16 +76,29 @@ const initialFormData = {
   lng: 120.9442,
   maxParticipants: 100,
   isPrivate: false,
-  priority: 'average' as 'urgent' | 'average' | 'less_prio',
+  priority: 'normal' as EventPriority,
   requestedPublishDate: '',
   instructions: '',
   timezone: 'PHT',
   subtitle: '',
+  leadOffice: '',
 };
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 type FormErrors = Partial<Record<keyof typeof initialFormData | 'time', string>>;
+
+const PRIORITY_OPTIONS: Array<{ value: EventPriority; label: string; description: string }> = [
+  { value: 'normal', label: 'Normal', description: 'Standard timeline for routine event review.' },
+  { value: 'high', label: 'High', description: 'Needs faster admin attention than regular submissions.' },
+  { value: 'urgent', label: 'Urgent', description: 'Requires immediate review because the event is time-sensitive.' },
+];
+
+const normalizePriority = (priority?: EventType['priority']): EventPriority => {
+  if (priority === 'urgent' || priority === 'high' || priority === 'normal') return priority;
+  if (priority === 'average') return 'high';
+  return 'normal';
+};
 
 const validateForm = (formData: typeof initialFormData): FormErrors => {
   const errors: FormErrors = {};
@@ -113,6 +127,9 @@ const validateForm = (formData: typeof initialFormData): FormErrors => {
   }
   if (!formData.venue) errors.venue = 'A venue is required.';
   if (!formData.description.trim()) errors.description = 'A description is required.';
+  if (!PRIORITY_OPTIONS.some(option => option.value === formData.priority)) {
+    errors.priority = 'Select a valid event priority.';
+  }
   return errors;
 };
 
@@ -130,7 +147,7 @@ const FieldError = ({ error }: { error?: string }) =>
 
 const SectionHeader = ({ title }: { title: string }) => (
   <div className="flex items-center gap-2.5 mb-5">
-    <div className="w-0.5 h-5 bg-violet-500 rounded-full" />
+    <div className="w-0.5 h-5 bg-primary-500 rounded-full" />
     <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-widest">{title}</h3>
   </div>
 );
@@ -141,7 +158,10 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
   onSuccess, eventToEdit, onCancelEdit, currentUser, isReviewing,
 }) => {
   const { showAlert } = useAlert();
-  const [formData, setFormData] = useState(initialFormData);
+  const [formData, setFormData] = useState(() => ({
+    ...initialFormData,
+    leadOffice: currentUser.department || '',
+  }));
   const [isPublic, setIsPublic] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -195,6 +215,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
   const isAdmin = currentUser.role === 'admin';
   const isFacilitator = currentUser.role === 'facilitator';
+  const canPublishDirectly = isAdmin;
 
   // Populate form when editing
   useEffect(() => {
@@ -204,6 +225,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
       setFormData({
         ...initialFormData,
         ...eventToEdit,
+        priority: normalizePriority(eventToEdit.priority),
         subtitle: (eventToEdit as any).subtitle || '',
         timezone: eventToEdit.timezone || 'PHT',
         maxParticipants: eventToEdit.maxParticipants || 100,
@@ -370,10 +392,18 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
         publishAt: publishTimestamp,
         requestedPublishDate: publishTimestamp ? new Date(publishTimestamp).toISOString() : null,
         creatorUsername: currentUser?.username || undefined,
-        status: (mode === 'draft' ? 'draft' : (isAdmin ? (isScheduled ? 'scheduled' : 'published') : 'pending')) as EventStatus,
+        status: (
+          mode === 'draft'
+            ? 'draft'
+            : isAdmin
+              ? (isScheduled ? 'scheduled' : 'published')
+              : 'pending'
+        ) as EventStatus,
         createdByAdmin: isAdmin,
         createdBy: eventToEdit?.createdBy || currentUser.uid,
         organizer: eventToEdit?.organizer || currentUser.name,
+        leadOffice: formData.leadOffice || currentUser.department || '',
+        recurrenceRule: recurrenceRule ? { ...recurrenceRule, originalDate: formData.date } : undefined,
       };
 
       if (eventToEdit) {
@@ -406,14 +436,14 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
           }
         }
 
-        if (!isAdmin && mode === 'publish') {
+        if (!canPublishDirectly && mode === 'publish') {
           try {
             const admins = await getAdmins();
             admins.forEach(a => createNotification(a.uid, 'event_created', 'Event Update Request', `${currentUser.name} updated an event for review.`, eventToEdit.id));
             // Notify Facilitator
             await createNotification(currentUser.uid, 'event_submitted', 'Event Submitted', 'Your event update has been submitted for review.', eventToEdit.id);
           } catch (e) { console.error(e); }
-        } else if (isAdmin && mode === 'publish') {
+        } else if (canPublishDirectly && mode === 'publish') {
            try {
              const notifTitle = payload.status === 'scheduled' ? 'Event Scheduled' : 'Event Updated';
              const notifMsg = payload.status === 'scheduled'
@@ -421,19 +451,27 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                : 'Your event has been updated successfully.';
              await createNotification(currentUser.uid, 'event_created', notifTitle, notifMsg, eventToEdit.id);
            } catch (e) { console.error(e); }
+
+           // Notify department when a draft/pending event is published for the first time
+           const wasUnpublished = eventToEdit.status === 'draft' || eventToEdit.status === 'pending';
+           const isNowPublished = payload.status === 'published' || payload.status === 'scheduled';
+           if (wasUnpublished && isNowPublished && payload.leadOffice && payload.leadOffice !== (currentUser.department || '')) {
+             notifyDepartmentFacilitators(eventToEdit.id, payload.name || eventToEdit.name, payload.leadOffice, currentUser.name)
+               .catch(e => console.warn('[EditEvent] Failed to notify department:', e));
+           }
          }
       } else {
         const dates = recurrenceRule ? generateRecurringDates(formData.date, recurrenceRule) : undefined;
         const newEvent = await addEvent(payload, dates);
         onSuccess(newEvent);
-        if (!isAdmin && mode === 'publish') {
+        if (!canPublishDirectly && mode === 'publish') {
           try {
             const admins = await getAdmins();
             admins.forEach(a => createNotification(a.uid, 'event_created', 'New Event Request', `${currentUser.name} submitted an event for review.`, newEvent.id));
             // Notify Facilitator
             await createNotification(currentUser.uid, 'event_submitted', 'Event Submitted', 'Your event has been submitted for review.', newEvent.id);
           } catch (e) { console.error(e); }
-        } else if (isAdmin && mode === 'publish') {
+        } else if (canPublishDirectly && mode === 'publish') {
            try {
              const notifTitle = payload.status === 'scheduled' ? 'Event Scheduled' : 'Event Published';
              const notifMsg = payload.status === 'scheduled'
@@ -441,6 +479,12 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                : 'Your event has been published and is now visible to users.';
              await createNotification(currentUser.uid, 'event_created', notifTitle, notifMsg, newEvent.id);
            } catch (e) { console.error(e); }
+
+           // Notify the target department when the admin publishes on their behalf
+           if (payload.leadOffice && payload.leadOffice !== (currentUser.department || '')) {
+             notifyDepartmentFacilitators(newEvent.id, newEvent.name, payload.leadOffice, currentUser.name)
+               .catch(e => console.warn('[CreateEvent] Failed to notify department:', e));
+           }
          }
       }
 
@@ -497,7 +541,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
   // ── Styles ────────────────────────────────────────────────────────────────
   const card = "bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm p-6";
-  const input = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-xl text-xs md:text-sm font-medium text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/25 focus:border-violet-500 transition-all";
+  const input = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-xl text-xs md:text-sm font-medium text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/25 focus:border-primary-500 transition-all";
   const label = "block text-[11px] md:text-xs font-semibold text-gray-400 dark:text-gray-500 mb-1.5";
 
   return (
@@ -507,7 +551,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
 
         {/* ── Page title ── */}
         <div className="mb-8">
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">
             {eventToEdit ? (isReviewing ? 'Review Event' : 'Edit Event') : 'Create New Event'}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
@@ -542,6 +586,30 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                   <input type="text" name="subtitle" value={formData.subtitle} onChange={handleChange}
                     placeholder="A short tagline or one-liner" className={input} />
                 </div>
+                {isAdmin && (
+                  <div>
+                    <label className={label}>Lead Office <span className="text-gray-300">(optional)</span></label>
+                    <select
+                      name="leadOffice"
+                      value={(formData as any).leadOffice || ''}
+                      onChange={handleChange}
+                      className={input}
+                    >
+                      <option value="">CICRD Department (default)</option>
+                      <option value="CSWD">CSWD Department</option>
+                      <option value="LEDIPO">LEDIPO Department</option>
+                      <option value="SPORTS">SPORTS Department</option>
+                      <option value="Civil Registry">Civil Registry Department</option>
+                      <option value="BDRMMO">BDRMMO Department</option>
+                      <option value="PESO">PESO Department</option>
+                      <option value="BPLO">BPLO Department</option>
+                      <option value="TOURISM">TOURISM Department</option>
+                      <option value="CHO">CHO Department</option>
+                      <option value="CICRD">CICRD Department</option>
+                    </select>
+                    <p className="mt-1 text-[11px] text-gray-400">Select the originating department if this event was submitted by another office.</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -549,11 +617,11 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             <div className={card}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-0.5 h-5 bg-violet-500 rounded-full" />
+                  <div className="w-0.5 h-5 bg-primary-500 rounded-full" />
                   <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-widest">Categories</h3>
                 </div>
                 <button type="button" onClick={() => { setShowCatInput(true); setCatInputVal(''); }}
-                  className="text-[10px] font-black text-violet-600 uppercase tracking-widest hover:bg-violet-50 dark:hover:bg-violet-900/20 px-3 py-1.5 rounded-lg transition-all">
+                  className="text-[10px] font-black text-primary-600 uppercase tracking-widest hover:bg-primary-50 dark:hover:bg-primary-900/20 px-3 py-1.5 rounded-lg transition-all">
                   + Custom
                 </button>
               </div>
@@ -565,7 +633,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                     <input autoFocus type="text" value={catInputVal} onChange={e => setCatInputVal(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleAddCat()}
                       placeholder="Tag name…" className={`${input} flex-1 py-2`} />
-                    <button type="button" onClick={handleAddCat} className="px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold">Add</button>
+                    <button type="button" onClick={handleAddCat} className="px-3 py-2 rounded-xl bg-primary-600 text-white text-xs font-bold">Add</button>
                     <button type="button" onClick={() => setShowCatInput(false)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                       <X className="w-4 h-4 text-gray-400" />
                     </button>
@@ -579,8 +647,8 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                   return (
                     <button key={cat} type="button" onClick={() => handleCatToggle(cat)}
                       className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all
-                        ${sel ? 'bg-violet-600 text-white border-violet-600 shadow-md shadow-violet-600/20'
-                               : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-violet-400'}`}
+                        ${sel ? 'bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-600/20'
+                               : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-primary-400'}`}
                     >{cat}</button>
                   );
                 })}
@@ -600,10 +668,10 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                     onClick={() => { setIsPublic(!opt.priv); setField('isPrivate', opt.priv); }}
                     className={`flex flex-col items-start p-4 rounded-2xl border-2 transition-all text-left
                       ${formData.isPrivate === opt.priv
-                        ? 'border-violet-500 bg-violet-50/50 dark:bg-violet-900/10'
+                        ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-900/10'
                         : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'}`}
                   >
-                    <div className={`w-9 h-9 rounded-xl mb-3 flex items-center justify-center transition-all ${formData.isPrivate === opt.priv ? 'bg-violet-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
+                    <div className={`w-9 h-9 rounded-xl mb-3 flex items-center justify-center transition-all ${formData.isPrivate === opt.priv ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}>
                       <opt.icon className="w-4 h-4" />
                     </div>
                     <span className="text-xs font-bold text-gray-800 dark:text-white">{opt.title}</span>
@@ -629,6 +697,36 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                 rows={7} className={`${input} resize-none pt-3 ${formErrors.description ? 'border-red-400 ring-2 ring-red-400/20' : ''}`}
               />
               <FieldError error={formErrors.description} />
+            </div>
+
+            <div className={card}>
+              <SectionHeader title="Priority" />
+              <div className="grid gap-3">
+                {PRIORITY_OPTIONS.map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setField('priority', option.value)}
+                    className={`text-left rounded-2xl border p-4 transition-all ${
+                      formData.priority === option.value
+                        ? 'border-primary-500 bg-primary-50/60 dark:bg-primary-900/20 shadow-sm'
+                        : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{option.label}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{option.description}</p>
+                      </div>
+                      <span className={`w-4 h-4 rounded-full border-2 ${formData.priority === option.value ? 'border-primary-600 bg-primary-600' : 'border-gray-300 dark:border-gray-600'}`} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-[11px] text-gray-500 dark:text-gray-400">
+                This priority will be submitted to the admin together with your event request.
+              </p>
+              <FieldError error={formErrors.priority} />
             </div>
 
           </div>
@@ -710,7 +808,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                     <p className="text-xs text-gray-500 mt-0.5">Delay when this event appears to residents.</p>
                   </div>
                   <button type="button" onClick={() => setIsScheduled(!isScheduled)}
-                    className={`relative w-12 h-6 shrink-0 rounded-full transition-colors ${isScheduled ? 'bg-violet-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                    className={`relative w-12 h-6 shrink-0 rounded-full transition-colors ${isScheduled ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
                     <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${isScheduled ? 'left-7' : 'left-1'}`} />
                   </button>
                 </div>
@@ -718,14 +816,14 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                 <AnimatePresence>
                   {isScheduled && (
                     <motion.div initial={{ height: 0, opacity: 0, overflow: 'hidden' }} animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } }} exit={{ height: 0, opacity: 0, overflow: 'hidden' }}>
-                      <div className="bg-violet-50/50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-900/30 rounded-xl p-4 mt-2">
+                      <div className="bg-primary-50/50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 rounded-xl p-4 mt-2">
                         <DateTimeRow
                           label="Publish"
                           date={scheduleDate} time={scheduleTime}
                           onDateChange={d => setScheduleDate(d)}
                           onTimeChange={t => setScheduleTime(t)}
                         />
-                        <p className="text-[10px] text-violet-600/80 dark:text-violet-400/80 mt-3 flex items-center gap-1.5 font-medium">
+                        <p className="text-[10px] text-primary-600/80 dark:text-primary-400/80 mt-3 flex items-center gap-1.5 font-medium">
                           <Clock className="w-3 h-3" />
                           Event will be hidden from residents until this scheduled time.
                         </p>
@@ -791,10 +889,10 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                                   setShowAddressDropdown(false);
                                   touch('venue');
                                 }}
-                                className="w-full text-left px-4 py-3 border-b border-gray-50 dark:border-gray-700/50 hover:bg-violet-50 dark:hover:bg-violet-900/10 transition-colors flex items-center gap-3 group"
+                                className="w-full text-left px-4 py-3 border-b border-gray-50 dark:border-gray-700/50 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-colors flex items-center gap-3 group"
                               >
-                                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 flex items-center justify-center shrink-0 transition-colors">
-                                  <MapPin className="w-4 h-4 text-gray-400 group-hover:text-violet-600 transition-colors" />
+                                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30 flex items-center justify-center shrink-0 transition-colors">
+                                  <MapPin className="w-4 h-4 text-gray-400 group-hover:text-primary-600 transition-colors" />
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{loc.name}</p>
@@ -818,14 +916,14 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                     placeholder="e.g. Enter CICRD building, go left at the lobby..." rows={3} className={`${input} resize-none pt-3`} />
                 </div>
                 <button type="button" onClick={() => setLocationOpen(true)}
-                  className="w-full py-3 flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 rounded-xl hover:border-violet-400 dark:hover:border-violet-600 group transition-all">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isGeocodingPin ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/20'}`}>
+                  className="w-full py-3 flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 rounded-xl hover:border-primary-400 dark:hover:border-primary-600 group transition-all">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isGeocodingPin ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/20'}`}>
                     {isGeocodingPin
                       ? <span className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                      : <MapPin className="w-4 h-4 text-gray-400 group-hover:text-violet-600 transition-colors" />}
+                      : <MapPin className="w-4 h-4 text-gray-400 group-hover:text-primary-600 transition-colors" />}
                   </div>
                   <div className="text-left flex-1 pl-1">
-                    <p className="text-sm font-bold text-gray-600 dark:text-gray-300 group-hover:text-violet-600 transition-colors">
+                    <p className="text-sm font-bold text-gray-600 dark:text-gray-300 group-hover:text-primary-600 transition-colors">
                       {isGeocodingPin ? 'Pinning map location…' : 'View Map / Edit Pin'}
                     </p>
                     <p className="text-[11px] text-gray-400 mt-0.5">
@@ -863,11 +961,11 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                         </button>
                       </div>
                     ) : (
-                      <div className="aspect-video flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:border-violet-400 hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-all bg-gray-50/30 dark:bg-gray-800 group">
-                        <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/20 flex items-center justify-center mb-2.5 transition-colors">
-                          <ImageIcon className="w-5 h-5 text-gray-400 group-hover:text-violet-600 transition-colors" />
+                      <div className="aspect-video flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:border-primary-400 hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-all bg-gray-50/30 dark:bg-gray-800 group">
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/20 flex items-center justify-center mb-2.5 transition-colors">
+                          <ImageIcon className="w-5 h-5 text-gray-400 group-hover:text-primary-600 transition-colors" />
                         </div>
-                        <p className="text-xs font-bold text-gray-400 group-hover:text-violet-600 transition-colors">Primary Cover Photo</p>
+                        <p className="text-xs font-bold text-gray-400 group-hover:text-primary-600 transition-colors">Primary Cover Photo</p>
                         <p className="text-[9px] text-gray-300 mt-1 uppercase font-black tracking-widest">Main Thumbnail</p>
                       </div>
                     )}
@@ -891,9 +989,9 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                             </button>
                           </div>
                         ) : (
-                          <div className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:border-violet-400 hover:bg-violet-50/30 dark:hover:bg-violet-900/10 transition-all bg-gray-50/30 dark:bg-gray-800 group">
-                            <Plus className="w-4 h-4 text-gray-400 group-hover:text-violet-600 transition-colors mb-1" />
-                            <span className="text-[10px] font-black text-gray-400 group-hover:text-violet-600 uppercase tracking-tighter transition-colors">Photo {idx + 1}</span>
+                          <div className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:border-primary-400 hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-all bg-gray-50/30 dark:bg-gray-800 group">
+                            <Plus className="w-4 h-4 text-gray-400 group-hover:text-primary-600 transition-colors mb-1" />
+                            <span className="text-[10px] font-black text-gray-400 group-hover:text-primary-600 uppercase tracking-tighter transition-colors">Photo {idx + 1}</span>
                           </div>
                         )}
                       </label>
@@ -912,7 +1010,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                   <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Real-time</span>
                 </div>
               </div>
-              <div className="border-2 border-violet-100 dark:border-violet-900/30 rounded-2xl overflow-hidden scale-[0.92] origin-top">
+              <div className="border-2 border-primary-100 dark:border-primary-900/30 rounded-2xl overflow-hidden scale-[0.92] origin-top">
                 <EventCard event={previewEvent} onSelect={() => {}} onToggleSave={() => {}} />
               </div>
             </div>
@@ -943,7 +1041,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             </button>
           )}
           <button type="button" onClick={() => submitAction('draft')} disabled={isLoading}
-            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold text-violet-600 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 transition-all">
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 transition-all">
             <Save className="w-3 h-3 shrink-0" />
             Draft
           </button>
@@ -954,7 +1052,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
           </button>
           <button type="button" onClick={() => handleSubmitClick('publish')} disabled={isLoading}
             className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold text-white transition-all
-              ${hasErrors ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700 active:scale-95'}`}>
+              ${hasErrors ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700 active:scale-95'}`}>
             {isLoading
               ? <Spinner size="sm" />
               : <>{isScheduled ? <Clock className="w-3 h-3 shrink-0" /> : <CheckCircle2 className="w-3 h-3 shrink-0" />}
@@ -972,7 +1070,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             </button>
           )}
           <button type="button" onClick={() => submitAction('draft')} disabled={isLoading}
-            className="flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/20 dark:hover:bg-violet-900/40 border border-violet-200 dark:border-violet-900/30 transition-all">
+            className="flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40 border border-primary-200 dark:border-primary-900/30 transition-all">
             Save Draft
           </button>
           {hasErrors && (
@@ -986,7 +1084,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
           </button>
           <button type="button" onClick={() => handleSubmitClick('publish')} disabled={isLoading}
             className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all
-              ${hasErrors ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700 active:scale-95'}`}>
+              ${hasErrors ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700 active:scale-95'}`}>
             {isLoading
               ? <><Spinner size="sm" /><span className="ml-1">Processing…</span></>
               : isScheduled ? 'Schedule Event' : (eventToEdit ? 'Save Changes' : (isFacilitator ? 'Submit Event' : 'Publish Event'))
@@ -1008,7 +1106,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             >
               <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><MapPin className="w-5 h-5 text-violet-500 shrink-0" /> Pin Event Location</h3>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><MapPin className="w-5 h-5 text-primary-500 shrink-0" /> Pin Event Location</h3>
                   <p className="text-xs text-gray-500 mt-0.5 max-w-[80%]">
                     Drag the venue pin on the map to accurately pinpoint the location. Form fields will auto-fill based on coordinates.
                   </p>
@@ -1036,7 +1134,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
               </div>
 
               <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 bg-gray-50/50 dark:bg-gray-800/50">
-                 <button onClick={() => setLocationOpen(false)} className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-violet-600/25 transition-all">Confirm Location</button>
+                 <button onClick={() => setLocationOpen(false)} className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-primary-600/25 transition-all">Confirm Location</button>
               </div>
             </motion.div>
           </motion.div>
@@ -1044,26 +1142,23 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
       </AnimatePresence>
 
       {/* ── Preview modal ── */}
-      <AnimatePresence>
-        {showPreview && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[4500] bg-black/75 backdrop-blur-md flex items-center justify-center p-4"
-            onClick={() => setShowPreview(false)}
-          >
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="relative w-full max-w-sm pointer-events-none"
-              onClick={e => e.stopPropagation()}
-            >
-              <button type="button" onClick={() => setShowPreview(false)} className="pointer-events-auto absolute -top-12 right-0 text-white/60 hover:text-white text-sm font-bold flex items-center gap-2 transition-colors">
-                Close <X className="w-4 h-4" />
-              </button>
-              <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
-                <EventCard event={previewEvent} onSelect={() => {}} onToggleSave={() => {}} />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showPreview && (
+        <EventModal
+          event={previewEvent}
+          onClose={() => setShowPreview(false)}
+          isSaved={false}
+          onToggleSave={() => {}}
+          isLiked={false}
+          onToggleLike={() => {}}
+          reminder={undefined}
+          onSetReminder={() => {}}
+          onCancelReminder={() => {}}
+          currentUserLocation={{ lat: 0, lng: 0 }}
+          currentUser={currentUser}
+          isLocationLive={false}
+          onToggleParticipation={() => {}}
+        />
+      )}
 
       {/* ── Success modal ── */}
       <AnimatePresence>
@@ -1093,7 +1188,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                   <button className="flex items-center justify-center gap-2 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-bold text-gray-700 dark:text-gray-200 transition-colors">
                     <LinkIcon className="w-4 h-4" /> Copy Link
                   </button>
-                  <button className="flex items-center justify-center gap-2 p-3 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/20 text-sm font-bold text-violet-700 dark:text-violet-300 transition-colors">
+                  <button className="flex items-center justify-center gap-2 p-3 rounded-xl bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 text-sm font-bold text-primary-700 dark:text-violet-300 transition-colors">
                     <Share2 className="w-4 h-4" /> Share
                   </button>
                 </div>

@@ -136,9 +136,12 @@ const FacilitatorAuthFlow: React.FC<FacilitatorAuthFlowProps> = ({ currentUser, 
                     <div className="w-full">
                         <SignUp 
                             onSwitchToSignIn={() => setStep('login')} 
+                            initialIsFacilitator={true}
                             onAuthSuccess={() => {
+                                // Only show the success screen — do NOT call the parent
+                                // onAuthSuccess here, which would trigger the new-user welcome
+                                // flow (preferences modal) for a still-pending facilitator.
                                 setStep('success');
-                                onAuthSuccess();
                             }} 
                         />
                     </div>

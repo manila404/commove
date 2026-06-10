@@ -17,9 +17,11 @@ interface SignUpProps {
     onSwitchToSignIn: () => void;
     onAuthSuccess: () => void;
     onShowTermsAndConditions?: () => void;
+    /** When true, pre-selects the Facilitator Account tab */
+    initialIsFacilitator?: boolean;
 }
 
-const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShowTermsAndConditions }) => {
+const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShowTermsAndConditions, initialIsFacilitator = false }) => {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
@@ -41,7 +43,8 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
     
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [isFacilitator, setIsFacilitator] = useState(false);
+    const [isFacilitator, setIsFacilitator] = useState(initialIsFacilitator);
+    const [department, setDepartment] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const isSubmittingRef = useRef(false);
@@ -266,6 +269,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                 isAdmin: email === 'admincommove@gmail.com', 
                 role: 'user', 
                 facilitatorRequestStatus: (isFacilitator || step === 3) ? 'pending' : undefined,
+                department: (isFacilitator || step === 3) ? department.trim() || undefined : undefined,
                 idUrl: finalIdUrl || idImage || undefined,
                 faceUrl: faceImage || undefined,
                 birthday: `${birthYear}-${String(birthMonth).padStart(2,'0')}-${String(birthDay).padStart(2,'0')}`,
@@ -283,7 +287,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             if (isFacilitator) {
                 try {
                     const admins = await getAdmins();
-                    const notificationBody = `${displayName} has signed up as a facilitator and is awaiting approval.`;
+                    const notificationBody = 'A new facilitator has signed up and is waiting for approval.';
                     
                     for (const admin of admins) {
                         await createNotification(
@@ -582,6 +586,20 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
                                     required
                                     className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
                                 />
+                            </div>
+                        )}
+
+                        {/* Department/Office field — only for facilitator registrations */}
+                        {isFacilitator && (
+                            <div className="md:col-span-2">
+                                <input
+                                    type="text"
+                                    placeholder="Department / Office (e.g. CICRD, PESO, BPLO)"
+                                    value={department}
+                                    onChange={(e) => setDepartment(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder-gray-400"
+                                />
+                                <p className="text-[10px] text-gray-400 pl-4 mt-1">Enter the LGU department or office you represent.</p>
                             </div>
                         )}
 
