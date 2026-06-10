@@ -1,7 +1,7 @@
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore } from 'firebase/firestore';
+import { getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence, connectAuthEmulator } from 'firebase/auth';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBEKNCfxB7-vPjzIDgCLC1xlNXdBbrTNp8",
@@ -38,4 +38,16 @@ try {
     db = getFirestore(app);
 }
 
+// Connect to Firebase local emulators in development mode (localhost)
+if (import.meta.env.DEV || window.location.hostname === 'localhost') {
+    try {
+        connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+        connectFirestoreEmulator(db, 'localhost', 8080);
+        console.log("🔥 Connected to Firebase Local Emulators (Auth: 9099, Firestore: 8080)");
+    } catch (error) {
+        console.warn("⚠️ Firebase local emulators already connected or connection failed:", error);
+    }
+}
+
 export { app, auth, db };
+
