@@ -65,6 +65,34 @@ export const fetchUserRequests = async (userId: string): Promise<EventType[]> =>
     }
 }
 
+export const checkScheduleConflict = async (
+    venue: string,
+    dates: string[],
+    startTime: string,
+    endTime: string,
+    excludeIds: string[] = []
+): Promise<boolean> => {
+    if (!venue || !startTime || !endTime || dates.length === 0) return false;
+
+    const allEventsQuery = await getDocs(eventsCollectionRef);
+    const allEvents = allEventsQuery.docs.map(d => ({ ...d.data(), id: d.id } as EventType));
+    const normVenue = venue.trim().toLowerCase();
+
+    for (const ev of allEvents) {
+        if (excludeIds.includes(ev.id) || (ev.recurrenceGroupId && excludeIds.includes(ev.recurrenceGroupId))) continue;
+        if (ev.status === 'rejected' || ev.status === 'cancelled') continue;
+
+        if (ev.venue && ev.venue.trim().toLowerCase() === normVenue) {
+            if (ev.date && dates.includes(ev.date)) {
+                if (startTime < ev.endTime && endTime > ev.startTime) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+};
+
 export const addEvent = async (eventData: Omit<EventType, 'id'>, recurrenceDates?: string[]): Promise<EventType> => {
     try {
         const cleanedData = sanitizeData(eventData);
@@ -83,6 +111,12 @@ export const addEvent = async (eventData: Omit<EventType, 'id'>, recurrenceDates
             // increment-from-undefined behavior.
             ...(cleanedData.isPrivate ? { approvedCount: cleanedData.approvedCount ?? 0 } : {}),
         };
+
+        const datesToCheck = recurrenceDates && recurrenceDates.length > 0 ? recurrenceDates : [finalData.date];
+        const hasConflict = await checkScheduleConflict(finalData.venue, datesToCheck, finalData.startTime, finalData.endTime);
+        if (hasConflict) {
+            throw new Error("Schedule conflict detected. Another event is already scheduled at this venue on the same date and time.");
+        }
         
         // Handle recurrence
         if (recurrenceDates && recurrenceDates.length > 1) {
@@ -141,8 +175,9 @@ export const addEvent = async (eventData: Omit<EventType, 'id'>, recurrenceDates
             ...finalData
         };
         return newEvent;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error adding event to Firestore:", error);
+        if (error.message && error.message.includes("Schedule conflict")) throw error;
         throw new Error("Could not create event.");
     }
 };
@@ -159,9 +194,27 @@ export const updateEvent = async (eventId: string, eventData: Partial<EventType>
         }
         
         const eventDocRef = doc(db, 'events', eventId);
+        const eventDoc = await getDoc(eventDocRef);
+        if (eventDoc.exists()) {
+            const ev = eventDoc.data() as EventType;
+            const newVenue = cleanedData.venue !== undefined ? cleanedData.venue : ev.venue;
+            const newDate = cleanedData.date !== undefined ? cleanedData.date : ev.date;
+            const newStart = cleanedData.startTime !== undefined ? cleanedData.startTime : ev.startTime;
+            const newEnd = cleanedData.endTime !== undefined ? cleanedData.endTime : ev.endTime;
+            
+            const excludeIds = [eventId];
+            if (ev.recurrenceGroupId) excludeIds.push(ev.recurrenceGroupId);
+
+            const hasConflict = await checkScheduleConflict(newVenue, [newDate], newStart, newEnd, excludeIds);
+            if (hasConflict) {
+                throw new Error("Schedule conflict detected. Another event is already scheduled at this venue on the same date and time.");
+            }
+        }
+
         await updateDoc(eventDocRef, cleanedData);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error updating event in Firestore:", error);
+        if (error.message && error.message.includes("Schedule conflict")) throw error;
         throw new Error("Could not update event.");
     }
 };
@@ -177,6 +230,31 @@ export const updateEventStatus = async (eventId: string, status: EventStatus, re
         }
         if (publishAt !== undefined) {
             updateData.publishAt = publishAt;
+        }
+
+        if (status === 'published' || status === 'scheduled' || status === 'pending') {
+            if (recurrenceGroupId) {
+                const q = query(eventsCollectionRef, where("recurrenceGroupId", "==", recurrenceGroupId));
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    const firstEv = snap.docs[0].data() as EventType;
+                    const dates = snap.docs.map(d => (d.data() as EventType).date);
+                    const hasConflict = await checkScheduleConflict(firstEv.venue, dates, firstEv.startTime, firstEv.endTime, [recurrenceGroupId]);
+                    if (hasConflict) {
+                        throw new Error("Schedule conflict detected. Another event is already scheduled at this venue on the same date and time.");
+                    }
+                }
+            } else {
+                const eventDocRef = doc(db, 'events', eventId);
+                const eventDoc = await getDoc(eventDocRef);
+                if (eventDoc.exists()) {
+                    const ev = eventDoc.data() as EventType;
+                    const hasConflict = await checkScheduleConflict(ev.venue, [ev.date], ev.startTime, ev.endTime, [eventId]);
+                    if (hasConflict) {
+                        throw new Error("Schedule conflict detected. Another event is already scheduled at this venue on the same date and time.");
+                    }
+                }
+            }
         }
 
         // Batch-update all events in the recurrence group

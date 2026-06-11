@@ -636,8 +636,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             }
 
             showAlert('Success', `${msg}: ${event.name}`, 'success');
-        } catch (e) {
-            showAlert('Error', "Failed to update event status.", 'error');
+        } catch (e: any) {
+            showAlert('Error', e.message && e.message.includes("Schedule conflict") ? e.message : "Failed to update event status.", 'error');
         }
     };
 
@@ -666,9 +666,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
             setSchedulingEvent(null);
             setScheduledDateTime('');
             showAlert('Scheduled', `Event scheduled for ${new Date(publishAt).toLocaleString()}`, 'success');
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            showAlert('Error', "Failed to schedule event.", 'error');
+            showAlert('Error', e.message && e.message.includes("Schedule conflict") ? e.message : "Failed to schedule event.", 'error');
         }
     };
 

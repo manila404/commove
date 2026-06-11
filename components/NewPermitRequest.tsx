@@ -209,9 +209,9 @@ const NewPermitRequest: React.FC<NewPermitRequestProps> = ({ onBack, initialDepa
         setCreatedEventId(newEvent.id);
         setStep(3);
         window.scrollTo(0, 0);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        showAlert("Error", "Failed to submit request. Please try again.", "error");
+        showAlert("Error", error.message && error.message.includes("Schedule conflict") ? error.message : "Failed to submit request. Please try again.", "error");
     } finally {
         setIsSubmitting(false);
     }
