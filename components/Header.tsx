@@ -11,6 +11,7 @@ interface HeaderProps {
     onProfileClick?: () => void;
     renderProfileDropdown?: () => React.ReactNode;
     title?: string;
+    subtitle?: string;
     theme?: string;
     toggleTheme?: () => void;
     isProfileOpen?: boolean;
@@ -40,9 +41,9 @@ const LiveClock = () => {
     );
 };
 
-const Header: React.FC<HeaderProps> = ({ 
-    currentUser, reminders, events, onBack, onProfileClick, renderProfileDropdown, 
-    title, theme, toggleTheme, isProfileOpen = false
+const Header: React.FC<HeaderProps> = ({
+    currentUser, reminders, events, onBack, onProfileClick, renderProfileDropdown,
+    title, subtitle, theme, toggleTheme, isProfileOpen = false
 }) => {
   return (
     <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700 pt-safe">
@@ -84,9 +85,12 @@ const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
               {title && (
-                  <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-white ml-2">
-                    {title}
-                  </span>
+                  <div className="flex flex-col ml-2">
+                      <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-white leading-tight">{title}</span>
+                      {subtitle && (
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 font-medium leading-tight truncate max-w-[200px] md:max-w-xs">{subtitle}</span>
+                      )}
+                  </div>
               )}
             </div>
 

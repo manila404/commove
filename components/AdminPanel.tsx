@@ -79,6 +79,7 @@ interface AdminPanelProps {
     onEventDeleted: (eventId: string, options?: { recurrenceGroupId?: string; mode?: 'single' | 'following' | 'series'; fromDate?: string }) => Promise<boolean>;
     onClose: () => void;
     onManageRegistrations?: (event: EventType) => void;
+    onShowMyPrivateEvents?: () => void;
     externalDashboardTab?: DashboardTab;
     onExternalTabChange?: (tab: DashboardTab) => void;
 }
@@ -103,7 +104,7 @@ const DEFAULT_REQUIREMENTS = [
 
 type DashboardTab = 'analytics' | 'events' | 'users' | 'calendar' | 'reports' | 'highlights';
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCreated, onEventUpdated, onEventDeleted, onClose, onManageRegistrations, externalDashboardTab, onExternalTabChange }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCreated, onEventUpdated, onEventDeleted, onClose, onManageRegistrations, onShowMyPrivateEvents, externalDashboardTab, onExternalTabChange }) => {
     const { showAlert, showConfirm } = useAlert();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'list' | 'create' | 'users' | 'requests'>('dashboard');
     const [requestedDashboardTab, setRequestedDashboardTab] = useState<'analytics' | 'events' | 'users' | undefined>(undefined);
@@ -999,6 +1000,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, events, onEventCre
                 highlightUserId={targetId}
                 onHighlightConsumed={() => setTargetId(undefined)}
                 onManageRegistrations={onManageRegistrations}
+                onShowMyPrivateEvents={onShowMyPrivateEvents}
+                onCreateEvent={() => switchTab('create')}
                 currentUser={currentUser}
                 activeTab={dashboardActiveTab}
                 setActiveTab={setDashboardActiveTab}

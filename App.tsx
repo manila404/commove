@@ -40,6 +40,7 @@ import NotificationList from './components/NotificationList';
 import HelpSupportView from './components/HelpSupportView';
 import TermsAndConditionsView from './components/TermsAndConditionsView';
 import ManageRegistrations from './components/ManageRegistrations';
+import MyPrivateEvents from './components/MyPrivateEvents';
 import FacilitatorAuthFlow from './components/FacilitatorAuthFlow';
 import EditProfileModal from './components/EditProfileModal';
 import HighlightsSlider from './components/HighlightsSlider';
@@ -390,6 +391,7 @@ const App: React.FC = () => {
     const [showFacilitatorAuth, setShowFacilitatorAuth] = useState(false);
     const [facilitatorAuthInitialStep, setFacilitatorAuthInitialStep] = useState<'question' | 'request'>('question');
     const [managingEventRegistrations, setManagingEventRegistrations] = useState<EventType | null>(null);
+    const [showMyPrivateEvents, setShowMyPrivateEvents] = useState(false);
     const [showQRScanner, setShowQRScanner] = useState(() => {
         try { return getInitialStateFromURL().view === 'scanner'; } catch { return false; }
     });
@@ -1377,6 +1379,7 @@ const App: React.FC = () => {
         setShowHelpSupport(false);
         setShowTermsAndConditions(false);
         setManagingEventRegistrations(null);
+        setShowMyPrivateEvents(false);
         setShowQRScanner(false);
         setShowCalendarEventsPopup(false);
         setShowPreferences(false);
@@ -2223,6 +2226,7 @@ const App: React.FC = () => {
 
     const activeOverlay = showPermitDashboard ? 'Permit Dashboard' :
         managingEventRegistrations ? 'Manage Registrations' :
+            showMyPrivateEvents ? 'My Private Events' :
             showMyEvents ? 'My Events' :
                 showNotificationSettings ? 'Notification Settings' :
                     showHelpSupport ? 'Help & Support' :
@@ -2300,13 +2304,15 @@ const App: React.FC = () => {
                 toggleTheme={toggleTheme}
                 onProfileClick={handleOpenProfile}
                 title={activeOverlay || undefined}
+                subtitle={managingEventRegistrations ? managingEventRegistrations.name : showMyPrivateEvents ? `${events.filter(e => e.isPrivate && e.createdBy === currentUser?.uid).length} event(s)` : undefined}
                 onBack={activeOverlay ? handleCloseAllModals : undefined}
                 isProfileOpen={showProfilePanel}
             />
             {activeOverlay ? (
                 <main className="flex-1 overflow-y-auto">
                     {showPermitDashboard && <PermitDashboard onBack={handleCloseAllModals} onManageRegistrations={handleManageRegistrations} />}
-                    {managingEventRegistrations && <ManageRegistrations event={managingEventRegistrations} onBack={handleCloseAllModals} />}
+                    {managingEventRegistrations && <ManageRegistrations event={managingEventRegistrations} onBack={showMyPrivateEvents ? () => setManagingEventRegistrations(null) : handleCloseAllModals} />}
+                    {showMyPrivateEvents && !managingEventRegistrations && currentUser && <MyPrivateEvents events={events} currentUser={currentUser} onManageRegistrations={handleManageRegistrations} />}
                     {showMyEvents && (
                         <MyEventsView
                             savedEvents={savedEvents}
@@ -2642,6 +2648,7 @@ const App: React.FC = () => {
                                             onEventDeleted={handleEventDeleted}
                                             onClose={handleCloseAllModals}
                                             onManageRegistrations={handleManageRegistrations}
+                                            onShowMyPrivateEvents={() => setShowMyPrivateEvents(true)}
                                             externalDashboardTab={adminActiveTab}
                                             onExternalTabChange={setAdminActiveTab}
                                         />

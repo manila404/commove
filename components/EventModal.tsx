@@ -760,6 +760,7 @@ const EventModal: React.FC<EventModalProps> = ({
         name: regData.name,
         email: regData.email,
         phoneNumber: regData.phoneNumber,
+        avatarUrl: currentUser.avatarUrl || '',
         status: 'pending',
         age: age,
         gender: currentUser.sex || 'Not specified'

@@ -6,7 +6,7 @@ import { formatTime, formatDisplayDate, XMarkIcon, MoreVerticalIcon } from '../c
 import { smartSearchEvents } from '../utils/searchUtils';
 import { getEventAlerts } from '../utils/eventAlerts';
 import type { EventAlert } from '../utils/eventAlerts';
-import { Star, MessageSquare, ChevronLeft, ChevronRight, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon, Search, X, Clock, Trash2, BarChart3, QrCode, Pencil, Bell, Ban } from 'lucide-react';
+import { Star, MessageSquare, ChevronLeft, ChevronRight, Calendar, User as UserIcon, Lock, Eye, Globe, Shield, Users as UsersIcon, Search, X, Clock, Trash2, BarChart3, QrCode, Pencil, Bell, Ban, ClipboardList } from 'lucide-react';
 import AdminReports from './AdminReports';
 import CalendarView from './CalendarView';
 import { getHighlights, setHighlights } from '../services/eventService';
@@ -52,6 +52,8 @@ interface AdminDashboardTabsProps {
     highlightUserId?: string;
     onHighlightConsumed?: () => void;
     onManageRegistrations?: (event: EventType) => void;
+    onShowMyPrivateEvents?: () => void;
+    onCreateEvent?: () => void;
     currentUser?: import('../types').User;
     onCancelEvent?: (event: EventType) => void;
     onNotifyUpdate?: (event: EventType) => void;
@@ -82,7 +84,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
     onSchedule, onPreviewEvent,
     filteredUsers, userSearchQuery, setUserSearchQuery, userFilter, setUserFilter,
     isLoadingUsers, userError, fetchUsers, handleRoleUpdate, onApproveFacilitator, onRejectFacilitator, onDeleteUser, canManageUsers,
-    activeTab, setActiveTab, initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed, onManageRegistrations, currentUser,
+    activeTab, setActiveTab, initialTab, onInitialTabConsumed, highlightUserId, onHighlightConsumed, onManageRegistrations, onShowMyPrivateEvents, onCreateEvent, currentUser,
     onCancelEvent, onNotifyUpdate, onUpdateUserDepartment
 }) => {
     const getRecurringSeriesCount = (event: EventType): number => {
@@ -2973,19 +2975,100 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                 </button>
             </div>}
 
-            {/* ── Decision Support trigger button — analytics tab only ─────── */}
+            {/* ── Quick Actions — analytics tab only ───────────────────────── */}
             {activeTab === 'analytics' && (
-                <div className="flex justify-end mb-3">
-                    <button
-                        onClick={() => setDsDrawerOpen(true)}
-                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-white shadow-sm transition-all active:scale-95 hover:opacity-90"
-                        style={{ background: '#0052A3' }}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        Decision Support
-                    </button>
+                <div className="mb-3">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white mb-2">Quick Actions</p>
+                    <div className="h-px bg-gray-100 dark:bg-gray-800 mb-3" />
+                    <div className="flex gap-3 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+                        {canManageUsers ? (
+                            <>
+                                {/* Create Event */}
+                                <button onClick={() => onCreateEvent?.()} className="flex-shrink-0 w-44 md:flex-1 md:w-auto flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors text-left">
+                                    <div className="w-9 h-9 rounded-[5px] flex-shrink-0 flex items-center justify-center" style={{ background: '#0052A3' }}>
+                                        <Calendar className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Create Event</p>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">Schedule a new event</p>
+                                    </div>
+                                </button>
+                                {/* View Reports */}
+                                <button onClick={() => setActiveTab('reports')} className="flex-shrink-0 w-44 md:flex-1 md:w-auto flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors text-left">
+                                    <div className="w-9 h-9 rounded-[5px] flex-shrink-0 flex items-center justify-center" style={{ background: '#0052A3' }}>
+                                        <BarChart3 className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">View Reports</p>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">Review event analytics</p>
+                                    </div>
+                                </button>
+                                {/* Manage Users */}
+                                <button onClick={() => setActiveTab('users')} className="flex-shrink-0 w-44 md:flex-1 md:w-auto flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors text-left">
+                                    <div className="w-9 h-9 rounded-[5px] flex-shrink-0 flex items-center justify-center" style={{ background: '#0052A3' }}>
+                                        <UsersIcon className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Manage Users</p>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">View community members</p>
+                                    </div>
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                {/* Create Event */}
+                                <button onClick={() => onCreateEvent?.()} className="flex-shrink-0 w-44 md:flex-1 md:w-auto flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors text-left">
+                                    <div className="w-9 h-9 rounded-[5px] flex-shrink-0 flex items-center justify-center" style={{ background: '#0052A3' }}>
+                                        <Calendar className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Create Event</p>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">Submit a new event</p>
+                                    </div>
+                                </button>
+                                {/* Manage Registrations */}
+                                <button
+                                    onClick={() => {
+                                        const myPrivateEvents = events.filter(e => e.isPrivate && e.createdBy === currentUser?.uid);
+                                        if (myPrivateEvents.length === 1 && onManageRegistrations) onManageRegistrations(myPrivateEvents[0]);
+                                        else if (myPrivateEvents.length > 1 && onShowMyPrivateEvents) onShowMyPrivateEvents();
+                                        else setActiveTab('events');
+                                    }}
+                                    className="flex-shrink-0 w-44 md:flex-1 md:w-auto flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors text-left"
+                                >
+                                    <div className="w-9 h-9 rounded-[5px] flex-shrink-0 flex items-center justify-center" style={{ background: '#0052A3' }}>
+                                        <ClipboardList className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Manage Registrations</p>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">Review applicants</p>
+                                    </div>
+                                </button>
+                                {/* View My Events */}
+                                <button onClick={() => setActiveTab('events')} className="flex-shrink-0 w-44 md:flex-1 md:w-auto flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors text-left">
+                                    <div className="w-9 h-9 rounded-[5px] flex-shrink-0 flex items-center justify-center" style={{ background: '#0052A3' }}>
+                                        <Calendar className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">View My Events</p>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">See submitted events</p>
+                                    </div>
+                                </button>
+                            </>
+                        )}
+                        {/* Decision Support */}
+                        <button onClick={() => setDsDrawerOpen(true)} className="flex-shrink-0 w-44 md:flex-1 md:w-auto flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors text-left">
+                            <div className="w-9 h-9 rounded-[5px] flex-shrink-0 flex items-center justify-center" style={{ background: '#0052A3' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                </svg>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Decision Support</p>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">Recommendation Support System</p>
+                            </div>
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -3223,7 +3306,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                         className="bg-white dark:bg-[#0f172a] shadow-2xl overflow-y-auto"
                     >
                         {(() => {
-                            const ev = analyticsDrawerEvent;
+                            const ev = events.find(e => e.id === analyticsDrawerEvent.id) ?? analyticsDrawerEvent;
                             const v = safeNum(ev.viewCount);
                             const sv = safeNum(ev.saveCount);
                             const it = safeNum(ev.interestedCount);
@@ -3907,6 +3990,12 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 <BarChart3 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
                                 <span className="text-[12px] font-medium">Analytics</span>
                             </button>
+                            {event.isPrivate && onManageRegistrations && (
+                                <button onClick={() => { onManageRegistrations(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
+                                    <ClipboardList className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
+                                    <span className="text-[12px] font-medium">Manage Registrations</span>
+                                </button>
+                            )}
                             <button onClick={() => { setViewingFeedbackEvent(event); setActiveActionMenu(null); setActionMenuPos(null); }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left">
                                 <MessageSquare className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.8} />
                                 <span className="text-[12px] font-medium">Feedback</span>
