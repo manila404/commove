@@ -152,13 +152,16 @@ export const updateUserAvatar = async (uid: string, avatarUrl: string): Promise<
     }
 };
 
-export const approveFacilitatorRequest = async (uid: string): Promise<void> => {
+export const approveFacilitatorRequest = async (uid: string, adminUid: string): Promise<void> => {
     try {
         const userDocRef = doc(db, usersCollectionRef, uid);
         await updateDoc(userDocRef, {
             role: 'facilitator',
             isAdmin: true,
-            facilitatorRequestStatus: 'approved'
+            facilitatorRequestStatus: 'approved',
+            approvalStatus: 'approved',
+            approvedAt: Date.now(),
+            approvedBy: adminUid
         });
     } catch (error) {
         console.error("Error approving facilitator request:", error);
@@ -183,7 +186,6 @@ export const submitFacilitatorRequest = async (uid: string, idUrl: string): Prom
     try {
         const userDocRef = doc(db, usersCollectionRef, uid);
         const userDoc = await getDoc(userDocRef);
-        const userName = userDoc.exists() ? userDoc.data().name : 'A user';
 
         await setDoc(userDocRef, {
             facilitatorRequestStatus: 'pending',
@@ -200,7 +202,7 @@ export const submitFacilitatorRequest = async (uid: string, idUrl: string): Prom
                 admin.uid,
                 'facilitator_request',
                 'New Facilitator Request',
-                `${userName} has requested to become a facilitator.`,
+                'A new facilitator has signed up and is waiting for approval.',
                 uid
             );
         }

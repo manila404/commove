@@ -287,7 +287,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn, onAuthSuccess, onShow
             if (isFacilitator) {
                 try {
                     const admins = await getAdmins();
-                    const notificationBody = `${displayName} has signed up as a facilitator and is awaiting approval.`;
+                    const notificationBody = 'A new facilitator has signed up and is waiting for approval.';
                     
                     for (const admin of admins) {
                         await createNotification(
