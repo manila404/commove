@@ -4,12 +4,12 @@ import { getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence, 
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAW0FmkuGN8qB2FeClympNiK6FrKQixdVU",
-  authDomain: "commove-2a2ab.firebaseapp.com",
-  projectId: "commove-2a2ab",
-  storageBucket: "commove-2a2ab.firebasestorage.app",
-  messagingSenderId: "925656900043",
-  appId: "1:925656900043:web:c4639781f9320d138e164e"
+    apiKey: "AIzaSyAW0FmkuGN8qB2FeClympNiK6FrKQixdVU",
+    authDomain: "commove-2a2ab.firebaseapp.com",
+    projectId: "commove-2a2ab",
+    storageBucket: "commove-2a2ab.firebasestorage.app",
+    messagingSenderId: "925656900043",
+    appId: "1:925656900043:web:c4639781f9320d138e164e"
 };
 
 // Guard against duplicate initialization during Vite HMR
@@ -27,7 +27,7 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 // Falls back to the default in-memory instance if already initialized (HMR).
 let db;
 try {
-    db = initializeFirestore(app, { 
+    db = initializeFirestore(app, {
         localCache: persistentLocalCache({
             tabManager: persistentMultipleTabManager()
         }),
@@ -38,7 +38,7 @@ try {
 }
 
 // Connect to Firebase local emulators in development mode (localhost)
-if (import.meta.env.DEV || window.location.hostname === 'localhost') {
+if (import.meta.env.VITE_USE_EMULATOR === 'true') {
     try {
         connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
         connectFirestoreEmulator(db, 'localhost', 8080);
