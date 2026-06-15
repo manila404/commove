@@ -3321,9 +3321,12 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             const insight = generateEventDecisionInsight(ev!);
                             const lvlCfg: Record<string, { bg: string; text: string; border: string; dot: string }> = {
                                 'Excellent': { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300', border: 'border-green-200 dark:border-green-800/40', dot: 'bg-green-500' },
+                                'Very Good': { bg: 'bg-indigo-50 dark:bg-indigo-900/20', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800/40', dot: 'bg-indigo-500' },
                                 'Good': { bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800/40', dot: 'bg-blue-500' },
                                 'Needs Improvement': { bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800/40', dot: 'bg-amber-500' },
                                 'Low Performing': { bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800/40', dot: 'bg-red-500' },
+                                'Poor Performance': { bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800/40', dot: 'bg-red-500' },
+                                'Insufficient Data': { bg: 'bg-gray-50 dark:bg-gray-800/20', text: 'text-gray-600 dark:text-gray-300', border: 'border-gray-200 dark:border-gray-700/40', dot: 'bg-gray-400' },
                             };
                             const cfg = lvlCfg[insight.performanceLevel] ?? lvlCfg['Needs Improvement'];
 
