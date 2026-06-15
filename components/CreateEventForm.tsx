@@ -618,7 +618,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
                   <div className="w-0.5 h-5 bg-primary-500 rounded-full" />
-                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-widest">Categories</h3>
+                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-widest">Categories <span className="text-red-400">*</span></h3>
                 </div>
                 <button type="button" onClick={() => { setShowCatInput(true); setCatInputVal(''); }}
                   className="text-[10px] font-black text-primary-600 uppercase tracking-widest hover:bg-primary-50 dark:hover:bg-primary-900/20 px-3 py-1.5 rounded-lg transition-all">
@@ -691,6 +691,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
             {/* Description */}
             <div className={card}>
               <SectionHeader title="Description" />
+              <label className={label}>Event Description <span className="text-red-400">*</span></label>
               <textarea ref={descRef} name="description" value={formData.description}
                 onChange={handleChange} onBlur={() => touch('description')}
                 placeholder="Describe what attendees can expect, what to prepare, and any special instructions…"
@@ -740,6 +741,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
               <div className="space-y-4">
                 <DateTimeRow
                   label="Start"
+                  required
                   date={formData.date} time={formData.startTime}
                   onDateChange={d => { setField('date', d); touch('date'); }}
                   onTimeChange={t => { 
@@ -862,7 +864,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
               <SectionHeader title="Location" />
               <div className="space-y-4">
                 <div className="relative">
-                  <label className={label}>Address</label>
+                  <label className={label}>Address <span className="text-red-400">*</span></label>
                   <input type="text" name="street" value={locationQuery || formData.street}
                     onChange={e => {
                         setLocationQuery(e.target.value);
@@ -906,7 +908,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({
                   </AnimatePresence>
                 </div>
                 <div>
-                  <label className={label}>Venue Name</label>
+                  <label className={label}>Venue Name <span className="text-red-400">*</span></label>
                   <input type="text" name="venue" value={formData.venue} onChange={handleChange} onBlur={() => touch('venue')}
                     placeholder="e.g. Activity Center" className={input} />
                 </div>

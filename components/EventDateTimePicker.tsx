@@ -214,6 +214,7 @@ const TimePanel: React.FC<TimePanelProps> = ({ value, onChange }) => {
 
 interface DateTimeRowProps {
   label: string;
+  required?: boolean;
   date: string;
   time: string;
   onDateChange: (d: string) => void;
@@ -224,7 +225,7 @@ interface DateTimeRowProps {
 }
 
 export const DateTimeRow: React.FC<DateTimeRowProps> = ({
-  label, date, time, onDateChange, onTimeChange, error, minDate, indicator = 'filled'
+  label, required, date, time, onDateChange, onTimeChange, error, minDate, indicator = 'filled'
 }) => {
   const [openPanel, setOpenPanel] = useState<'date' | 'time' | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -248,7 +249,9 @@ export const DateTimeRow: React.FC<DateTimeRowProps> = ({
         </div>
 
         {/* Row label */}
-        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 w-10 shrink-0">{label}</span>
+        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 w-10 shrink-0">
+          {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+        </span>
 
         {/* Date trigger — grows to fill available space */}
         <button type="button"
