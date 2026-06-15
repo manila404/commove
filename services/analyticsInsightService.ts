@@ -3,7 +3,7 @@ import type { EventType, User, EventFeedback } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type PerformanceLevel = 'Excellent' | 'Good' | 'Needs Improvement' | 'Low Performing';
+export type PerformanceLevel = 'Excellent' | 'Very Good' | 'Good' | 'Needs Improvement' | 'Low Performing' | 'Poor Performance' | 'Insufficient Data';
 
 export interface EventDecisionInsight {
     performanceLevel: PerformanceLevel;
@@ -179,18 +179,55 @@ export const calculateEventMetrics = (event: EventType) => {
     const feedbackRate   = safePercentage(feedbackCnt, checkIns);
     const ratingPct      = safePercentage(avgRating, 5);
 
-    const rawScore =
-        engagementRate * 0.30 +
-        attendanceRate * 0.35 +
-        feedbackRate   * 0.15 +
-        ratingPct      * 0.20;
+    const isPrivate = !!event.isPrivate;
+    let performanceScore = 0;
+    let performanceLevel: PerformanceLevel = 'Needs Improvement';
 
-    const performanceScore = Math.round(isFinite(rawScore) ? rawScore : 0);
+    if (isPrivate) {
+        const maxParticipants = event.maxParticipants && event.maxParticipants > 0 ? event.maxParticipants : 20;
+        const approvedParticipants = typeof event.approvedCount === 'number' ? event.approvedCount : checkIns;
+        const fillRate = (approvedParticipants / maxParticipants) * 100;
+        performanceScore = Math.round(isFinite(fillRate) ? fillRate : 0);
 
-    const performanceLevel: PerformanceLevel =
-        performanceScore >= 80 ? 'Excellent' :
-        performanceScore >= 60 ? 'Good' :
-        performanceScore >= 40 ? 'Needs Improvement' : 'Low Performing';
+        if (approvedParticipants === 0) {
+            performanceLevel = 'Poor Performance';
+        } else if (performanceScore >= 90) {
+            performanceLevel = 'Excellent';
+        } else if (performanceScore >= 75) {
+            performanceLevel = 'Very Good';
+        } else if (performanceScore >= 60) {
+            performanceLevel = 'Good';
+        } else if (performanceScore >= 40) {
+            performanceLevel = 'Needs Improvement';
+        } else {
+            performanceLevel = 'Low Performing';
+        }
+    } else {
+        // Public event
+        if (views < 100) {
+            performanceLevel = 'Poor Performance';
+            performanceScore = Math.round(views);
+        } else {
+            const rawScore =
+                engagementRate * 0.30 +
+                attendanceRate * 0.35 +
+                feedbackRate   * 0.15 +
+                ratingPct      * 0.20;
+            performanceScore = Math.round(isFinite(rawScore) ? rawScore : 0);
+
+            if (performanceScore >= 85) {
+                performanceLevel = 'Excellent';
+            } else if (performanceScore >= 70) {
+                performanceLevel = 'Very Good';
+            } else if (performanceScore >= 55) {
+                performanceLevel = 'Good';
+            } else if (performanceScore >= 40) {
+                performanceLevel = 'Needs Improvement';
+            } else {
+                performanceLevel = 'Low Performing';
+            }
+        }
+    }
 
     return { views, saves, interested, checkIns, feedbackCnt, avgRating, engagementRate, attendanceRate, feedbackRate, performanceScore, performanceLevel };
 };
@@ -208,83 +245,157 @@ export const generateEventDecisionInsight = (event: EventType): EventDecisionIns
     const recs:     string[] = [];
     const flags:    string[] = [];
 
-    // A. High engagement
-    if (m.engagementRate >= 50) {
-        insights.push(pick(INSIGHT.highEngagement, key + 'A')(name, cat));
-    }
+    const isPrivate = !!event.isPrivate;
 
-    // B. Low engagement (enough views, poor conversion)
-    if (m.views >= 20 && m.engagementRate < 20) {
-        insights.push(pick(INSIGHT.lowEngagement, key + 'B')(name));
-        recs.push(pick(REC.improvePromotion, key + 'B'));
-    }
+    if (isPrivate) {
+        const maxParticipants = event.maxParticipants && event.maxParticipants > 0 ? event.maxParticipants : 20;
+        const approvedParticipants = typeof event.approvedCount === 'number' ? event.approvedCount : m.checkIns;
+        const fillRate = m.performanceScore;
 
-    // C. High interest, low attendance
-    if (m.interested >= 10 && m.attendanceRate < 40) {
-        insights.push(pick(INSIGHT.highInterestLowAttendance, key + 'C')());
-        recs.push(pick(REC.improveReminders, key + 'C'));
-        recs.push(pick(REC.improveAccessibility, key + 'C2'));
-    }
+        if (approvedParticipants === 0) {
+            insights.push(`This private event has no participants registered or checked in.`);
+            recs.push(`Promote the event more in the homepage or highlighted section.`);
+            recs.push(`Improve event visibility.`);
+            recs.push(`Encourage residents to save, show interest, or check in.`);
+            recs.push(`Review the event schedule, title, category, and posting time.`);
+            flags.push(`No participant slots filled (0/${maxParticipants})`);
+        } else if (fillRate < 40) {
+            insights.push(`This private event has low participant turnout relative to capacity.`);
+            recs.push(`Promote the event more in the homepage or highlighted section.`);
+            recs.push(`Improve event visibility.`);
+            recs.push(`Encourage residents to save, show interest, or check in.`);
+            recs.push(`Review the event schedule, title, category, and posting time.`);
+            flags.push(`Low capacity utilization: ${approvedParticipants}/${maxParticipants} slots filled`);
+        } else {
+            if (fillRate >= 90) {
+                insights.push(`This private event achieved excellent participant turnout, reaching ${fillRate}% capacity.`);
+                recs.push(`Consider repeating this event format or extending capacity in future sessions.`);
+            } else if (fillRate >= 60) {
+                insights.push(`This private event had good capacity turnout of ${fillRate}%.`);
+            }
 
-    // D. Strong attendance conversion
-    if (m.attendanceRate >= 70 && m.checkIns > 0) {
-        insights.push(pick(INSIGHT.strongAttendance, key + 'D')(formatPercent(m.attendanceRate)));
-        recs.push(pick(REC.repeatFormat, key + 'D'));
-    }
+            if (m.avgRating >= 4.5 && m.feedbackCnt >= 3) {
+                insights.push(pick(INSIGHT.highSatisfaction, key + 'F')(formatRating(m.avgRating), cat));
+                recs.push(pick(REC.repeatFormat, key + 'F'));
+            }
+            if (m.avgRating > 0 && m.avgRating < 3) {
+                insights.push(pick(INSIGHT.lowSatisfaction, key + 'G')(formatRating(m.avgRating)));
+                recs.push(pick(REC.reviewFeedback, key + 'G'));
+                flags.push(`Low satisfaction rating: ${formatRating(m.avgRating)}/5`);
+            }
+            if (m.feedbackCnt >= 3) {
+                insights.push(`Residents provided feedback rating this private event ${formatRating(m.avgRating)}/5.`);
+            }
+        }
+    } else {
+        // Public event
+        if (m.views < 100) {
+            insights.push(`This public event has not reached the minimum engagement threshold of 100 residents.`);
+            recs.push(`Promote the event more in the homepage or highlighted section.`);
+            recs.push(`Improve event visibility.`);
+            recs.push(`Encourage residents to save, show interest, or check in.`);
+            recs.push(`Review the event schedule, title, category, and posting time.`);
+            flags.push(`Insufficient engagement data (under 100 residents threshold: ${m.views} views recorded)`);
+        } else {
+            // A. High engagement
+            if (m.engagementRate >= 50) {
+                insights.push(pick(INSIGHT.highEngagement, key + 'A')(name, cat));
+            }
 
-    // E. Low feedback rate
-    if (m.checkIns >= 10 && m.feedbackRate < 30) {
-        insights.push(pick(INSIGHT.lowFeedback, key + 'E')());
-        recs.push(pick(REC.feedbackReminder, key + 'E'));
-    }
+            // B. Low engagement (enough views, poor conversion)
+            if (m.views >= 20 && m.engagementRate < 20) {
+                insights.push(pick(INSIGHT.lowEngagement, key + 'B')(name));
+                recs.push(pick(REC.improvePromotion, key + 'B'));
+            }
 
-    // F. High satisfaction
-    if (m.avgRating >= 4.5 && m.feedbackCnt >= 3) {
-        insights.push(pick(INSIGHT.highSatisfaction, key + 'F')(formatRating(m.avgRating), cat));
-        recs.push(pick(REC.repeatFormat, key + 'F'));
-    }
+            // C. High interest, low attendance
+            if (m.interested >= 10 && m.attendanceRate < 40) {
+                insights.push(pick(INSIGHT.highInterestLowAttendance, key + 'C')());
+                recs.push(pick(REC.improveReminders, key + 'C'));
+                recs.push(pick(REC.improveAccessibility, key + 'C2'));
+            }
 
-    // G. Low satisfaction
-    if (m.avgRating > 0 && m.avgRating < 3) {
-        insights.push(pick(INSIGHT.lowSatisfaction, key + 'G')(formatRating(m.avgRating)));
-        recs.push(pick(REC.reviewFeedback, key + 'G'));
-        flags.push(`Low satisfaction rating: ${formatRating(m.avgRating)}/5`);
-    }
+            // D. Strong attendance conversion
+            if (m.attendanceRate >= 70 && m.checkIns > 0) {
+                insights.push(pick(INSIGHT.strongAttendance, key + 'D')(formatPercent(m.attendanceRate)));
+                recs.push(pick(REC.repeatFormat, key + 'D'));
+            }
 
-    // H. Low visibility
-    if (m.views < 10) {
-        insights.push(pick(INSIGHT.lowVisibility, key + 'H')(name));
-        recs.push(pick(REC.highlightEvent, key + 'H'));
-        recs.push(pick(REC.improvePromotion, key + 'H2'));
-        flags.push(`Low visibility: ${m.views} view${m.views !== 1 ? 's' : ''} recorded`);
-    }
+            // E. Low feedback rate
+            if (m.checkIns >= 10 && m.feedbackRate < 30) {
+                insights.push(pick(INSIGHT.lowFeedback, key + 'E')());
+                recs.push(pick(REC.feedbackReminder, key + 'E'));
+            }
 
-    // I. Access-type rules
-    if (event.isPrivate && m.interested >= 5) {
-        insights.push(pick(INSIGHT.privateHighInterest, key + 'I')());
-        recs.push(pick(REC.monitorApprovals, key + 'I'));
-    }
-    if (!event.isPrivate && m.checkIns < 5 && m.interested >= 5) {
-        insights.push(pick(INSIGHT.publicLowCheckIn, key + 'Ipub')());
-        recs.push(pick(REC.encourageQR, key + 'Ipub'));
+            // F. High satisfaction
+            if (m.avgRating >= 4.5 && m.feedbackCnt >= 3) {
+                insights.push(pick(INSIGHT.highSatisfaction, key + 'F')(formatRating(m.avgRating), cat));
+                recs.push(pick(REC.repeatFormat, key + 'F'));
+            }
+
+            // G. Low satisfaction
+            if (m.avgRating > 0 && m.avgRating < 3) {
+                insights.push(pick(INSIGHT.lowSatisfaction, key + 'G')(formatRating(m.avgRating)));
+                recs.push(pick(REC.reviewFeedback, key + 'G'));
+                flags.push(`Low satisfaction rating: ${formatRating(m.avgRating)}/5`);
+            }
+
+            // H. Low visibility
+            if (m.views < 20) {
+                insights.push(pick(INSIGHT.lowVisibility, key + 'H')(name));
+                recs.push(pick(REC.highlightEvent, key + 'H'));
+                recs.push(pick(REC.improvePromotion, key + 'H2'));
+                flags.push(`Low visibility: ${m.views} view${m.views !== 1 ? 's' : ''} recorded`);
+            }
+
+            if (m.checkIns < 5 && m.interested >= 5) {
+                insights.push(pick(INSIGHT.publicLowCheckIn, key + 'Ipub')());
+                recs.push(pick(REC.encourageQR, key + 'Ipub'));
+            }
+        }
     }
 
     // Build summary
-    const strongestMetric =
-        m.engagementRate >= 50 ? 'strong community engagement' :
-        m.attendanceRate >= 70 ? 'strong attendance conversion' :
-        m.avgRating >= 4.5     ? 'high resident satisfaction'   : null;
-
-    const mainConcern =
-        m.views < 10                                  ? 'low event visibility' :
-        m.interested >= 10 && m.attendanceRate < 40   ? 'a gap between interest and actual attendance' :
-        m.avgRating > 0 && m.avgRating < 3            ? 'below-average satisfaction ratings' :
-        m.checkIns >= 10 && m.feedbackRate < 30       ? 'low post-event feedback collection' : null;
-
     let summary = `"${name}" performed at a ${m.performanceLevel} level.`;
-    if (strongestMetric) summary += ` It demonstrated ${strongestMetric}.`;
-    if (mainConcern)     summary += ` The primary concern is ${mainConcern}.`;
-    if (recs.length > 0) summary += ` CICRD may review the recommendations below for future planning.`;
+
+    if (isPrivate) {
+        const maxParticipants = event.maxParticipants && event.maxParticipants > 0 ? event.maxParticipants : 20;
+        const approvedParticipants = typeof event.approvedCount === 'number' ? event.approvedCount : m.checkIns;
+
+        if (approvedParticipants === 0) {
+            summary = `Poor Performance — No slots were filled.`;
+        } else if (m.performanceScore >= 90) {
+            summary = `Excellent — This private event reached ${m.performanceScore}% of its participant capacity.`;
+        } else if (m.performanceScore >= 75) {
+            summary = `Very Good — This private event reached ${m.performanceScore}% of its participant capacity.`;
+        } else if (m.performanceScore >= 60) {
+            summary = `Good — This private event reached ${m.performanceScore}% of its participant capacity.`;
+        } else if (m.performanceScore >= 40) {
+            summary = `Needs Improvement — Only ${approvedParticipants} out of ${maxParticipants} slots were filled (${m.performanceScore}% capacity).`;
+        } else {
+            summary = `Low Performance — Only ${approvedParticipants} out of ${maxParticipants} slots were filled.`;
+        }
+    } else {
+        if (m.views < 100) {
+            summary = `Poor Performance — Insufficient data. This public event has not reached the minimum engagement threshold of 100 residents.`;
+        } else {
+            const strongestMetric =
+                m.engagementRate >= 50 ? 'strong community engagement' :
+                m.attendanceRate >= 70 ? 'strong attendance conversion' :
+                m.avgRating >= 4.5     ? 'high resident satisfaction'   : null;
+
+            const mainConcern =
+                m.views < 20                                  ? 'low event visibility' :
+                m.interested >= 10 && m.attendanceRate < 40   ? 'a gap between interest and actual attendance' :
+                m.avgRating > 0 && m.avgRating < 3            ? 'below-average satisfaction ratings' :
+                m.checkIns >= 10 && m.feedbackRate < 30       ? 'low post-event feedback collection' : null;
+
+            summary = `"${name}" performed at a ${m.performanceLevel} level.`;
+            if (strongestMetric) summary += ` It demonstrated ${strongestMetric}.`;
+            if (mainConcern)     summary += ` The primary concern is ${mainConcern}.`;
+            if (recs.length > 0) summary += ` CICRD may review the recommendations below for future planning.`;
+        }
+    }
 
     const uniq = <T>(arr: T[]) => [...new Set(arr)];
 
