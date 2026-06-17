@@ -183,7 +183,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
         return (
             <div className={`mt-3 rounded-lg border p-2.5 ${cfg.bg} ${cfg.border}`}>
                 <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Decision Support</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Recommendation Support System</p>
                     {moreInsights && moreInsights.length > 0 && onMoreDetails && (
                         <button
                             onClick={onMoreDetails}
@@ -3064,8 +3064,8 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                 </svg>
                             </div>
                             <div className="min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Decision Support</p>
-                                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">Recommendation Support System</p>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Recommendation Support System</p>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight mt-0.5">Check recommendations and insights</p>
                             </div>
                         </button>
                     </div>
@@ -3464,7 +3464,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
 
                                         {/* Decision Support — Rule-Based */}
                                         <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Decision Support</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Recommendation Support System</p>
 
                                             {/* Performance badge + summary */}
                                             <div className={`${cfg.bg} border ${cfg.border} rounded-xl p-4 mb-3`}>
@@ -3630,7 +3630,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                                             </svg>
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-sm font-extrabold text-gray-900 dark:text-white leading-tight">Decision Support</p>
+                                            <p className="text-sm font-extrabold text-gray-900 dark:text-white leading-tight">Recommendation Support System</p>
                                             <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500">{isAdmin ? 'Admin View' : 'My Events'} · {activeDomains.length} domain{activeDomains.length !== 1 ? 's' : ''} analyzed</p>
                                         </div>
                                     </div>
@@ -4171,7 +4171,7 @@ const AdminDashboardTabs: React.FC<AdminDashboardTabsProps> = ({
                             {/* Header */}
                             <div className="flex-shrink-0 px-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3" style={{ paddingTop: 'max(env(safe-area-inset-top,16px),16px)' }}>
                                 <div className="min-w-0">
-                                    <p className="text-base font-black text-gray-900 dark:text-white">Decision Support</p>
+                                    <p className="text-base font-black text-gray-900 dark:text-white">Recommendation Support System</p>
                                     <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 leading-tight truncate">{cardDetailDrawer.title}</p>
                                 </div>
                                 <button
