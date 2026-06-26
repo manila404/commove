@@ -1,49 +1,58 @@
 import type { EventType } from '../types';
 
 const SYNONYM_DICTIONARY: Record<string, string[]> = {
-  // Sports related
-  'basketball': ['sports', 'athletic', 'fitness', 'tryout', 'clinic', 'youth sports', 'training', 'tournament', 'liga', 'basketball training', 'sports clinics'],
-  'soccer': ['sports', 'athletic', 'football', 'tryout', 'clinic', 'training', 'tournament', 'football training', 'sports programs'],
-  'volleyball': ['sports', 'athletic', 'tryout', 'clinic', 'training', 'tournament', 'liga'],
-  'sports': ['basketball', 'soccer', 'volleyball', 'athletic', 'fitness', 'tryout', 'clinic', 'tournament', 'sports programs'],
-  'athletic': ['sports', 'fitness', 'training', 'tryout', 'tournament'],
-  'fitness': ['health', 'wellness', 'sports', 'athletic'],
+  // Food related
+  'food': ['pagkain', 'feeding program', 'feeding', 'nutrition', 'nutrisyon', 'cooking', 'luto', 'kusina', 'pantry', 'meal', 'meals', 'food safety', 'palengke', 'trade fair', 'livelihood'],
+  'pagkain': ['food', 'feeding program', 'nutrition', 'meal'],
 
   // Job / Career related
-  'job': ['career', 'employment', 'livelihood', 'hiring', 'fair', 'business', 'work', 'job fairs', 'career opportunities'],
-  'jobs': ['career', 'employment', 'livelihood', 'hiring', 'fair', 'business', 'work', 'job fairs', 'career opportunities'],
-  'looking for job': ['job fair', 'career', 'employment', 'livelihood', 'hiring', 'business', 'employment assistance', 'hiring events'],
-  'work': ['job', 'career', 'employment', 'hiring', 'livelihood', 'business'],
-  'business': ['livelihood', 'career', 'employment', 'entrepreneur'],
-  'career': ['job', 'employment', 'hiring', 'fair'],
+  'job': ['trabaho', 'hanapbuhay', 'employment', 'hiring', 'job fair', 'peso', 'career', 'first-time jobseeker', 'livelihood', 'business', 'work'],
+  'trabaho': ['job', 'employment', 'hiring', 'career', 'peso', 'hanapbuhay'],
+  'jobs': ['job', 'trabaho', 'hanapbuhay', 'employment', 'hiring', 'fair', 'career'],
+  'work': ['job', 'trabaho', 'career', 'employment', 'hiring', 'livelihood', 'business'],
 
   // Health related
-  'health': ['medical', 'wellness', 'vaccination', 'clinic', 'seminar', 'doctor', 'dental', 'medicine', 'medical missions', 'health seminars', 'vaccination drives', 'nutrition'],
-  'medical': ['health', 'wellness', 'vaccination', 'doctor', 'dental', 'medicine', 'medical missions'],
-  'wellness': ['health', 'medical', 'fitness', 'mental health', 'wellness programs'],
-  'vaccine': ['vaccination', 'health', 'medical', 'covid'],
-  'nutrition': ['health', 'food', 'wellness', 'feeding program'],
+  'health': ['kalusugan', 'medical', 'gamot', 'checkup', 'vaccination', 'bakuna', 'clinic', 'cho', 'wellness', 'nutrition', 'dental', 'medicine', 'medical missions'],
+  'kalusugan': ['health', 'medical', 'wellness', 'checkup'],
+  'medical': ['health', 'wellness', 'vaccination', 'doctor', 'dental', 'medicine', 'medical missions', 'gamot', 'checkup'],
+  'gamot': ['medicine', 'health', 'medical', 'free medicine', 'cho', 'yakap gamot', 'pharmacy'],
+  'vaccine': ['vaccination', 'bakuna', 'health', 'medical', 'covid'],
+  'bakuna': ['vaccine', 'vaccination', 'health', 'medical'],
 
-  // Food related
-  'food': ['feeding program', 'food festival', 'nutrition', 'livelihood cooking', 'cooking', 'community pantry', 'food safety', 'meal'],
+  // Sports related
+  'sports': ['palakasan', 'basketball', 'volleyball', 'football', 'soccer', 'zumba', 'fitness', 'tryout', 'tournament', 'athletic', 'clinic', 'liga'],
+  'palakasan': ['sports', 'basketball', 'volleyball', 'fitness'],
+  'basketball': ['sports', 'liga', 'tournament', 'tryout', 'clinic'],
+  'volleyball': ['sports', 'liga', 'tournament', 'tryout', 'clinic'],
+  'fitness': ['health', 'wellness', 'sports', 'zumba', 'exercise'],
 
+  // Business related
+  'business': ['negosyo', 'livelihood', 'kabuhayan', 'msme', 'bplo', 'permit', 'trade fair', 'entrepreneur', 'career', 'employment'],
+  'negosyo': ['business', 'livelihood', 'kabuhayan', 'msme', 'entrepreneur'],
   
   // Education related
-  'school': ['education', 'student', 'scholarship', 'seminar', 'youth', 'academic', 'college', 'university', 'learning', 'education programs', 'student activities'],
-  'education': ['school', 'student', 'scholarship', 'seminar', 'learning', 'academic', 'education programs'],
-  'student': ['school', 'education', 'scholarship', 'youth', 'learning', 'student activities'],
-  'scholarship': ['school', 'education', 'student', 'financial aid'],
-  'youth': ['student', 'school', 'seminar', 'youth seminars', 'activities'],
+  'education': ['edukasyon', 'school', 'seminar', 'workshop', 'training', 'orientation', 'learning', 'student', 'scholarship', 'academic'],
+  'edukasyon': ['education', 'school', 'learning', 'seminar'],
+  'school': ['education', 'student', 'scholarship', 'seminar', 'youth', 'academic'],
   
-  // Concerts / Arts
-  'music': ['concert', 'festival', 'band', 'singing', 'performance', 'arts'],
-  'concert': ['music', 'festival', 'band', 'performance'],
-  'art': ['exhibit', 'museum', 'creative', 'culture'],
+  // Disaster / Emergency
+  'disaster': ['sakuna', 'baha', 'bagyo', 'emergency', 'rescue', 'preparedness', 'bdrrmo', 'relief', 'evacuation'],
+  'sakuna': ['disaster', 'emergency', 'rescue'],
+  'bagyo': ['disaster', 'baha', 'rescue', 'relief'],
+  'baha': ['disaster', 'bagyo', 'rescue', 'relief'],
+  'emergency': ['disaster', 'rescue', 'sakuna', 'bdrrmo'],
+
+  // Documents / Registry
+  'documents': ['birth certificate', 'late registration', 'civil registry', 'kasal', 'binyag', 'marriage', 'certificate', 'registry', 'id'],
+  'kasal': ['marriage', 'civil registry', 'wedding', 'documents'],
+  'binyag': ['baptism', 'civil registry', 'documents'],
 
   // Community / Gov
   'government': ['civil registry', 'community service', 'social welfare', 'public service'],
-  'help': ['social welfare', 'community service', 'assistance', 'relief', 'outreach', 'donation'],
-  'community': ['outreach', 'social welfare', 'service', 'volunteer'],
+  'help': ['social welfare', 'community service', 'assistance', 'relief', 'outreach', 'donation', 'tulong', 'ayuda'],
+  'tulong': ['help', 'assistance', 'relief', 'ayuda'],
+  'ayuda': ['help', 'relief', 'assistance', 'tulong'],
+  'community': ['outreach', 'social welfare', 'service', 'volunteer', 'komunidad'],
 };
 
 // Helper to expand a query into a set of related terms
@@ -59,11 +68,13 @@ export function expandQuery(query: string): string[] {
     if (SYNONYM_DICTIONARY[key]) {
       SYNONYM_DICTIONARY[key].forEach(syn => terms.add(syn));
     }
-    // Check partial matches inside the dictionary
-    for (const dictKey in SYNONYM_DICTIONARY) {
-      if (key.includes(dictKey) || dictKey.includes(key)) {
-        terms.add(dictKey);
-        SYNONYM_DICTIONARY[dictKey].forEach(syn => terms.add(syn));
+    // Check partial matches inside the dictionary (require at least 3 chars to prevent noise)
+    if (key.length >= 3) {
+      for (const dictKey in SYNONYM_DICTIONARY) {
+        if (key.includes(dictKey) || dictKey.includes(key)) {
+          terms.add(dictKey);
+          SYNONYM_DICTIONARY[dictKey].forEach(syn => terms.add(syn));
+        }
       }
     }
   };
