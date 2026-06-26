@@ -17,11 +17,13 @@ const SYNONYM_DICTIONARY: Record<string, string[]> = {
   'business': ['livelihood', 'career', 'employment', 'entrepreneur'],
   'career': ['job', 'employment', 'hiring', 'fair'],
 
-  // Health related
-  'health': ['medical', 'wellness', 'vaccination', 'clinic', 'seminar', 'doctor', 'dental', 'medicine', 'medical missions', 'health seminars', 'vaccination drives'],
+  // Health and Food related
+  'health': ['medical', 'wellness', 'vaccination', 'clinic', 'seminar', 'doctor', 'dental', 'medicine', 'medical missions', 'health seminars', 'vaccination drives', 'nutrition', 'feeding'],
   'medical': ['health', 'wellness', 'vaccination', 'doctor', 'dental', 'medicine', 'medical missions'],
   'wellness': ['health', 'medical', 'fitness', 'mental health', 'wellness programs'],
   'vaccine': ['vaccination', 'health', 'medical', 'covid'],
+  'food': ['feeding', 'nutrition', 'cooking', 'festival', 'pantry', 'safety', 'livelihood', 'health'],
+  'feeding': ['food', 'nutrition', 'community pantry', 'outreach'],
   
   // Education related
   'school': ['education', 'student', 'scholarship', 'seminar', 'youth', 'academic', 'college', 'university', 'learning', 'education programs', 'student activities'],

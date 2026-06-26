@@ -237,66 +237,50 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
 
   const exactIds = useMemo(() => new Set(exactMatches.map(e => e.id)), [exactMatches]);
 
-  // "Suggested Related Events" / Recommendations
+  // "Suggested Related Events" (Purely semantic/weak matches based on the query)
   const suggestedRelatedEvents = useMemo(() => {
-    if (!query.trim()) return [];
+    return relatedMatches.slice(0, 12);
+  }, [relatedMatches]);
 
-    const expandedTerms = expandQuery(query);
+  const suggestedIds = useMemo(() => new Set(suggestedRelatedEvents.map(e => e.id)), [suggestedRelatedEvents]);
+
+  // "You May Also Like" (Personalized recommendations based on user behavior, ignoring query)
+  const youMayAlsoLike = useMemo(() => {
     const userPrefs = currentUser?.preferences || [];
     const savedIds = new Set(currentUser?.savedEventIds || []);
     const interestedIds = new Set(currentUser?.interestedEventIds || []);
 
     const scored = pool
-      .filter(e => !exactIds.has(e.id)) // Do not show duplicate events between main results and suggested
+      .filter(e => !exactIds.has(e.id) && !suggestedIds.has(e.id)) // Do not show duplicates
       .map(e => {
         let score = 0;
         const cats = Array.isArray(e.category) ? e.category : [e.category];
-        const lowerName = e.name.toLowerCase();
-        const lowerDesc = (e.description || '').toLowerCase();
-        const lowerVenue = (e.venue || '').toLowerCase();
-        const lowerDept = ((e.leadOffice || '') + ' ' + (e.department || '')).toLowerCase();
 
-        // 1. Give related matches from semantic search a strong base boost so they appear here
-        const isRelatedMatch = relatedMatches.some(rm => rm.id === e.id);
-        if (isRelatedMatch) score += 20;
-
-        // 2. Category / preference match
+        // 1. Category / preference match
         if (cats.some(c => userPrefs.includes(c))) score += 12;
 
-        // 3. Expanded semantic term hits on any field
-        expandedTerms.forEach(term => {
-          if (lowerName.includes(term)) score += 5;
-          if (cats.some(c => c.toLowerCase().includes(term))) score += 4;
-          if (lowerDesc.includes(term)) score += 2;
-          if (lowerVenue.includes(term)) score += 1;
-          if (lowerDept.includes(term)) score += 3;
-        });
-
-        // 4. Boost saved / interested events
+        // 2. Boost saved / interested events
         if (savedIds.has(e.id)) score += 6;
         if (interestedIds.has(e.id)) score += 4;
 
-        // 5. Boost events in same department as exact results
-        const resultDepts = new Set(exactMatches.map(r => r.leadOffice).filter(Boolean));
-        if (e.leadOffice && resultDepts.has(e.leadOffice)) score += 5;
-
-        // 6. Boost events sharing a category with exact results
+        // 3. Boost events sharing a category with exact results
         const resultCats = new Set(exactMatches.flatMap(r => Array.isArray(r.category) ? r.category : [r.category]));
-        if (cats.some(c => resultCats.has(c))) score += 6;
+        if (cats.some(c => resultCats.has(c))) score += 5;
 
         return { event: e, score };
       })
       .filter(s => s.score > 0)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 12)
+      .slice(0, 8)
       .map(s => s.event);
 
     return scored;
-  }, [pool, exactIds, query, currentUser, exactMatches, relatedMatches]);
+  }, [pool, exactIds, suggestedIds, currentUser, exactMatches]);
 
   const hasQuery = query.trim().length > 0;
   const hasExactMatches = exactMatches.length > 0;
   const hasSuggestions = suggestedRelatedEvents.length > 0;
+  const hasPersonalized = youMayAlsoLike.length > 0;
 
 
 
@@ -411,7 +395,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30 rounded-xl p-4 flex gap-3 text-amber-800 dark:text-amber-200">
                   <Sparkles className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-500" />
                   <p className="text-sm">
-                    <strong>No exact matches found.</strong> Here are some related events you might like based on semantic search.
+                    <strong>No exact matches found for '{query}'.</strong> Here are events related to your search.
                   </p>
                 </div>
               ) : (
@@ -419,7 +403,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                   <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-4">
                     <Search className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-1">No events found</h2>
+                  <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-1">No related events found</h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">
                     Try searching for another keyword. We couldn't find any exact or related events for "<span className="font-semibold">{query}</span>".
                   </p>
@@ -438,22 +422,49 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
               )}
 
               {/* ── Suggested Related Events ── */}
-              {hasSuggestions && (
-                <section className={!hasExactMatches ? "pt-2" : ""}>
+              {(!hasExactMatches && hasSuggestions) && (
+                <section className="pt-2">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-7 h-7 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
                       <Sparkles className="w-4 h-4 text-white" />
                     </div>
                     <div>
                       <h2 className="text-base font-bold text-gray-800 dark:text-white">
-                        {hasExactMatches ? "You May Also Like" : "Suggested Related Events"}
+                        Suggested Related Events
                       </h2>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Based on related semantics and preferences</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Semantically related to "{query}"</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {suggestedRelatedEvents.map(event => (
+                      <RecommendationCard
+                        key={event.id}
+                        event={event}
+                        onSelect={onEventSelect}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* ── You May Also Like (Personalized) ── */}
+              {hasPersonalized && (
+                <section className={(!hasExactMatches && !hasSuggestions && !hasExactMatches) ? "" : "pt-8 border-t border-gray-100 dark:border-gray-800 mt-8"}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-500/20">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-gray-800 dark:text-white">
+                        You May Also Like
+                      </h2>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Based on your recent searches and activity</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {youMayAlsoLike.map(event => (
                       <RecommendationCard
                         key={event.id}
                         event={event}
