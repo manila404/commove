@@ -55,6 +55,7 @@ import EventFeedbackModal from './components/EventFeedbackModal';
 import NetworkStatusBanner from './components/NetworkStatusBanner';
 import ResetPasswordModal from './components/ResetPasswordModal';
 import ChatBot from './components/ChatBot';
+import SearchResultsPage from './components/SearchResultsPage';
 
 import {
     Globe,
@@ -418,6 +419,17 @@ const App: React.FC = () => {
         try { return getInitialStateFromURL().view === 'popular-events'; } catch { return false; }
     });
     const [showViewAllUpcoming, setShowViewAllUpcoming] = useState(false);
+    const [showSearchResults, setShowSearchResults] = useState(false);
+    const [searchResultsQuery, setSearchResultsQuery] = useState('');
+
+    const handleOpenSearchResults = (q: string) => {
+        setSearchResultsQuery(q);
+        setShowSearchResults(true);
+    };
+    const handleCloseSearchResults = () => {
+        setShowSearchResults(false);
+        setSearchResultsQuery('');
+    };
 
     // Location State
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy?: number }>({
@@ -2439,7 +2451,7 @@ const App: React.FC = () => {
                                                 >
                                                     <div className="flex items-center gap-2 px-3 pt-2 pb-1.5">
                                                         <div className="flex-1">
-                                                            <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
+                                                            <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} onViewAll={handleOpenSearchResults} />
                                                         </div>
                                                         <div className="flex gap-1.5 flex-shrink-0">
                                                             <button onClick={() => setSelectedCategory('All')} className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}>All</button>
@@ -2485,7 +2497,7 @@ const App: React.FC = () => {
                                             <div className={`hidden md:block fixed top-16 ${sidebarExpanded ? 'left-52' : 'left-20'} right-4 z-[200] bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm transition-[left] duration-300`}>
                                                 <div className="flex items-center gap-3 pl-8 pr-4 py-2.5">
                                                     <div className="flex-1">
-                                                        <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
+                                                        <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} onViewAll={handleOpenSearchResults} />
                                                     </div>
                                                     <div className="flex gap-2 flex-shrink-0">
                                                         <button onClick={() => setSelectedCategory('All')} className={`px-3.5 py-1 rounded-full text-sm font-semibold transition-all ${selectedCategory === 'All' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}>All</button>
@@ -2534,7 +2546,7 @@ const App: React.FC = () => {
                                             </div>
 
                                             <div className={isSearchSticky ? 'md:invisible md:pointer-events-none' : ''}>
-                                                <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} />
+                                                <SearchBar onSearch={setSearchQuery} events={events} onEventSelect={handleOpenEvent} onViewAll={handleOpenSearchResults} />
                                             </div>
 
                                             <div className={`flex gap-2.5 ${isSearchSticky ? 'md:invisible md:pointer-events-none' : 'animate-fade-in-up'}`}>
@@ -2848,6 +2860,21 @@ const App: React.FC = () => {
                     onToggleSave={handleToggleSaveEvent}
                     savedEventIds={currentUser?.savedEventIds || []}
                 />
+            )}
+
+            {showSearchResults && (
+                <div className="fixed inset-0 z-[6000] bg-gray-50 dark:bg-gray-900 overflow-y-auto">
+                    <SearchResultsPage
+                        initialQuery={searchResultsQuery}
+                        events={events}
+                        currentUser={currentUser}
+                        onBack={handleCloseSearchResults}
+                        onEventSelect={(event) => {
+                            handleCloseSearchResults();
+                            handleOpenEvent(event);
+                        }}
+                    />
+                </div>
             )}
 
             {showProfilePanel && (
