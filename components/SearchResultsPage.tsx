@@ -237,35 +237,54 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
 
   const exactIds = useMemo(() => new Set(exactMatches.map(e => e.id)), [exactMatches]);
 
-  // "Suggested Related Events" (Purely semantic/weak matches based on the query)
-  const suggestedRelatedEvents = useMemo(() => {
-    return relatedMatches.slice(0, 12);
-  }, [relatedMatches]);
-
-  const suggestedIds = useMemo(() => new Set(suggestedRelatedEvents.map(e => e.id)), [suggestedRelatedEvents]);
-
-  // "You May Also Like" (Personalized recommendations based on user behavior, ignoring query)
+  // "You May Also Like" / Personalized Recommendations
   const youMayAlsoLike = useMemo(() => {
     const userPrefs = currentUser?.preferences || [];
     const savedIds = new Set(currentUser?.savedEventIds || []);
     const interestedIds = new Set(currentUser?.interestedEventIds || []);
+    
+    let history: string[] = [];
+    try {
+      history = JSON.parse(localStorage.getItem('recent_searches') || '[]');
+    } catch(e) {}
+    
+    const historyTerms = new Set<string>();
+    history.forEach(h => {
+       expandQuery(h).forEach(t => historyTerms.add(t));
+    });
+
+    const shownIds = new Set([...exactIds, ...relatedMatches.map(e => e.id)]);
 
     const scored = pool
-      .filter(e => !exactIds.has(e.id) && !suggestedIds.has(e.id)) // Do not show duplicates
+      .filter(e => !shownIds.has(e.id)) // Do not show duplicate events
       .map(e => {
         let score = 0;
         const cats = Array.isArray(e.category) ? e.category : [e.category];
+        const lowerName = e.name.toLowerCase();
 
         // 1. Category / preference match
         if (cats.some(c => userPrefs.includes(c))) score += 12;
 
         // 2. Boost saved / interested events
-        if (savedIds.has(e.id)) score += 6;
-        if (interestedIds.has(e.id)) score += 4;
+        if (savedIds.has(e.id)) score += 8;
+        if (interestedIds.has(e.id)) score += 6;
 
-        // 3. Boost events sharing a category with exact results
-        const resultCats = new Set(exactMatches.flatMap(r => Array.isArray(r.category) ? r.category : [r.category]));
-        if (cats.some(c => resultCats.has(c))) score += 5;
+        // 3. Boost for recent search history matches
+        let historyMatch = false;
+        historyTerms.forEach(term => {
+          if (lowerName.includes(term)) historyMatch = true;
+          if (cats.some(c => c.toLowerCase().includes(term))) historyMatch = true;
+        });
+        if (historyMatch) score += 5;
+
+        // 4. Boost events sharing a department or category with exact results
+        if (exactMatches.length > 0) {
+            const resultDepts = new Set(exactMatches.map(r => r.leadOffice).filter(Boolean));
+            if (e.leadOffice && resultDepts.has(e.leadOffice)) score += 4;
+
+            const resultCats = new Set(exactMatches.flatMap(r => Array.isArray(r.category) ? r.category : [r.category]));
+            if (cats.some(c => resultCats.has(c))) score += 5;
+        }
 
         return { event: e, score };
       })
@@ -275,11 +294,11 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
       .map(s => s.event);
 
     return scored;
-  }, [pool, exactIds, suggestedIds, currentUser, exactMatches]);
+  }, [pool, exactIds, relatedMatches, currentUser, exactMatches]);
 
   const hasQuery = query.trim().length > 0;
   const hasExactMatches = exactMatches.length > 0;
-  const hasSuggestions = suggestedRelatedEvents.length > 0;
+  const hasRelatedMatches = relatedMatches.length > 0;
   const hasPersonalized = youMayAlsoLike.length > 0;
 
 
@@ -383,23 +402,44 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                   </h2>
                   <div className="space-y-3">
                     {exactMatches.map(event => (
-                      <SearchResultCard
-                        key={event.id}
-                        event={event}
-                        onSelect={onEventSelect}
-                      />
+                      <SearchResultCard key={event.id} event={event} onSelect={onEventSelect} />
                     ))}
                   </div>
                 </section>
-              ) : hasSuggestions ? (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30 rounded-xl p-4 flex gap-3 text-amber-800 dark:text-amber-200">
+              ) : (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30 rounded-xl p-4 flex gap-3 text-amber-800 dark:text-amber-200 mb-6">
                   <Sparkles className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-500" />
                   <p className="text-sm">
-                    <strong>No exact matches found for '{query}'.</strong> Here are events related to your search.
+                    <strong>No exact matches found for "{query}".</strong> 
+                    {hasRelatedMatches ? " Here are events related to your search." : ""}
                   </p>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
+              )}
+
+              {/* ── Suggested Related Events ── */}
+              {!hasExactMatches && hasRelatedMatches && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-7 h-7 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-gray-800 dark:text-white">
+                        Suggested Related Events
+                      </h2>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Based on semantic search</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {relatedMatches.map(event => (
+                      <SearchResultCard key={event.id} event={event} onSelect={onEventSelect} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {!hasExactMatches && !hasRelatedMatches && (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-4">
                     <Search className="w-8 h-8 text-gray-400" />
                   </div>
@@ -421,39 +461,12 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                 </div>
               )}
 
-              {/* ── Suggested Related Events ── */}
-              {(!hasExactMatches && hasSuggestions) && (
-                <section className="pt-2">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-7 h-7 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm shadow-purple-500/20">
-                      <Sparkles className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-base font-bold text-gray-800 dark:text-white">
-                        Suggested Related Events
-                      </h2>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Semantically related to "{query}"</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {suggestedRelatedEvents.map(event => (
-                      <RecommendationCard
-                        key={event.id}
-                        event={event}
-                        onSelect={onEventSelect}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* ── You May Also Like (Personalized) ── */}
+              {/* ── You May Also Like ── */}
               {hasPersonalized && (
-                <section className={(!hasExactMatches && !hasSuggestions && !hasExactMatches) ? "" : "pt-8 border-t border-gray-100 dark:border-gray-800 mt-8"}>
+                <section className={(hasExactMatches || hasRelatedMatches) ? "pt-6 mt-6 border-t border-gray-100 dark:border-gray-800" : ""}>
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-500/20">
-                      <Sparkles className="w-4 h-4 text-white" />
+                    <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-500/20">
+                      <Users className="w-4 h-4 text-white" />
                     </div>
                     <div>
                       <h2 className="text-base font-bold text-gray-800 dark:text-white">
