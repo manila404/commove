@@ -219,11 +219,11 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
     const relatedMatches: EventType[] = [];
     
     const exactMatchThreshold = 20; // Needs at least one strong keyword match in an important field
-    const minimumSimilarityThreshold = 5; // Filter out very weak matches
+    const possibleRelatedThreshold = 2; // Very low threshold to catch any partial/synonym hit
 
     allResults.forEach(e => {
       const similarityScore = calculateSearchScore(e, query);
-      if (similarityScore >= minimumSimilarityThreshold) {
+      if (similarityScore >= possibleRelatedThreshold) {
         if (similarityScore >= exactMatchThreshold) {
           exactMatches.push(e);
         } else {
@@ -427,7 +427,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                       <h2 className="text-base font-bold text-gray-800 dark:text-white">
                         Suggested Related Events
                       </h2>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Based on semantic search</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Events that may be related to your search.</p>
                     </div>
                   </div>
                   <div className="space-y-3">

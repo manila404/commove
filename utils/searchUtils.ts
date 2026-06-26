@@ -53,6 +53,9 @@ const SYNONYM_DICTIONARY: Record<string, string[]> = {
   'tulong': ['help', 'assistance', 'relief', 'ayuda'],
   'ayuda': ['help', 'relief', 'assistance', 'tulong'],
   'community': ['outreach', 'social welfare', 'service', 'volunteer', 'komunidad'],
+
+  // Special Programs
+  'win': ['wellness', 'workshop', 'women', 'livelihood', 'training', 'empowerment'],
 };
 
 // Helper to expand a query into a set of related terms
