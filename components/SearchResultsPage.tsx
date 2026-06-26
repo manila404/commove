@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { EventType, DisplayEventType, User } from '../types';
 import { formatDisplayDate, formatTime, EventImage } from '../constants';
-import { smartSearchEvents, expandQuery } from '../utils/searchUtils';
+import { smartSearchEvents, expandQuery, calculateSearchScore } from '../utils/searchUtils';
 import { getCategoryStyle } from '../utils/categoryStyles';
 import Spinner from './Spinner';
 
@@ -210,17 +210,40 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
     [events]
   );
 
-  // Main search results
-  const results = useMemo(
-    () => (query.trim() ? smartSearchEvents(pool, query) : []),
-    [pool, query]
-  );
+  const { exactMatches, relatedMatches } = useMemo(() => {
+    if (!query.trim()) return { exactMatches: [], relatedMatches: [] };
 
-  const resultIds = useMemo(() => new Set(results.map(e => e.id)), [results]);
+    const lowerQuery = query.toLowerCase().trim();
+    const exact: EventType[] = [];
+    const related: EventType[] = [];
 
-  // "You May Also Like" recommendations
-  // Logic: from the same expanded terms + user preferences, exclude already shown results
-  const recommendations = useMemo(() => {
+    // smartSearchEvents already sorts by relevance (which uses title, category, department, etc)
+    const allMatches = smartSearchEvents(pool, query);
+
+    allMatches.forEach(event => {
+      const similarityScore = calculateSearchScore(event, query);
+      const minimumSimilarityThreshold = 2;
+      
+      if (similarityScore < minimumSimilarityThreshold) return;
+
+      const lowerName = event.name.toLowerCase();
+      const cats = Array.isArray(event.category) ? event.category.map(c => c.toLowerCase()) : [(event.category as string).toLowerCase()];
+      
+      // High score OR explicitly contains the query substring
+      const isExact = similarityScore >= 15 || lowerName.includes(lowerQuery) || cats.some(c => c.includes(lowerQuery));
+
+      if (isExact) {
+        exact.push(event);
+      } else {
+        related.push(event);
+      }
+    });
+
+    return { exactMatches: exact, relatedMatches: related };
+  }, [pool, query]);
+
+  // "Suggested Related Events" combining semantic related matches + recommendations
+  const suggestedRelatedEvents = useMemo(() => {
     if (!query.trim()) return [];
 
     const expandedTerms = expandQuery(query);
@@ -228,53 +251,59 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
     const savedIds = new Set(currentUser?.savedEventIds || []);
     const interestedIds = new Set(currentUser?.interestedEventIds || []);
 
-    // Score each non-result event
+    const exactIds = new Set(exactMatches.map(e => e.id));
+
+    // Score events that are not in exactMatches
     const scored = pool
-      .filter(e => !resultIds.has(e.id))
+      .filter(e => !exactIds.has(e.id))
       .map(e => {
-        let score = 0;
+        let similarityScore = calculateSearchScore(e, query); // Base semantic search score
+        
         const cats = Array.isArray(e.category) ? e.category : [e.category];
         const lowerName = e.name.toLowerCase();
         const lowerDesc = (e.description || '').toLowerCase();
         const lowerVenue = (e.venue || '').toLowerCase();
         const lowerDept = ((e.leadOffice || '') + ' ' + (e.department || '')).toLowerCase();
 
-        // Category / preference match
-        if (cats.some(c => userPrefs.includes(c))) score += 12;
+        // Boost based on User interests or preferences
+        if (cats.some(c => userPrefs.includes(c))) similarityScore += 12;
 
-        // Expanded term hits on any field
+        // Expanded term hits
         expandedTerms.forEach(term => {
-          if (lowerName.includes(term)) score += 5;
-          if (cats.some(c => c.toLowerCase().includes(term))) score += 4;
-          if (lowerDesc.includes(term)) score += 2;
-          if (lowerVenue.includes(term)) score += 1;
-          if (lowerDept.includes(term)) score += 3;
+          if (lowerName.includes(term)) similarityScore += 5;
+          if (cats.some(c => c.toLowerCase().includes(term))) similarityScore += 4;
+          if (lowerDesc.includes(term)) similarityScore += 2;
+          if (lowerVenue.includes(term)) similarityScore += 1;
+          if (lowerDept.includes(term)) similarityScore += 3;
         });
 
         // Boost saved / interested events
-        if (savedIds.has(e.id)) score += 6;
-        if (interestedIds.has(e.id)) score += 4;
+        if (savedIds.has(e.id)) similarityScore += 6;
+        if (interestedIds.has(e.id)) similarityScore += 4;
 
-        // Boost events in same department as main results
-        const resultDepts = new Set(results.map(r => r.leadOffice).filter(Boolean));
-        if (e.leadOffice && resultDepts.has(e.leadOffice)) score += 5;
+        // Boost events in same department as main exact results
+        const exactDepts = new Set(exactMatches.map(r => r.leadOffice).filter(Boolean));
+        if (e.leadOffice && exactDepts.has(e.leadOffice)) similarityScore += 5;
 
-        // Boost events sharing a category with results
-        const resultCats = new Set(results.flatMap(r => Array.isArray(r.category) ? r.category : [r.category]));
-        if (cats.some(c => resultCats.has(c))) score += 6;
+        // Boost events sharing a category with exact results
+        const exactCats = new Set(exactMatches.flatMap(r => Array.isArray(r.category) ? r.category : [r.category]));
+        if (cats.some(c => exactCats.has(c))) similarityScore += 6;
 
-        return { event: e, score };
-      })
-      .filter(s => s.score > 0)
-      .sort((a, b) => b.score - a.score)
+        return { event: e, similarityScore };
+      });
+
+    const minimumSimilarityThreshold = 3;
+
+    return scored
+      .filter(s => s.similarityScore >= minimumSimilarityThreshold)
+      .sort((a, b) => b.similarityScore - a.similarityScore)
       .slice(0, 8)
       .map(s => s.event);
-
-    return scored;
-  }, [pool, resultIds, query, currentUser, results]);
+  }, [pool, exactMatches, query, currentUser]);
 
   const hasQuery = query.trim().length > 0;
-  const hasResults = results.length > 0;
+  const totalResults = exactMatches.length + suggestedRelatedEvents.length;
+  const hasResults = totalResults > 0;
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -319,7 +348,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
           <div className="px-4 pb-2.5 max-w-5xl mx-auto">
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {hasResults
-                ? <><span className="font-bold text-gray-800 dark:text-gray-100">{results.length}</span> result{results.length !== 1 ? 's' : ''} for "<span className="font-semibold text-primary-600 dark:text-primary-400">{query}</span>"</>
+                ? <><span className="font-bold text-gray-800 dark:text-gray-100">{totalResults}</span> result{totalResults !== 1 ? 's' : ''} for "<span className="font-semibold text-primary-600 dark:text-primary-400">{query}</span>"</>
                 : <>No results for "<span className="font-semibold text-primary-600 dark:text-primary-400">{query}</span>"</>
               }
             </p>
@@ -367,14 +396,14 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
           {/* ── Main results ── */}
           {hasQuery && !isSearching && (
             <>
-              {hasResults ? (
+              {exactMatches.length > 0 && (
                 <section>
                   <h2 className="text-base font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                     <Search className="w-4 h-4 text-primary-500" />
                     Search Results
                   </h2>
                   <div className="space-y-3">
-                    {results.map(event => (
+                    {exactMatches.map(event => (
                       <SearchResultCard
                         key={event.id}
                         event={event}
@@ -383,14 +412,48 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                     ))}
                   </div>
                 </section>
-              ) : (
+              )}
+
+              {/* ── Suggested Related Events ── */}
+              {suggestedRelatedEvents.length > 0 && (
+                <section className={exactMatches.length > 0 ? "mt-10" : ""}>
+                  <div className="mb-4">
+                    <h2 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary-500" />
+                      Suggested Related Events
+                    </h2>
+                    {exactMatches.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        No exact matches found. Here are some related events you might like.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Here are some related events you might like.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {suggestedRelatedEvents.map(event => (
+                      <RecommendationCard
+                        key={event.id}
+                        event={event}
+                        onSelect={onEventSelect}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Full Empty State */}
+              {exactMatches.length === 0 && suggestedRelatedEvents.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-4">
                     <Search className="w-8 h-8 text-gray-400" />
                   </div>
                   <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-1">No events found</h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">
-                    We couldn't find events matching "<span className="font-semibold">{query}</span>". Try a different keyword or browse a category.
+                    No events found. Try searching for another keyword.
                   </p>
                   <div className="flex flex-wrap justify-center gap-2 mt-6">
                     {['Job Fair', 'Health', 'Sports', 'Concert', 'Workshop'].map(chip => (
@@ -404,31 +467,6 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                     ))}
                   </div>
                 </div>
-              )}
-
-              {/* ── You May Also Like ── */}
-              {recommendations.length > 0 && (
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-7 h-7 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-base font-bold text-gray-800 dark:text-white">You May Also Like</h2>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Based on your search and preferences</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {recommendations.map(event => (
-                      <RecommendationCard
-                        key={event.id}
-                        event={event}
-                        onSelect={onEventSelect}
-                      />
-                    ))}
-                  </div>
-                </section>
               )}
             </>
           )}
