@@ -101,7 +101,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
 
         {/* Suggested & History Dropdown */}
         {isFocused && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-10 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
 
             {/* Recent Searches */}
             {(!query && history.length > 0) && (
@@ -119,15 +119,15 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
                     Clear
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1.5">
                   {history.map((term, i) => (
                     <button
                       key={term + i}
                       onClick={() => handleViewAll(term)}
-                      className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left group"
+                      className="flex items-center gap-3 p-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors text-left group"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-                        <Clock size={14} className="text-gray-500 dark:text-gray-400" />
+                      <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                        <Clock size={13} className="text-gray-500 dark:text-gray-400" />
                       </div>
                       <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{term}</span>
                     </button>
@@ -141,7 +141,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, events = [], onEventSel
               <div className="p-4">
                 <span className="text-sm font-semibold text-gray-900 dark:text-white tracking-[0.06em]">Suggested Events</span>
                 {suggestions.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2 mt-3">
+                  <div className="flex flex-col gap-1.5 mt-3">
                     {suggestions.map(event => (
                       <button
                         key={event.id}

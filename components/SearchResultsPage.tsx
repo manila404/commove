@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   Search, X, ArrowLeft, Calendar, Clock, MapPin, Users,
-  Sparkles, Lock, Globe, Building2, Tag as TagIcon, ChevronRight,
+  Sparkles, Lock,
 } from 'lucide-react';
 import type { EventType, DisplayEventType, User } from '../types';
 import { formatDisplayDate, formatTime, EventImage } from '../constants';
@@ -33,94 +33,74 @@ interface SearchResultCardProps {
   highlight?: boolean;
 }
 
-const SearchResultCard: React.FC<SearchResultCardProps> = ({ event, onSelect, highlight }) => {
+const SearchResultCard: React.FC<SearchResultCardProps> = ({ event, onSelect }) => {
   const cats = Array.isArray(event.category) ? event.category : [event.category];
-  const style = getCategoryStyle(cats[0]);
-  const access = event.isPrivate ? 'Private' : 'Public';
-  const statusInfo = statusLabel[event.status || 'published'] || statusLabel.published;
+  const firstCatStyle = getCategoryStyle(cats[0]);
 
   return (
     <div
       onClick={() => onSelect(event)}
-      className={`group relative bg-white dark:bg-gray-800 rounded-2xl border cursor-pointer overflow-hidden
-        hover:shadow-xl dark:hover:shadow-black/30 hover:-translate-y-0.5 transition-all duration-300
-        ${highlight
-          ? 'border-primary-200 dark:border-primary-700/50 ring-2 ring-primary-500/10'
-          : 'border-gray-100 dark:border-gray-700/60'}`}
+      className="group bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-md hover:shadow-xl dark:shadow-black/20 border border-gray-200 dark:border-gray-700 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer flex flex-col h-full"
     >
       {/* Top accent */}
-      <div className={`h-1 w-full bg-gradient-to-r ${style.bg}`} />
+      <div className={`h-1 w-full bg-gradient-to-r ${firstCatStyle.bg}`} />
 
-      <div className="flex gap-0 sm:gap-4">
-        {/* Thumbnail */}
-        <div className="relative w-28 sm:w-36 md:w-44 flex-shrink-0">
-          <EventImage
-            src={event.imageUrl}
-            alt={event.name}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
+      {/* Image */}
+      <div className="overflow-hidden h-40 sm:h-48 flex-shrink-0 relative">
+        <EventImage
+          src={event.imageUrl}
+          alt={event.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60" />
+        {event.isPrivate && (
+          <div className="absolute top-2 right-2 bg-orange-500 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+            <Lock className="w-2.5 h-2.5" />
+            PRIVATE
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-4 flex flex-col flex-grow">
+        {/* Category badges */}
+        <div className="mb-2 flex flex-wrap gap-1">
+          {cats.slice(0, 2).map(cat => (
+            <span
+              key={cat}
+              className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${getCategoryStyle(cat).badge}`}
+            >
+              {cat}
+            </span>
+          ))}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 p-4 min-w-0">
-          {/* Badges row */}
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {cats.slice(0, 2).map(cat => (
-              <span
-                key={cat}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getCategoryStyle(cat).badge}`}
-              >
-                <TagIcon className="w-2.5 h-2.5" />
-                {cat}
-              </span>
-            ))}
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${statusInfo.cls}`}>
-              {statusInfo.label}
-            </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-              {event.isPrivate ? <Lock className="w-2.5 h-2.5" /> : <Globe className="w-2.5 h-2.5" />}
-              {access}
-            </span>
+        {/* Title */}
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors leading-tight line-clamp-2">
+          {event.name}
+        </h3>
+
+        {/* Description */}
+        {event.description && (
+          <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2 flex-grow">
+            {event.description}
+          </p>
+        )}
+
+        {/* Meta */}
+        <div className="space-y-1.5 text-xs text-gray-500 dark:text-gray-400 font-medium pt-3 border-t border-gray-100 dark:border-gray-700 mt-auto">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
+            <span>{formatDisplayDate(event.date, event.endDate)}</span>
           </div>
-
-          {/* Title */}
-          <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors leading-snug line-clamp-2 mb-2">
-            {event.name}
-          </h3>
-
-          {/* Meta */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-primary-500" />
-              {formatDisplayDate(event.date, event.endDate)}
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-primary-500" />
-              {formatTime(event.startTime)}{event.endTime ? ` – ${formatTime(event.endTime)}` : ''}
-            </span>
-            <span className="flex items-center gap-1 max-w-[200px] truncate">
-              <MapPin className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
-              <span className="truncate">{event.venue}{event.city ? `, ${event.city}` : ''}</span>
-            </span>
-            {event.leadOffice && (
-              <span className="flex items-center gap-1">
-                <Building2 className="w-3.5 h-3.5 text-primary-500" />
-                {event.leadOffice}
-              </span>
-            )}
-            {event.maxParticipants && (
-              <span className="flex items-center gap-1">
-                <Users className="w-3.5 h-3.5 text-primary-500" />
-                {event.maxParticipants} slots
-              </span>
-            )}
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
+            <span>{formatTime(event.startTime)}{event.endTime ? ` – ${formatTime(event.endTime)}` : ''}</span>
           </div>
-        </div>
-
-        {/* Arrow chevron on hover */}
-        <div className="hidden sm:flex items-center pr-4 text-gray-300 dark:text-gray-600 group-hover:text-primary-500 transition-colors">
-          <ChevronRight className="w-5 h-5" />
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
+            <span className="truncate">{event.venue}{event.city ? `, ${event.city}` : ''}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -304,7 +284,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
 
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 min-h-screen">
       {/* ── Header ── */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm">
         <div className="flex items-center gap-3 px-4 py-3 max-w-5xl mx-auto">
@@ -382,7 +362,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                   <button
                     key={chip}
                     onClick={() => { setLiveQuery(chip); setQuery(chip); }}
-                    className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-all shadow-sm"
+                    className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-all shadow-sm"
                   >
                     {chip}
                   </button>
@@ -396,11 +376,11 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
             <>
               {hasExactMatches ? (
                 <section>
-                  <h2 className="text-base font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                  <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                     <Search className="w-4 h-4 text-primary-500" />
                     Search Results
                   </h2>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {exactMatches.map(event => (
                       <SearchResultCard key={event.id} event={event} onSelect={onEventSelect} />
                     ))}
@@ -430,7 +410,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                       <p className="text-xs text-gray-500 dark:text-gray-400">Events that may be related to your search.</p>
                     </div>
                   </div>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {relatedMatches.map(event => (
                       <SearchResultCard key={event.id} event={event} onSelect={onEventSelect} />
                     ))}
@@ -452,7 +432,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                       <button
                         key={chip}
                         onClick={() => { setLiveQuery(chip); setQuery(chip); }}
-                        className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-all shadow-sm"
+                        className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-all shadow-sm"
                       >
                         {chip}
                       </button>
