@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { EventType, DisplayEventType, User } from '../types';
 import { formatDisplayDate, formatTime, EventImage } from '../constants';
-import { smartSearchEvents, expandQuery, calculateSearchScore } from '../utils/searchUtils';
+import { smartSearchEvents, expandQuery, calculateSearchScore, inferCategories } from '../utils/searchUtils';
 import { getCategoryStyle } from '../utils/categoryStyles';
 import Spinner from './Spinner';
 
@@ -222,59 +222,94 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
     const userPrefs = currentUser?.preferences || [];
     const savedIds = new Set(currentUser?.savedEventIds || []);
     const interestedIds = new Set(currentUser?.interestedEventIds || []);
-    
+
     let history: string[] = [];
     try {
       history = JSON.parse(localStorage.getItem('recent_searches') || '[]');
     } catch(e) {}
-    
+
     const historyTerms = new Set<string>();
     history.forEach(h => {
        expandQuery(h).forEach(t => historyTerms.add(t));
     });
 
+    // Dynamically infer categories and expand terms from the current query
+    const inferredCats  = query.trim() ? inferCategories(query) : [];
+    const queryTerms    = query.trim() ? new Set(expandQuery(query)) : new Set<string>();
+
     const shownIds = new Set([...exactIds, ...relatedMatches.map(e => e.id)]);
 
     const scored = pool
-      .filter(e => !shownIds.has(e.id)) // Do not show duplicate events
+      .filter(e => !shownIds.has(e.id))
       .map(e => {
         let score = 0;
-        const cats = Array.isArray(e.category) ? e.category : [e.category];
+        const cats     = Array.isArray(e.category) ? e.category : [e.category];
         const lowerName = e.name.toLowerCase();
+        const lowerDesc = (e.description || '').toLowerCase();
 
-        // 1. Category / preference match
-        if (cats.some(c => userPrefs.includes(c))) score += 12;
+        // 1. PRIMARY: inferred category match (catches "chess" → Sports, "stress" → Health, etc.)
+        if (inferredCats.length > 0 && cats.some(c => inferredCats.includes(c))) score += 20;
 
-        // 2. Boost saved / interested events
-        if (savedIds.has(e.id)) score += 8;
-        if (interestedIds.has(e.id)) score += 6;
+        // 2. Expanded concept terms match name / description
+        queryTerms.forEach(term => {
+          if (lowerName.includes(term)) score += 10;
+          if (cats.some(c => c.toLowerCase().includes(term))) score += 8;
+          if (lowerDesc.includes(term)) score += 3;
+        });
 
-        // 3. Boost for recent search history matches
+        // 3. User preference match
+        if (cats.some(c => userPrefs.includes(c))) score += 6;
+
+        // 4. Saved / interested events
+        if (savedIds.has(e.id)) score += 5;
+        if (interestedIds.has(e.id)) score += 3;
+
+        // 5. History term matches
         let historyMatch = false;
         historyTerms.forEach(term => {
           if (lowerName.includes(term)) historyMatch = true;
           if (cats.some(c => c.toLowerCase().includes(term))) historyMatch = true;
         });
-        if (historyMatch) score += 5;
+        if (historyMatch) score += 4;
 
-        // 4. Boost events sharing a department or category with exact results
+        // 6. Same category / department as exact matches
         if (exactMatches.length > 0) {
-            const resultDepts = new Set(exactMatches.map(r => r.leadOffice).filter(Boolean));
-            if (e.leadOffice && resultDepts.has(e.leadOffice)) score += 4;
-
-            const resultCats = new Set(exactMatches.flatMap(r => Array.isArray(r.category) ? r.category : [r.category]));
-            if (cats.some(c => resultCats.has(c))) score += 5;
+          const resultDepts = new Set(exactMatches.map(r => r.leadOffice).filter(Boolean));
+          if (e.leadOffice && resultDepts.has(e.leadOffice)) score += 3;
+          const resultCats = new Set(exactMatches.flatMap(r => Array.isArray(r.category) ? r.category : [r.category]));
+          if (cats.some(c => resultCats.has(c))) score += 4;
         }
 
         return { event: e, score };
       })
       .filter(s => s.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    // Deduplicate recurring series — keep only the nearest upcoming occurrence
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const groupBest = new Map<string, typeof scored[number]>();
+    const nonRecurring: typeof scored = [];
+
+    for (const s of scored) {
+      const gid = s.event.recurrenceGroupId;
+      if (!gid) { nonRecurring.push(s); continue; }
+      const existing = groupBest.get(gid);
+      if (!existing) { groupBest.set(gid, s); continue; }
+      const newDate = new Date((s.event.date || '') + 'T00:00:00');
+      const exDate  = new Date((existing.event.date || '') + 'T00:00:00');
+      const newFuture = newDate >= today;
+      const exFuture  = exDate  >= today;
+      if (newFuture && !exFuture) groupBest.set(gid, s);
+      else if (newFuture && exFuture && newDate < exDate) groupBest.set(gid, s);
+      else if (!newFuture && !exFuture && newDate > exDate) groupBest.set(gid, s);
+    }
+
+    return [...nonRecurring, ...Array.from(groupBest.values())]
       .sort((a, b) => b.score - a.score)
       .slice(0, 8)
       .map(s => s.event);
-
-    return scored;
-  }, [pool, exactIds, relatedMatches, currentUser, exactMatches]);
+  }, [pool, exactIds, relatedMatches, currentUser, exactMatches, query]);
 
   const hasQuery = query.trim().length > 0;
   const hasExactMatches = exactMatches.length > 0;
